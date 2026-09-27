@@ -1,0 +1,73 @@
+{
+  "passed": true,
+  "counts": {
+    "source_references_checked": 494,
+    "direct_claims_matched_to_source": 1072,
+    "literal_contact_links_checked": 33,
+    "literal_identity_spans_checked": 3
+  },
+  "errors": [],
+  "external_identity_review": [
+    {
+      "organisation_number": "995822504",
+      "url": "https://www.elteknikk.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "39cd5943d97279d73e633ab8"
+      ]
+    },
+    {
+      "organisation_number": "920295738",
+      "url": "https://ellera.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "6967bc3d5aa17dd2214e6d35"
+      ]
+    },
+    {
+      "organisation_number": "929290755",
+      "url": "https://www.ksmoteplasser.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "35a65ea0f09d7ac5efedaf5d"
+      ]
+    },
+    {
+      "organisation_number": "982440173",
+      "url": "https://backer.no/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "8b2823c6c276a591a626a1e7",
+        "08619aaea1df43282a3f1fcb"
+      ]
+    },
+    {
+      "organisation_number": "916373880",
+      "url": "https://hoyspentvest.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "7e466580f38c2f70a4cf3108"
+      ]
+    },
+    {
+      "organisation_number": "913521196",
+      "url": "https://betweenthelines.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "1de1cb72838ba1b36123a696"
+      ]
+    },
+    {
+      "organisation_number": "922302936",
+      "url": "https://www.sourceforfuture.com/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "e8cd9cf96c378de2199d3a06"
+      ]
+    }
+  ],
+  "official_score": null,
+  "precision": null,
+  "recall": null,
+  "limitations": "Checks source consistency, not independent ground truth, source completeness, site ownership or official qualification."
+}

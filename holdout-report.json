@@ -1,0 +1,43 @@
+{
+  "inputs": 100,
+  "outputs": 100,
+  "failed": 0,
+  "requests": 0,
+  "runtime_seconds": 11.4,
+  "third_party_cost_usd": 0,
+  "search_request_attempts": 0,
+  "search_basic_credit_upper_bound": 0,
+  "coverage": {
+    "legal_name": 100,
+    "legal_form": 100,
+    "employees": 16,
+    "address": 99,
+    "industry": 99,
+    "activity": 99,
+    "founded": 96,
+    "bankrupt": 99,
+    "registered_website": 13,
+    "financials.revenue": 63,
+    "financials.net_income": 72,
+    "financials.assets": 72,
+    "financials.equity": 72,
+    "financials.currency": 72,
+    "financials.history": 72,
+    "roles": 99,
+    "locations": 100,
+    "website.verified_url": 7,
+    "website.description": 7,
+    "website.social_links": 3,
+    "website.contact_channels": 7
+  },
+  "source_statuses": {
+    "available": 1367,
+    "not_available": 207,
+    "ambiguous": 378,
+    "blocked": 180,
+    "failed": 168
+  },
+  "official_score": null,
+  "replay": true,
+  "registry_snapshot_sha256": null
+}

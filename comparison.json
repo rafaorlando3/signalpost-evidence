@@ -1,0 +1,159 @@
+{
+  "official_score": null,
+  "independent_ground_truth": false,
+  "same_retained_sources": true,
+  "development_registry": {
+    "n": 1000,
+    "fields": {
+      "website.verified_url": {
+        "before": 37,
+        "after": 37,
+        "gains": [],
+        "losses": []
+      },
+      "website.description": {
+        "before": 37,
+        "after": 37,
+        "gains": [],
+        "losses": []
+      },
+      "website.social_links": {
+        "before": 19,
+        "after": 19,
+        "gains": [],
+        "losses": []
+      },
+      "website.contact_channels": {
+        "before": 0,
+        "after": 30,
+        "gains": [
+          "876195682",
+          "895452432",
+          "912855929",
+          "914766540",
+          "914844703",
+          "916764995",
+          "926376942",
+          "928749754",
+          "930298913",
+          "931796003",
+          "931901877",
+          "934266080",
+          "934792017",
+          "935765498",
+          "964524297",
+          "979306369",
+          "980059081",
+          "980252213",
+          "984005288",
+          "986514988",
+          "988477923",
+          "989192744",
+          "989639129",
+          "990507244",
+          "991205926",
+          "991474447",
+          "992415010",
+          "998243432",
+          "998382246",
+          "999326803"
+        ],
+        "losses": []
+      },
+      "website.hiring": {
+        "before": 1,
+        "after": 1,
+        "gains": [],
+        "losses": []
+      },
+      "website.activity": {
+        "before": 2,
+        "after": 2,
+        "gains": [],
+        "losses": []
+      }
+    },
+    "terminal_failures": 0
+  },
+  "holdout_search": {
+    "n": 100,
+    "fields": {
+      "website.verified_url": {
+        "before": 4,
+        "after": 7,
+        "gains": [
+          "920295738",
+          "922302936",
+          "929290755"
+        ],
+        "losses": []
+      },
+      "website.description": {
+        "before": 4,
+        "after": 7,
+        "gains": [
+          "920295738",
+          "922302936",
+          "929290755"
+        ],
+        "losses": []
+      },
+      "website.social_links": {
+        "before": 1,
+        "after": 3,
+        "gains": [
+          "920295738",
+          "922302936"
+        ],
+        "losses": []
+      },
+      "website.contact_channels": {
+        "before": 0,
+        "after": 7,
+        "gains": [
+          "913521196",
+          "916373880",
+          "920295738",
+          "922302936",
+          "929290755",
+          "982440173",
+          "995822504"
+        ],
+        "losses": []
+      },
+      "website.hiring": {
+        "before": 0,
+        "after": 0,
+        "gains": [],
+        "losses": []
+      },
+      "website.activity": {
+        "before": 0,
+        "after": 0,
+        "gains": [],
+        "losses": []
+      }
+    },
+    "terminal_failures": 0
+  },
+  "v07-development-final": {
+    "claim_states": {
+      "available": 15119,
+      "not_available": 6765,
+      "ambiguous": 666,
+      "blocked": 426,
+      "failed": 24
+    },
+    "companies_with_failed_or_blocked_claims": 75
+  },
+  "v07-holdout-final": {
+    "claim_states": {
+      "available": 1367,
+      "not_available": 207,
+      "ambiguous": 378,
+      "blocked": 180,
+      "failed": 168
+    },
+    "companies_with_failed_or_blocked_claims": 50
+  }
+}

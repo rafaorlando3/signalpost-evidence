@@ -1,0 +1,34 @@
+{
+  "observed_date": "2026-09-26",
+  "provider": "Tavily",
+  "plan": "Researcher free",
+  "monthly_allowance": 1000,
+  "used_before_v07": 305,
+  "used_after_v07": 609,
+  "credits_consumed_v07": 304,
+  "free_credits_remaining_at_observation": 391,
+  "pay_as_you_go_enabled": false,
+  "paid_api_charge_usd": 0,
+  "runs": {
+    "rejected_number_only_development": 93,
+    "independent_baseline": 96,
+    "adaptive_independent_increment": 97,
+    "corrected_development_probe": 18
+  },
+  "cold_web_test_new_api_queries": 0,
+  "excludes": [
+    "compute",
+    "electricity",
+    "connectivity",
+    "development/model usage"
+  ],
+  "pricing_reference": {
+    "url": "https://docs.tavily.com/documentation/api-credits",
+    "observed_date": "2026-09-26",
+    "basic_search_credits": 1,
+    "published_payg_usd_per_credit": 0.008,
+    "configured_adaptive_cap_per_100": 200,
+    "estimated_max_at_published_payg_rate_usd": 1.6,
+    "note": "Evaluator planning estimate only; no paid plan or pay-as-you-go was enabled."
+  }
+}

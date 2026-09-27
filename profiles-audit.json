@@ -1,0 +1,327 @@
+{
+  "passed": true,
+  "counts": {
+    "source_references_checked": 4253,
+    "direct_claims_matched_to_source": 11997,
+    "literal_contact_links_checked": 104,
+    "literal_identity_spans_checked": 45
+  },
+  "errors": [],
+  "external_identity_review": [
+    {
+      "organisation_number": "998382246",
+      "url": "https://www.stateraregnskap.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "3521a4e151de9e636a5ccf8f"
+      ]
+    },
+    {
+      "organisation_number": "991205926",
+      "url": "https://bexas.net/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "24b65c54e0a4582df2e02446",
+        "5803b5ca0821a7d210c21abe"
+      ]
+    },
+    {
+      "organisation_number": "879207142",
+      "url": "https://www.tananger-offshore.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "f94c7f9658f259afe25d3ddd",
+        "0e15e6056b9ef484c0369d50"
+      ]
+    },
+    {
+      "organisation_number": "992415010",
+      "url": "https://www.lovsang.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "bc339a67bcc2d0541806080c"
+      ]
+    },
+    {
+      "organisation_number": "928749754",
+      "url": "https://www.denlangumuaythai.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "0633eba2e9d66051a76bee4e",
+        "d2361101a1b96cb071438d19"
+      ]
+    },
+    {
+      "organisation_number": "931901877",
+      "url": "https://bokemo.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "80309673b4998c507ad02408"
+      ]
+    },
+    {
+      "organisation_number": "966529830",
+      "url": "https://www.utsteinklosterhotell.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "0919cc85743af490135e9b5e"
+      ]
+    },
+    {
+      "organisation_number": "935765498",
+      "url": "https://anteria.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "deeeb35818a1f5f63f25c795"
+      ]
+    },
+    {
+      "organisation_number": "876195682",
+      "url": "https://mesterblikk.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "fe3775dec88191b6dd60d6b0"
+      ]
+    },
+    {
+      "organisation_number": "897365812",
+      "url": "https://norgenotech.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "3c97541879480ae862163630"
+      ]
+    },
+    {
+      "organisation_number": "930298913",
+      "url": "https://tothetalk.com/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "1041819abb6604f601a97d3a"
+      ]
+    },
+    {
+      "organisation_number": "979306369",
+      "url": "https://www.drholms.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "fc36b33ac99286477a40e027"
+      ]
+    },
+    {
+      "organisation_number": "914766540",
+      "url": "https://noby.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "1d50b0c6a36b785bf1d53863"
+      ]
+    },
+    {
+      "organisation_number": "980059081",
+      "url": "https://osloadvokatene.no/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "4d66a7acd953e0e2bf69869e",
+        "4b4ff08a3b992a73ecb538ee"
+      ]
+    },
+    {
+      "organisation_number": "977028140",
+      "url": "https://www.vardeneset-bk.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "1e6ee332eeee4aba7a4653f0",
+        "3d78a0ab7febe95c477615f1"
+      ]
+    },
+    {
+      "organisation_number": "991474447",
+      "url": "https://www.tusenfryd.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "977fe1d6b3b15c189cc19105",
+        "fb9440d4db91de8a161e815c"
+      ]
+    },
+    {
+      "organisation_number": "933898210",
+      "url": "https://www.appit.ai/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "f7c82ffe8e6d9d5e2555204b"
+      ]
+    },
+    {
+      "organisation_number": "926376942",
+      "url": "https://www.dentalspar.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "8873b0f0131b81f3d229a8a8"
+      ]
+    },
+    {
+      "organisation_number": "999326803",
+      "url": "https://www.brattlikollenfrisor.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "75640cca83c95da3c4e83e1f"
+      ]
+    },
+    {
+      "organisation_number": "986514988",
+      "url": "https://www.pkstrom.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "312f3eca6030af67c135c17b",
+        "8648f8a61fff8db4af99fe7c"
+      ]
+    },
+    {
+      "organisation_number": "984005288",
+      "url": "https://brynbk.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "a17e7f8b73cd8a0e4a724a92"
+      ]
+    },
+    {
+      "organisation_number": "975678938",
+      "url": "https://www.suil.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "5ae4dad3be16ab45b77259da",
+        "1ead33c08c960e178a101dc4"
+      ]
+    },
+    {
+      "organisation_number": "990507244",
+      "url": "https://orec.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "bfef3d42fc4445abdb1e32f8"
+      ]
+    },
+    {
+      "organisation_number": "989192744",
+      "url": "https://www.vitalpharma.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "3b0a81ab83fbea03c65c3832"
+      ]
+    },
+    {
+      "organisation_number": "998243432",
+      "url": "https://orklaregnskap.no/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "c6f1cce54a32f877518c0256",
+        "9c18f69abd89eb5ecfca3a30"
+      ]
+    },
+    {
+      "organisation_number": "934792017",
+      "url": "https://www.smartbus.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "89b8c475572a3418ad0b7533",
+        "e5d8c89413f0d4563e987033"
+      ]
+    },
+    {
+      "organisation_number": "988477923",
+      "url": "https://konghelle.no/page2.php",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "0fee5e46027980e994275df5"
+      ]
+    },
+    {
+      "organisation_number": "928558177",
+      "url": "https://thinqd.com/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "a843a93c405d962cdb45f60c"
+      ]
+    },
+    {
+      "organisation_number": "895452432",
+      "url": "https://www.opus16.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "d3f0c7b24d24a4f3a8ac115d"
+      ]
+    },
+    {
+      "organisation_number": "980252213",
+      "url": "https://takstmann-handeland.no",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "a5211d0698c55398da9453fb",
+        "42ccb0f185e38cb8edb64497"
+      ]
+    },
+    {
+      "organisation_number": "931796003",
+      "url": "https://ksdigital.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "da26cee8f1030f19adbca63a"
+      ]
+    },
+    {
+      "organisation_number": "916764995",
+      "url": "https://etterisolering.no/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "3e8cb6f0aa53c2f7435310f1",
+        "df7bda4bd361c07290acb095"
+      ]
+    },
+    {
+      "organisation_number": "914844703",
+      "url": "https://jungminds.no",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "1c46cbeaa855a89c7ee8fb42"
+      ]
+    },
+    {
+      "organisation_number": "964524297",
+      "url": "https://truckagent.no/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "922a93482138849c3ebf8532",
+        "f54716f2317080c5b5da2646"
+      ]
+    },
+    {
+      "organisation_number": "989639129",
+      "url": "https://norwegianconcept.no/",
+      "method": "explicit_org_number",
+      "evidence_ids": [
+        "27d9605ec06b82b7615c38e4"
+      ]
+    },
+    {
+      "organisation_number": "934266080",
+      "url": "https://www.nor-el.no/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "59d8d6a76e12d4a7cf4fceb9",
+        "b6c9f47170c44ccb37182ba1"
+      ]
+    },
+    {
+      "organisation_number": "912855929",
+      "url": "https://dokumentertas.no/",
+      "method": "registry_domain_name_and_postal_address",
+      "evidence_ids": [
+        "ad1970b540e744cfd190be8b",
+        "ff4475c29b50bdff1746366c"
+      ]
+    }
+  ],
+  "official_score": null,
+  "precision": null,
+  "recall": null,
+  "limitations": "Checks source consistency, not independent ground truth, source completeness, site ownership or official qualification."
+}

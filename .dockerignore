@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!agent.py
+!evaluator.py
+!insights.py
+!search.py
+!site_discovery.py
+!frozen_registry.py
+!registry_discovery.py
+!contacts.py

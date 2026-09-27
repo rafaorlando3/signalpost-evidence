@@ -1,0 +1,40 @@
+{
+  "n": 100,
+  "runtime_seconds": 365.16,
+  "http_requests_observed": 1404,
+  "reserved_search_requests": 192,
+  "requests_upper_bound_including_reservations": 1596,
+  "max_requests_per_company": 20,
+  "new_search_api_requests": 0,
+  "paid_api_cost_usd": 0,
+  "missing_query_fixtures": 0,
+  "coverage": {
+    "legal_name": 100,
+    "legal_form": 100,
+    "employees": 16,
+    "address": 99,
+    "industry": 99,
+    "activity": 99,
+    "founded": 96,
+    "bankrupt": 99,
+    "registered_website": 13,
+    "roles": 99,
+    "locations": 100,
+    "website.verified_url": 7,
+    "website.description": 7,
+    "website.social_links": 3,
+    "website.contact_channels": 6,
+    "financials.revenue": 4,
+    "financials.net_income": 5,
+    "financials.assets": 5,
+    "financials.equity": 5,
+    "financials.currency": 5,
+    "financials.history": 5
+  },
+  "limitation": "Batch starts with empty HTTP cache and previously saved search candidates. Each consulted query reserves one request against the 20/company cap. Not a fully cold search-provider run.",
+  "terminal_failures": 0,
+  "accounts_source_responses": {
+    "503 failed": 95,
+    "200 available": 5
+  }
+}
