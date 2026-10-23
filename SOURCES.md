@@ -37,3 +37,7 @@ NAV jobs API experiment: https://navikt.github.io/pam-stilling-feed/ and https:/
 The additional holdout contains 100 organisations drawn with seed 2026092603 from universe entries outside the original 1,000. It was frozen before the version comparison. Subsequent search experiments use it for development; any future unbiased final estimate needs another untouched holdout.
 
 Version 0.7 validation selects 100 additional organisation numbers before collection, excluding the prior 1,400 numbers. It is organisation-disjoint, not guaranteed domain-disjoint. The code was frozen before seeing these outcomes; only its release version label changed afterward. Literal contact channels are read from mailto/tel links on identity-checked pages, with source URL and original href. They are not inferred email addresses or tested contact endpoints.
+
+## Delivery runtime (23 October 2026)
+
+The clean-venv validation used CPython 3.12.15 and no third-party runtime packages. The optional Docker recipe pins the official `python:3.12.15-slim` manifest `sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704`, verified from https://hub.docker.com/v2/repositories/library/python/tags/3.12.15-slim . No image pull or new service purchase was needed for the measured validation. The image recipe itself was not rebuilt in this validation.

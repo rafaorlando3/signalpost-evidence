@@ -1,0 +1,219 @@
+{
+  "schema": "signalpost-v07-public-smoke-report/1",
+  "kind": "cold5",
+  "created_at": "2026-10-23T23:04:30.322548+00:00",
+  "tested_code_commit": "2b7aaf6260b90a8e78356c4d623f36b93281f772",
+  "base_public_commit": "62de8caac71b24e92abb230626b862c430f0bed2",
+  "python": "3.12.15",
+  "python_sources_sha256": {
+    "agent.py": "6275e962e443fd7281b1518455ecb749aad50ff5ac37f237ac9706dc692319d7",
+    "audit.py": "1de7b6c23778f51fbb49ad03d80cfa7c5c58ad4a2c12538c3823bb04cc215455",
+    "cli.py": "bbbf1d915dc8c1cf5374f7de16b7b541d32b45208199f96aad05527d7cdb6ebe",
+    "contacts.py": "6e8d6a4c9de785f832ea8ebc891587c41ee57e15f214c862547521fa0801739c",
+    "evaluator.py": "5569a905b2d312ed8a70427e28c1751c16edace5546cc393c1efe4e0c12f86d7",
+    "frozen_registry.py": "222abbca1c9775a2a082a63bd210d7b8a3cfcb1efc3f44f8ffff27d9fa3f71f2",
+    "insights.py": "d5cf8c1afa954abb5028ec7622444c46c9cdf971a29f2cd011823bc56856812e",
+    "registry_discovery.py": "173f179f5a141156f304d39bc4ab6ca3de9aa82a6ea252be67d0a8e60314f0df",
+    "report.py": "f449fa80b79e7548fed8b7f064e018acdced4d1341b07b172cef90db6be0e1a4",
+    "search.py": "ba77cb463ef5fb3ae5fe9b3e716202929430ac8a8ce3412a652cd0ce2d726aa9",
+    "site_discovery.py": "52ee50bc8d46bce31c561c8e515679c6815652ac4c4b86f1003f9e48b6ec8c1f",
+    "tests/test_adaptive_discovery.py": "9666c13e0f04a4fc744f16433b75bd3ae84779c3bb006fdf5ea2da4917270b33",
+    "tests/test_agent.py": "e30d4d65726f93ce980e1d996484b74fee26705840a19dabf912e6855147fc33",
+    "tests/test_cli.py": "4860996366de81d4daa8a72823bcfb135f2ef10ea7d27cc5c9007dd65d325b6a",
+    "tests/test_contacts.py": "bf03eb7fd44c9e4eaabec8424773f77de5d454346911559bf3639794cf5a13c0",
+    "tests/test_discovery.py": "5bf0c451be304dfb36847ca2fa1d71a473af52f3a83e2ecaa1958dddb3c4ca02",
+    "tests/test_evaluator.py": "27ea42f634e26104e4cc84109bd6be2434cb854ed17f435605bbdeea8aa8985d",
+    "tests/test_frozen_registry.py": "694148f1de0ee96778d2c124d46d378b1a44b6c2e9170d57b0f8dee874b3db26",
+    "tests/test_insights.py": "eaa374a66f9e54a825b6ea2dd9216c724e9915cfef8aea8b904a75fe8dc0c418",
+    "tests/test_pipeline.py": "5e16817f6cbcc20670b8427819dff1d65fc7600fd8932d16714b0d1c93efe69f",
+    "tests/test_registry_discovery.py": "4e717deb76076d3f04135f67ea120ff026e578d630b42613b1092574037ecd6f",
+    "tests/test_search.py": "7dcfad9255989d05c3652f9cda3288303a74a4d46a55b2d6849e09204e0ca8bf",
+    "tests/test_site_discovery.py": "0ec8f3840bce6262440230988dedda12e347c86a45d0a9cb1b2fb08d4b573c6a",
+    "validate.py": "2bf28dc232ff97efe3b2a78a23230262b49cbc73d877c825b05903184b327a55"
+  },
+  "clean_clone": true,
+  "fresh_virtual_environment": true,
+  "runtime_dependencies": "Python standard library only; no pip packages installed",
+  "fresh_source_cache": true,
+  "command": [
+    "python3",
+    "-B",
+    "cli.py",
+    "--org-list",
+    "orgs.txt",
+    "--output",
+    "runs/result.jsonl",
+    "--cache",
+    "cache/run",
+    "--timeout-seconds",
+    "2400"
+  ],
+  "install_command": [
+    "python3",
+    "-m",
+    "venv",
+    ".venv"
+  ],
+  "input_count": 5,
+  "terminal_output_count": 5,
+  "exact_order_and_one_terminal_per_input": true,
+  "output_sha256": "d1e5f78ba964d6ec9505d40be8a24c82b662de01c16adaecc160dd97cbc09c10",
+  "input_sha256": "586d6e13b7655d3409818c8541d8b82dbcb78c05d100759a16793d3e0189a39e",
+  "collection_seconds": 19.65,
+  "total_seconds_including_virtual_environment": 34.944,
+  "summary": {
+    "claim_counts_include_duplicate_entries": true,
+    "claim_status_counts": {
+      "ambiguous": 12,
+      "available": 76,
+      "blocked": 6,
+      "failed": 0,
+      "not_applicable": 0,
+      "not_available": 21
+    },
+    "duplicate_entries": 0,
+    "format": "legacy-evidence-envelope/0.7",
+    "guard": {
+      "collector_exit": 0,
+      "note": "Interrupted-company request counts are conservative upper bounds, not observed usage.",
+      "preserved_outputs": 5,
+      "runtime_seconds": 19.65,
+      "synthesized_failures": 0,
+      "timeout_seconds": 2400.0,
+      "wall_clock_timeout": false
+    },
+    "inputs": 5,
+    "mode": "live",
+    "note": "Run completion is not evidence availability or factual accuracy.",
+    "official_score": null,
+    "output_sha256": "d1e5f78ba964d6ec9505d40be8a24c82b662de01c16adaecc160dd97cbc09c10",
+    "outputs": 5,
+    "python_version": "3.12.15",
+    "rejected_collector_envelopes": 0,
+    "request_budget_per_unique_company": 20,
+    "request_budget_total": 100,
+    "requests": 41,
+    "requests_include_upper_bounds": false,
+    "run_terminal_status_counts": {
+      "completed": 5
+    },
+    "schema": "signalpost-list-cli/2",
+    "search": "none",
+    "third_party_cost_usd": 0,
+    "timeout_seconds": 2400.0,
+    "unique_valid_companies": 5,
+    "unsuccessful_entries": 0
+  },
+  "selection": {
+    "source": "https://builderr.ai/signalpost-company-universe-2025.jsonl.gz",
+    "universe_rows": 411160,
+    "archive_sha256": "1c89710e5b01f8617e86d09fbdff4a52f2f8dbbba297e74f7164b5984f5a0384",
+    "uncompressed_sha256": "b82d6a3e7231d1759a958c282bc4366b80ec2fab8095053d8ed7fa9cd01bc838",
+    "seed": "signalpost-v07-delivery-20261023-c1131-c1133",
+    "method": "105 smallest SHA256(seed:organisation_number), split first5 cold and next100 smoke",
+    "excluded_known_organisations": 1700,
+    "selected_before_execution": true,
+    "cold_and_smoke_disjoint": true
+  },
+  "companies": [
+    {
+      "organisation_number": "957751091",
+      "input_index": 1,
+      "run_terminal_status": "completed",
+      "outcome": "completed_with_available_claims",
+      "claim_status_counts": {
+        "ambiguous": 0,
+        "available": 15,
+        "blocked": 6,
+        "failed": 0,
+        "not_applicable": 0,
+        "not_available": 2
+      },
+      "errors": [],
+      "requests": 5
+    },
+    {
+      "organisation_number": "968367404",
+      "input_index": 2,
+      "run_terminal_status": "completed",
+      "outcome": "completed_with_available_claims",
+      "claim_status_counts": {
+        "ambiguous": 6,
+        "available": 16,
+        "blocked": 0,
+        "failed": 0,
+        "not_applicable": 0,
+        "not_available": 1
+      },
+      "errors": [
+        {
+          "reason": "exact legal entity not established; no website facts published"
+        }
+      ],
+      "requests": 17
+    },
+    {
+      "organisation_number": "929126394",
+      "input_index": 3,
+      "run_terminal_status": "completed",
+      "outcome": "completed_with_available_claims",
+      "claim_status_counts": {
+        "ambiguous": 6,
+        "available": 16,
+        "blocked": 0,
+        "failed": 0,
+        "not_applicable": 0,
+        "not_available": 1
+      },
+      "errors": [
+        {
+          "reason": "exact legal entity not established; no website facts published"
+        }
+      ],
+      "requests": 11
+    },
+    {
+      "organisation_number": "914110661",
+      "input_index": 4,
+      "run_terminal_status": "completed",
+      "outcome": "completed_with_available_claims",
+      "claim_status_counts": {
+        "ambiguous": 0,
+        "available": 14,
+        "blocked": 0,
+        "failed": 0,
+        "not_applicable": 0,
+        "not_available": 9
+      },
+      "errors": [],
+      "requests": 4
+    },
+    {
+      "organisation_number": "929092902",
+      "input_index": 5,
+      "run_terminal_status": "completed",
+      "outcome": "completed_with_available_claims",
+      "claim_status_counts": {
+        "ambiguous": 0,
+        "available": 15,
+        "blocked": 0,
+        "failed": 0,
+        "not_applicable": 0,
+        "not_available": 8
+      },
+      "errors": [],
+      "requests": 4
+    }
+  ],
+  "precision": null,
+  "recall": null,
+  "wrong_company_rate": null,
+  "official_score": null,
+  "human_reviewed": false,
+  "limits": [
+    "Local smoke, not an official score or independent factual-accuracy audit.",
+    "A completed envelope can contain blocked, failed, ambiguous or unavailable claims.",
+    "Source bodies, raw run outputs, caches, credentials and private workspace files are not included.",
+    "The organizer-provided snapshot/output adapter remains subject to its agreed interface."
+  ]
+}
