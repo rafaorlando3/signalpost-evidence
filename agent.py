@@ -663,6 +663,8 @@ def main():
         except Exception as error:
             return {'organisation_number':str(row.get('organisation_number','')),'run':{'terminal_status':'failed','completed_at':now()},
                 'claims':[],'evidence':[],'changes':[],'errors':[{'reason':type(error).__name__+': '+str(error)}],
+                'source_snapshots':[], 'previous_snapshot':prior.get(str(row.get('organisation_number',''))),
+                'refresh':{'mode':'collector_failed','changed_fields':[],'cache_declared':True}, 'synthesis':[],
                 'operations':{'requests':fetcher.requests,'cache_hits':fetcher.hits,'third_party_cost_usd':getattr(fetcher,'discovery',{}).get('paid_cost_usd',0)}}
     results=[]
     with output.open('w') as target, concurrent.futures.ThreadPoolExecutor(max_workers=max(1,min(8,args.workers))) as pool:

@@ -1,38 +1,72 @@
-# Signalpost Evidence
+# Signalpost Evidence v0.7
 
-Original Norwegian company research agent, using Python's standard library. It accepts company numbers, collects legal/financial records and evidence from identity-checked websites, records missing information, and compares successive observations.
+Python standard-library research for Norwegian companies. The delivery keeps the v0.7 collection and evidence rules, with reviewed reliability fixes for subprocess deadlines, terminal envelopes and validation. It does not include R3/R4 filters or strategies.
 
-## Install and run
+## Run a plain list LIVE
 
-Python 3.11+, tested on pinned Python 3.14.7, macOS and Linux aarch64. No pip dependencies. Optional Dockerfile pins the official Python image. From the repository root:
+Python 3.11+ is required. The delivery server has Python 3.12.3; validation results are recorded below once run. No pip packages, API key or model service are required.
 
-```sh
-python3 evaluator.py --timeout-seconds 2400 -- --input INPUT.jsonl --output runs/evaluation.jsonl --cache cache/evaluation --fresh --workers 4
-```
+Create a clean virtual environment (CPython 3.14.7 is the pinned runtime in `runtime.txt`; Python 3.11+ is supported). No pip install or third-party runtime packages are needed:
 
-Input is one JSON object per line: `{"organisation_number":"810034882"}`. Every input receives one terminal envelope, in order. For a repeated observation add `--previous runs/previous.jsonl`; retain previous outputs and snapshots. Maximum 20 HTTP requests per company, including retries and redirects; 100 inputs therefore stay within 2,000 requests. Default wall-clock deadline is 2,400 seconds. A timeout is an explicit failed run, not a successful empty result.
+ ```sh
+ python3 -m venv .venv
+ . .venv/bin/activate
+ ```
 
-Default mode uses live official APIs and permitted company pages, with no API key, model inference or paid API. `--registry-snapshot FILE.jsonl` instead uses the documented frozen interchange format with preserved source timestamps and no live fallback. **The organizer's actual snapshot schema has not yet been provided; this adapter is not claimed to be compatible until that interface is confirmed.** See FROZEN-REGISTRY.md.
-
-## Artifacts and tests
-
-`profiles-1000.jsonl`, `input-1000.jsonl` and `manifest.txt` identify the same 1,000 eligible companies. Open `review.html` locally for search, comparison and evidence inspection. `RESULTS-v07.md` documents measured gains, failed experiments and remaining limits. There is no official score or qualification claim.
+ Create a UTF-8 file with one organisation number per line, then run from this repository:
 
 ```sh
-python3 -m unittest discover -s tests -q
-python3 validate.py input-1000.jsonl profiles-1000.jsonl
+python3 -B cli.py --org-list orgs.txt --output runs/result.jsonl --cache cache/run --timeout-seconds 2400
 ```
 
-Source-body caches are intentionally excluded from this distribution. Public profiles contain source URLs, retrieval dates, reporting periods, hashes and selected literal evidence. A fresh run retains its own immutable snapshots under the supplied cache path. The source audit requires those retained files; it cannot be rerun against an omitted cache. No private personal documents or credentials are included.
+This command defaults to LIVE public registry APIs and permitted company pages, fresh retrieval, four workers and `--search none`. It writes one v0.7 JSON envelope per input line, in order, plus `runs/result.summary.json`. A compact copy of the summary goes to stderr. Output/cache directories are created when needed. Use new output and summary filenames for each run; existing files and final-path symlinks are refused.
 
-## Optional search
+Invalid numbers and blank lines receive explicit failed envelopes. Duplicates receive separate envelopes linked by `_cli.duplicate_of`; one observation per distinct valid number is reused within the command. The unchanged collector caps that observation at **20 HTTP requests**, including redirects, retries and robots requests, and a 90-second Fetcher budget checked before requests (DNS/lock waits can overrun that local budget). The supervisor caps collection at the supplied finite deadline (default 2400 seconds, maximum 2600). Interrupted rows retain failures and conservative request upper bounds. For 100 distinct valid numbers the request ceiling is 2000; that ceiling is not a performance or coverage result.
 
-Tavily candidate discovery is off by default. To enable it, supply `TAVILY_API_KEY` in the server environment and add `--search tavily --search-strategy adaptive --search-credit-limit 200`. This preferred optional mode can use up to two basic queries per company. Legacy remains available for comparison. Results only nominate domains; snippets are never claim evidence. Provider queries count toward the same HTTP limit.
+## Optional Docker run
 
-The evaluator must supply its own authorized provider key if it elects to use this optional mode. No personal account key is shared, and default execution does not need one. At the published $0.008/credit rate, 200 basic queries imply at most $1.60 nominal provider charges per 100 companies. This is an evaluator planning estimate. Credit limits do not prove remaining free account allowance. Paid usage is not authorized by this repository. See cost-reconciliation.json for the developer's observed free tests, which exclude compute, electricity and development/model costs.
+ The Dockerfile keeps the pinned Python base image and uses the same CLI as its entrypoint. The lower-level evaluator remains installed and can be selected with an explicit entrypoint.
 
-## Attribution and refresh
+ ```sh
+ docker build -t signalpost:v0.7 .
+ docker run --rm -v "$PWD:/work" signalpost:v0.7 --org-list /work/orgs.txt --output /work/runs/result.jsonl --cache /work/cache/run --timeout-seconds 2400
+ ```
 
-Registry identity is matched by exact organisation number. Company websites require an explicit matching number without conflict, or the declared registry domain/observed redirect plus exact name and address. Group, parent and customer pages are not merged into the entity. Contact and social fields are literal links declared on checked company pages; account ownership and contact responsiveness are not independently tested. Dates and financial currencies are explicit. Missing data never becomes zero. Source failure is not a deletion, and recovery compares against the last supported observation.
+ The mounted directory retains outputs and source snapshots after the container exits. No pip install or API key is needed.
 
-Code: MIT. Third-party content remains governed by its own source rights; see SOURCES.md. No competitor code, private user records, credentials or full downloaded HTML are distributed.
+ ## Read the result
+
+Each claim preserves its `availability`: `available`, `not_available`, `blocked`, `not_applicable`, `ambiguous` or `failed`. `run.terminal_status=completed` only means collection finished; it can coexist with failed or unavailable claims. `_cli.claim_status_counts` and the summary show all six states separately. These states are the v0.7 evidence contract, not a claim of compatibility with an unpublished organizer adapter.
+
+An `available` claim has a value and evidence references. Missing data is not zero. Source errors are not deletions. Registry identity uses the exact organisation number; websites require the existing v0.7 identity checks. Contact links do not prove responsiveness or social-account ownership. Source URLs, dates, periods, hashes, pointers and retained snapshot references remain in the envelope.
+
+The exit codes are 0 when every entry finishes with at least one available claim, 2 when complete output includes an invalid/failed/no-available-claim entry or a collector guard failure, 1 for input/output/configuration errors, and 130 for cancellation. Exit 0 does not mean every requested field is available or independently correct. See [CLI.md](CLI.md) for parsing, duplicate accounting and refresh details.
+
+## Replay and refresh
+
+Keep outputs and the complete cache, including immutable `snapshots/`. To replay without HTTP:
+
+```sh
+python3 -B cli.py --org-list orgs.txt --output runs/replay.jsonl --cache cache/run --replay --previous runs/result.jsonl
+```
+
+Replay requires an existing cache; cache misses remain explicit unknown/failure states. Fresh collection is the default; add `--previous runs/result.jsonl` to compare with retained supported observations. Repeated unchanged observations have no material changes. Recovery compares against the last supported value through history, preserving original evidence.
+
+`--registry-snapshot FILE.jsonl` uses the documented [frozen registry interchange](FROZEN-REGISTRY.md), with preserved source timestamps and no live registry fallback. Company pages can still be fetched unless `--replay` is also supplied. The organizer's snapshot schema is not claimed compatible without confirmation.
+
+## Validation and public smoke
+
+```sh
+python3 -B -m unittest discover -s tests -p 'test_cli.py' -v
+python3 -B -m unittest discover -s tests -q
+```
+
+The CLI tests use synthetic fixtures and mocks; they do not establish live source coverage. Public LIVE smoke evidence, the exact tested Python version, counts and limitations will be added here after the delivery run. No new LIVE result is claimed by this text.
+
+The older measured experiments remain documented in `RESULTS-v07.md`; they are separate from this delivery's smoke. There is no official score or qualification claim.
+
+## Retention and rights
+
+Generated outputs and source-body caches are runtime artifacts, excluded from the code delivery. Do not commit caches, credentials, private inputs or complete downloaded HTML. Keep the cache locally if a source audit must be reproducible. Roles responses redact birth identifiers in retained bodies; original and retained hashes can differ and remain identified.
+
+The lower-level `agent.py` and `evaluator.py` JSONL interfaces remain available. This plain-list CLI exposes only free public collection with search disabled; no paid search is activated. Code is MIT; third-party content retains its own rights. See [SOURCES.md](SOURCES.md).

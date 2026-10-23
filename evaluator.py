@@ -45,8 +45,10 @@ def collect(command, staged_output, rows, timeout, log, previous=None, paid_sear
             except ValueError:
                 break  # A killed writer can leave one incomplete last line.
             index = len(results)
-            if (index >= len(rows) or row.get('organisation_number') != str(rows[index]['organisation_number'])
-                    or row.get('run', {}).get('terminal_status') not in ('completed', 'failed')):
+            if (not isinstance(row, dict) or index >= len(rows)
+                    or row.get('organisation_number') != str(rows[index]['organisation_number'])
+                    or not isinstance(row.get('run'), dict)
+                    or row['run'].get('terminal_status') not in ('completed', 'failed')):
                 break  # Preserve only the matching, complete prefix.
             results.append(row)
     preserved = len(results)

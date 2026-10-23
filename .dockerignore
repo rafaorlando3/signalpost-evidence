@@ -8,3 +8,5 @@
 !frozen_registry.py
 !registry_discovery.py
 !contacts.py
+!cli.py
+!validate.py
