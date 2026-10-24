@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "runtime_seconds": 107.193,
+  "exit": 0,
+  "companies": 100,
+  "original_validation": {
+    "structurally_valid": true,
+    "errors": [],
+    "companies": 100,
+    "official_score": null,
+    "note": "Does not establish factual accuracy, source completeness or competition qualification."
+  },
+  "replay_validation": {
+    "structurally_valid": true,
+    "errors": [],
+    "companies": 100,
+    "official_score": null,
+    "note": "Does not establish factual accuracy, source completeness or competition qualification."
+  },
+  "errors": [],
+  "network": "none",
+  "secret_provided": false,
+  "cache_mount": "read_only",
+  "reference_sha256": "74bde9bde199283ec5a534d1eb85323d3f81f7f1af0e2eab2b813efa79e79d77",
+  "original_sha256": "0bf59bfbf5491a65d53d359f3795470704bb769068ba161db0fbba672038105b",
+  "replay_sha256": "3fb9484a800e6206d50a3da78392739e1e9a2e1a7f4488ef65f4d64273f4a282",
+  "comparison": "Exact claims and evidence against first replay of the identical read-only cache snapshot; exact original LIVE history; zero HTTP/search and material changes. LIVE vs first replay strict failure remains retained separately."
+}

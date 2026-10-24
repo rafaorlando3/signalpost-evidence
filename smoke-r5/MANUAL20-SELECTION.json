@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-24T00:19:05.645253+00:00",
+  "method": "20 smallest SHA256(manual-r5:org) among candidate-available websites; if fewer20, pad by same deterministic hash among remainder. No result-driven hand picking. Inspect legal target, owner/group relationship, social origins, dated item attribution. All manual20 retained with proof and outcome.",
+  "selected_ids": [
+    "928187780",
+    "988692166",
+    "914083419",
+    "939320245",
+    "983639151",
+    "915489028",
+    "917158258",
+    "922703205",
+    "919429380",
+    "932349094",
+    "934070496",
+    "922926204",
+    "918509186",
+    "923208976",
+    "920314767",
+    "829151472",
+    "834958732",
+    "925582654",
+    "931094335",
+    "995992612"
+  ],
+  "published_website_pool_count": 8,
+  "selection_frozen_before_annotations": true,
+  "assignments": {
+    "qa": [
+      "928187780",
+      "988692166",
+      "914083419",
+      "939320245",
+      "983639151",
+      "915489028",
+      "917158258",
+      "922703205",
+      "919429380",
+      "932349094"
+    ],
+    "root": [
+      "934070496",
+      "922926204",
+      "918509186",
+      "923208976",
+      "920314767",
+      "829151472",
+      "834958732",
+      "925582654",
+      "931094335",
+      "995992612"
+    ]
+  },
+  "rows_file": "MANUAL20-ROWS.jsonl"
+}

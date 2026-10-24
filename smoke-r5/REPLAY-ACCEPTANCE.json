@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-24T00:28:17.817717+00:00",
+  "same_snapshot_idempotence": true,
+  "identical_claims_and_evidence_between_offline_replays": true,
+  "cache_files": 2942,
+  "cache_manifest_sha256": "c45c2740fdb1ce83d06080f24bde3dc951bcd5ce2721c82b024ca0827c8a95c3",
+  "cache_unchanged": true,
+  "source_pins_unchanged": true,
+  "companies": 100,
+  "history_exact": true,
+  "available_claims_unchanged_from_live": true,
+  "network_requests": 0,
+  "search_requests": 0,
+  "material_changes": 0,
+  "live_vs_cache_index_strict_equivalence": false,
+  "live_vs_first_replay_failure_retained": "measurement/replay100-out/OPERATIONAL-RESULT.json",
+  "limitations": [
+    "Current cache index is latest observation per URL shared across companies. A completed-cache replay does not reproduce every transient failed/blocked/ambiguous state from preceding concurrent LIVE retrievals.",
+    "Original per-observation snapshots and full prior envelopes remain retained; this is not a byte-identical LIVE re-execution."
+  ],
+  "official_score": null
+}

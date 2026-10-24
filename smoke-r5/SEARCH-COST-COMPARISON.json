@@ -1,0 +1,622 @@
+{
+  "assumptions": {
+    "companies_per_day": 1000,
+    "currency_conversion_performed": false,
+    "days": 30,
+    "model_extraction_addon_costs_excluded": true,
+    "monthly_queries": [
+      30000,
+      90000
+    ],
+    "no_quality_equivalence_or_latency_guarantee": true,
+    "queries_per_company": [
+      1,
+      3
+    ],
+    "table_costs_exclude_free_promotions_unless_explicit": true,
+    "taxes_excluded": true
+  },
+  "free_guard_evidence": {
+    "bytes": 420,
+    "independent_ui_verification_by_this_agent": false,
+    "null_is_not_independent_proof_of_paygo_off": true,
+    "observed_account": {
+      "current_plan": "Researcher",
+      "paygo_limit": null,
+      "paygo_usage": 0,
+      "plan_limit": 1000,
+      "plan_usage": 0
+    },
+    "path": "/opt/renda-extra/signalpost926-r5-20261023/reports/FREE-USAGE-BEFORE.json",
+    "secret_material_included": false,
+    "sha256": "8b6624a811880b8eb808acd983e65e854a704894373a823c6c5fd7bc903d08a3",
+    "ui_reported": {
+      "auto_upgrade": "Off",
+      "pay_as_you_go": "Off",
+      "requests_stop_at_plan_limit": true
+    }
+  },
+  "generated_at_utc": "2026-10-23T23:41:53.138160+00:00",
+  "limitations": [
+    "Documentary comparison, no provider quality benchmark",
+    "No account/signup/payment/credential or billable API operation by researcher",
+    "Currency preserved; GBP not converted to USD",
+    "No claim of unlimited persistent search cache rights",
+    "No official score or R5 experimental result"
+  ],
+  "providers": [
+    {
+      "balance_expiration": "No expiration per FAQ",
+      "currency": "USD",
+      "daily_consumption_1q": 0.6,
+      "daily_consumption_3q": 1.8,
+      "id": "dataforseo_normal",
+      "initial_funding_for_30k": 50,
+      "initial_funding_for_90k": 54,
+      "latency": "Normal queue averages about five minutes; unsuitable for unchanged 90-second company deadline",
+      "minimum_deposit": 50,
+      "monthly_consumption_1q": 18,
+      "monthly_consumption_3q": 54,
+      "operator_caveat": "One listed search operator such as site: or intitle: multiplies the base by five; do not use base price for such queries",
+      "price_per_1000": 0.6,
+      "source_ids": [
+        "dataforseo_price",
+        "dataforseo_speed",
+        "dataforseo_payment",
+        "dataforseo_operators",
+        "dataforseo_terms"
+      ],
+      "unit": "One SERP page up to ten results; task creation charged; polling is not another SERP"
+    },
+    {
+      "currency": "USD",
+      "daily_consumption_1q": 1.2,
+      "daily_consumption_3q": 3.6,
+      "id": "dataforseo_priority",
+      "initial_funding_for_30k": 50,
+      "initial_funding_for_90k": 108,
+      "latency": "Average about one minute, not a per-task 90-second guarantee",
+      "minimum_deposit": 50,
+      "monthly_consumption_1q": 36,
+      "monthly_consumption_3q": 108,
+      "operator_caveat": "Same listed operator multiplier; one operator would cost 180/540 USD for 30k/90k",
+      "price_per_1000": 1.2,
+      "source_ids": [
+        "dataforseo_price",
+        "dataforseo_speed",
+        "dataforseo_payment",
+        "dataforseo_operators"
+      ]
+    },
+    {
+      "access": "Third-party scraping provider, expressly not affiliated with or endorsed by Google",
+      "cache": "Provider says fresh Google retrieval rather than search cache; terms allow downloading for the use case, prohibit a mirror without added value and preserve third-party rights",
+      "currency": "USD",
+      "daily_consumption_1q": 1,
+      "daily_consumption_3q": 3,
+      "free_trial_queries": 2500,
+      "funding_90k_method": "Inference: two advertised Starter packages; checkout not inspected",
+      "headline_cheapest_tier": {
+        "appropriate_for_minimum_cash_here": false,
+        "package_cost": 3750,
+        "package_credits": 12500000,
+        "price_per_1000": 0.3
+      },
+      "id": "serper_starter",
+      "initial_funding_for_30k": 50,
+      "initial_funding_for_90k": 100,
+      "latency": "Provider generally describes one to two seconds; not independently tested",
+      "minimum_package": {
+        "cost": 50,
+        "credits": 50000,
+        "expiration_months": 6
+      },
+      "monthly_consumption_1q": 30,
+      "monthly_consumption_3q": 90,
+      "price_per_1000": 1,
+      "source_ids": [
+        "serper_pricing",
+        "serper_terms"
+      ],
+      "trial_is_monthly": false
+    },
+    {
+      "cache": "JSON result retrieval available for 30 days; availability is not a blanket redistribution licence",
+      "currency": "USD",
+      "daily_consumption_1q": 2,
+      "daily_consumption_3q": 6,
+      "id": "dataforseo_live",
+      "initial_funding_for_30k": 60,
+      "initial_funding_for_90k": 180,
+      "latency": "Provider typically describes under six seconds, not independently tested",
+      "minimum_deposit": 50,
+      "monthly_consumption_1q": 60,
+      "monthly_consumption_3q": 180,
+      "operator_caveat": "One listed operator changes these monthly costs to 300/900 USD",
+      "price_per_1000": 2,
+      "source_ids": [
+        "dataforseo_price",
+        "dataforseo_speed",
+        "dataforseo_operators",
+        "dataforseo_payment",
+        "dataforseo_terms"
+      ]
+    },
+    {
+      "card_required": true,
+      "currency": "GBP",
+      "daily_consumption_1q": 2,
+      "daily_consumption_3q": 6,
+      "free_trial": "Unspecified free credit, not budgeted",
+      "id": "mojeek_startup",
+      "minimum_commitment": "No minimum commitment advertised; exact top-up minimum not established",
+      "monthly_consumption_1q": 60,
+      "monthly_consumption_3q": 180,
+      "price_per_1000": 2,
+      "source_ids": [
+        "mojeek_price",
+        "mojeek_terms"
+      ],
+      "storage": "Startup contract prohibits copying/compiling/storing Data and permits only transient cache for same user up to one hour; pricing feature list must not override this restriction"
+    },
+    {
+      "currency": "GBP",
+      "daily_consumption_1q": 3,
+      "daily_consumption_3q": 9,
+      "id": "mojeek_business",
+      "monthly_consumption_1q": 90,
+      "monthly_consumption_3q": 270,
+      "price_per_1000": 3,
+      "source_ids": [
+        "mojeek_price",
+        "mojeek_terms"
+      ],
+      "storage": "Pricing lists storage rights; narrow Startup exclusion is not applied here, but confirm applicable entitlement before durable SERP archive"
+    },
+    {
+      "currency": "USD",
+      "daily_consumption_1q": 4,
+      "daily_consumption_3q": 12,
+      "free_balance_reset": "To USD10 on first day of month; not cumulative rollover",
+      "free_lite_queries_monthly": 2500,
+      "id": "exa_lite",
+      "minimum_spend": "No minimum spend or subscription per docs; exact payment-screen top-up not inspected",
+      "monthly_consumption_1q": 120,
+      "monthly_consumption_3q": 360,
+      "monthly_cost_after_recurring_credit_1q": 110,
+      "monthly_cost_after_recurring_credit_3q": 350,
+      "monthly_free_credit_usd": 10,
+      "onboarding_bonus_expiration": "Does not expire",
+      "onboarding_bonus_usd": 10,
+      "price_per_1000": 4,
+      "source_ids": [
+        "exa_pricing",
+        "exa_billing",
+        "exa_terms"
+      ],
+      "storage": "API terms restrict reproduction except as expressly permitted; unrestricted durable search-result redistribution not established",
+      "unit": "Base includes up to ten results; extras and certain content operations add cost"
+    },
+    {
+      "card_required": true,
+      "currency": "USD",
+      "daily_consumption_1q": 5,
+      "daily_consumption_3q": 15,
+      "id": "brave_search",
+      "monthly_consumption_1q": 150,
+      "monthly_consumption_3q": 450,
+      "monthly_cost_after_recurring_credit_1q": 145,
+      "monthly_cost_after_recurring_credit_3q": 445,
+      "monthly_free_credit_usd": 5,
+      "price_per_1000": 5,
+      "privacy": "Specific API policy allows query retention up to 90 days; do not infer enterprise ZDR",
+      "source_ids": [
+        "brave_price",
+        "brave_storage",
+        "brave_privacy"
+      ],
+      "storage": "Storage requires a plan explicitly granting storage rights"
+    },
+    {
+      "currency": "USD",
+      "daily_consumption_1q": 5,
+      "daily_consumption_3q": 15,
+      "free_credit_conflict": {
+        "budgeted_guaranteed_signup_usd": null,
+        "canonical_pricing_usd": 10,
+        "marketing_page_usd": 100,
+        "reason": "Contradictory current primary pages; no account or credit balance verified"
+      },
+      "free_credit_expiration": "Not established",
+      "free_mcp_queries_per_day": 100,
+      "free_mcp_requires_account": false,
+      "id": "you_search",
+      "minimum_commitment": "No minimum advertised; no payment screen inspected",
+      "monthly_consumption_1q": 150,
+      "monthly_consumption_3q": 450,
+      "price_per_1000": 5,
+      "source_ids": [
+        "you_price",
+        "you_marketing",
+        "you_billing",
+        "you_free"
+      ],
+      "storage": "Provider cache/extraction controls describe provider service behavior, not universal downstream publication rights"
+    },
+    {
+      "available_for_new_customers": false,
+      "currency": "USD",
+      "discontinuation": "2027-01-01",
+      "free_queries_per_day": 100,
+      "id": "google_custom_search_json_existing_only",
+      "monthly_cost_after_daily_free_1q": 135,
+      "monthly_cost_after_daily_free_3q": 435,
+      "monthly_paid_queries_1q": 27000,
+      "monthly_paid_queries_3q": 87000,
+      "new_whole_web_engines_available": false,
+      "price_per_1000_paid": 5,
+      "source_ids": [
+        "google_price",
+        "google_transition"
+      ]
+    },
+    {
+      "advanced_credits_per_request": 2,
+      "alternative_monthly_plans": [
+        {
+          "credits": 38000,
+          "usd": 220
+        },
+        {
+          "credits": 100000,
+          "usd": 500
+        }
+      ],
+      "basic_credits_per_request": 1,
+      "currency": "USD",
+      "daily_consumption_1q": 8,
+      "daily_consumption_3q": 24,
+      "id": "tavily_basic_payg",
+      "monthly_consumption_1q": 240,
+      "monthly_consumption_3q": 720,
+      "monthly_free_credits": 1000,
+      "no_card_for_free_tier": true,
+      "paid_plan_or_payg_not_authorized": true,
+      "parameters": {
+        "auto_parameters": false,
+        "include_answer": false,
+        "include_raw_content": false,
+        "include_usage": true,
+        "search_depth": "basic"
+      },
+      "price_per_1000": 8,
+      "source_ids": [
+        "tavily_price",
+        "tavily_usage",
+        "tavily_parameters",
+        "tavily_auth",
+        "tavily_terms"
+      ]
+    },
+    {
+      "cache": "Identical request cache up to one hour is free; not an assumption of cache hits for unseen companies",
+      "currency": "USD",
+      "free_queries_per_month": 250,
+      "id": "serpapi",
+      "monthly_plan_for_30k": {
+        "queries": 30000,
+        "usd": 275
+      },
+      "monthly_plan_for_90k": {
+        "queries": 100000,
+        "usd": 725
+      },
+      "quota_reset": "Monthly allowance restarts; no general rollover",
+      "smallest_paid_plan": {
+        "queries": 1000,
+        "usd": 25
+      },
+      "source_ids": [
+        "serpapi_price",
+        "serpapi_faq",
+        "serpapi_terms"
+      ],
+      "storage": "Provider retention is 31 days; its Legal Shield is limited and is not Google affiliation or Signalpost permission"
+    },
+    {
+      "billing": "Separate API usage; invoice each 30 days or at USD100/custom threshold",
+      "currency": "USD",
+      "daily_consumption_1q": 12,
+      "daily_consumption_3q": 36,
+      "id": "kagi_search",
+      "minimum_topup": "Not established",
+      "monthly_consumption_1q": 360,
+      "monthly_consumption_3q": 1080,
+      "price_per_1000": 12,
+      "source_ids": [
+        "kagi_price",
+        "kagi_terms"
+      ],
+      "storage": "No durable Results database/archive or systematic evaluation dataset without amended terms; transient cache only"
+    },
+    {
+      "currency": null,
+      "id": "searxng",
+      "infra_cost_quoted": false,
+      "license": "AGPL-3.0 software only",
+      "limitations": [
+        "JSON must be enabled by operator",
+        "No universal public daily quota",
+        "Upstream CAPTCHA and rate limits remain",
+        "Selfhosting consumes existing infrastructure and administration"
+      ],
+      "public_api_capacity_guaranteed": false,
+      "software_api_fee": 0,
+      "source_ids": [
+        "searx_api",
+        "searx_limiter",
+        "searx_license"
+      ]
+    }
+  ],
+  "recommendation": {
+    "cheapest_fast_advertised_here": "Serper Starter, subject to source-access permission and applicable terms",
+    "cheapest_nominal": "DataForSEO Normal, subject to queue delay and query multipliers",
+    "current_paid_spend_authorized_usd": 0,
+    "do_not_evade_quota_or_create_multiple_accounts": true,
+    "free_fallbacks": [
+      "Official BRREG data plus permitted exact-entity website sitemap/RSS/contact/careers/news discovery",
+      "Future separately authorized Exa free tier",
+      "Future separately authorized You MCP100/day; not a 1000/day guarantee"
+    ],
+    "immediate": "Use the root-confirmed Tavily free balance only; fail closed on unknown usage or cap; no paid fallback",
+    "monthly_tavily_limit_does_not_cover_1000_companies_daily": true,
+    "other_tests_and_retries_must_share_the_same_monthly_cap": true,
+    "pilot_100_max_three_basic_queries": {
+      "credit_cap": 300,
+      "remaining_before_other_usage": 700
+    }
+  },
+  "schema": "signalpost-r5-search-cost-comparison/1",
+  "scope": {
+    "accounts_created": 0,
+    "credentials_used": false,
+    "official_score_claimed": null,
+    "payments_activated": false,
+    "product_executed": false,
+    "provider_api_test_calls": 0,
+    "public_baseline_commit": "c2e81e14f8e7ee7423083710a8244b28970d9adb",
+    "research_only": true,
+    "task": "Signalpost 926 R5 research"
+  },
+  "signalpost_requirements": {
+    "claim_provenance": [
+      "URL or source ID",
+      "retrieval time",
+      "effective/reporting date when relevant",
+      "content hash",
+      "extraction method"
+    ],
+    "exact_legal_entity_required": true,
+    "external_cache": "Declare external cache and evidence cutoff/refresh behavior; source rights remain applicable",
+    "group_parent_subsidiary_brand_must_remain_distinct": true,
+    "local_proxy_or_smoke_cannot_establish_official_score_65": true,
+    "official_literal_per_family_weight_map_found": false,
+    "official_weights": {
+      "precision_evidence": 30,
+      "recall_coverage": 50,
+      "synthesis": 12,
+      "ux": 8
+    },
+    "search_is_candidate_discovery_not_claim_evidence": true,
+    "server_secrets": "Documented environment variables only; never repository, logs or Docker image/env metadata",
+    "source_ids": [
+      "signalpost_challenge",
+      "signalpost_contract",
+      "signalpost_sources"
+    ],
+    "unofficial_serp_provider_is_not_official_google_api_or_automatic_signalpost_permission": true
+  },
+  "sources": [
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "signalpost_challenge",
+      "url": "https://www.builderr.ai/challenges/signalpost"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "signalpost_contract",
+      "url": "https://www.builderr.ai/docs/signalpost-evaluation-harness.md"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "signalpost_sources",
+      "url": "https://www.builderr.ai/starter-briefs/signalpost-sources.md"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "serper_pricing",
+      "url": "https://serper.dev/"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "serper_terms",
+      "url": "https://serper.dev/terms"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "dataforseo_price",
+      "url": "https://dataforseo.com/pricing/google-serp/google-organic-serp-api"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "dataforseo_speed",
+      "url": "https://dataforseo.com/help-center/fastest-method-to-get-results"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "dataforseo_operators",
+      "url": "https://dataforseo.com/help-center/serp-api-cost-explained"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "dataforseo_payment",
+      "url": "https://dataforseo.com/faq"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "dataforseo_terms",
+      "url": "https://dataforseo.com/terms-of-service"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "exa_pricing",
+      "url": "https://exa.ai/docs/admin/pricing"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "exa_billing",
+      "url": "https://exa.ai/docs/admin/billing"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "exa_terms",
+      "url": "https://exa.ai/assets/Exa_Labs_Terms_of_Service.pdf"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "mojeek_price",
+      "url": "https://www.mojeek.com/services/search/web-search-api/"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "mojeek_terms",
+      "url": "https://www.mojeek.com/about/legal/api-terms.html"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "serpapi_price",
+      "url": "https://serpapi.com/pricing"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "serpapi_faq",
+      "url": "https://serpapi.com/faq"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "serpapi_terms",
+      "url": "https://serpapi.com/legal"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "kagi_price",
+      "url": "https://kagi.com/api/pricing"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "kagi_terms",
+      "url": "https://kagi.com/privacy/api"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "google_price",
+      "url": "https://developers.google.com/custom-search/v1/overview"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "google_transition",
+      "url": "https://programmablesearchengine.googleblog.com/2026/01/"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "you_price",
+      "url": "https://you.com/pricing"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "you_marketing",
+      "url": "https://about.you.com/product/web-search-api"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "you_billing",
+      "url": "https://you.com/docs/administration/billing"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "you_free",
+      "url": "https://you.com/docs/administration/machine-payments"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "brave_price",
+      "url": "https://api-dashboard.search.brave.com/documentation/pricing"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "brave_storage",
+      "url": "https://brave.com/search/api/"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "brave_privacy",
+      "url": "https://api-dashboard.search.brave.com/privacy-policy"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "tavily_price",
+      "url": "https://docs.tavily.com/documentation/api-credits"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "tavily_usage",
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/usage"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "tavily_parameters",
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/search"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "tavily_auth",
+      "url": "https://docs.tavily.com/documentation/api-headers"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "tavily_terms",
+      "url": "https://www.tavily.com/terms"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "searx_api",
+      "url": "https://docs.searxng.org/dev/search_api.html"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "searx_limiter",
+      "url": "https://docs.searxng.org/admin/searx.limiter.html"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "searx_license",
+      "url": "https://github.com/searxng/searxng"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "brreg_data",
+      "url": "https://www.brreg.no/bruke-data-fra-bronnoysundregistrene/datasett-og-api/"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "brreg_api",
+      "url": "https://data.brreg.no/enhetsregisteret/api/dokumentasjon/no/index.html"
+    },
+    {
+      "authority": "provider_or_challenge_primary_source",
+      "id": "nav",
+      "url": "https://navikt.github.io/pam-stilling-feed/"
+    }
+  ]
+}

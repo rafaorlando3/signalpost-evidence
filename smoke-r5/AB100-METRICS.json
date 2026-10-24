@@ -1,0 +1,87 @@
+{
+  "at": "2026-10-24T00:19:05.645253+00:00",
+  "base_commit": "c2e81e14f8e7ee7423083710a8244b28970d9adb",
+  "candidate_code_commit": "24071565b899ed87fa9b0bfe6cc87f79fe5e6224",
+  "inputs_sha256": "504f03681fb41150c90fdaa55a017eae760f8146ae52690b6fd664a04c4b08df",
+  "policy_sha256": "8dcf11fa68ce978e377ccf17916bb28a94ae036517f1cffa2e793f6181ee0169",
+  "baseline": {
+    "rows": 100,
+    "unique_companies": 100,
+    "coverage": {
+      "website_profile": 6,
+      "contact_channels": 4,
+      "social_links": 5,
+      "job_postings": 0,
+      "dated_activity": 0,
+      "registered_identity": 100,
+      "people_roles": 98,
+      "registered_locations": 77,
+      "financial_filings": 99
+    },
+    "evidence_checked": 440,
+    "evidence_integrity_errors": [],
+    "sha256": "8cc5095255b3635064c09709359c016ef37afce86d91ca9cd62f7d680c1141fd",
+    "terminal_statuses": {
+      "completed": 100
+    },
+    "claims_states": {
+      "available": 1511,
+      "not_available": 663,
+      "ambiguous": 90,
+      "failed": 6,
+      "blocked": 30
+    }
+  },
+  "R5": {
+    "rows": 100,
+    "unique_companies": 100,
+    "coverage": {
+      "website_profile": 8,
+      "contact_channels": 6,
+      "social_links": 6,
+      "job_postings": 0,
+      "dated_activity": 0,
+      "registered_identity": 100,
+      "people_roles": 98,
+      "registered_locations": 77,
+      "financial_filings": 99
+    },
+    "evidence_checked": 474,
+    "evidence_integrity_errors": [],
+    "sha256": "0bf59bfbf5491a65d53d359f3795470704bb769068ba161db0fbba672038105b",
+    "terminal_statuses": {
+      "completed": 100
+    },
+    "claims_states": {
+      "available": 1518,
+      "not_available": 230,
+      "blocked": 252,
+      "ambiguous": 240,
+      "failed": 60
+    }
+  },
+  "delta_companies": {
+    "website_profile": 2,
+    "contact_channels": 2,
+    "social_links": 1,
+    "job_postings": 0,
+    "dated_activity": 0,
+    "registered_identity": 0,
+    "people_roles": 0,
+    "registered_locations": 0,
+    "financial_filings": 0
+  },
+  "positive_external_families": [
+    "website_profile",
+    "contact_channels",
+    "social_links"
+  ],
+  "coverage_gate_pass": true,
+  "manual20_pending": true,
+  "official_score": null,
+  "limitations": [
+    "Local company-family proxies, not official weighted recall or score.",
+    "One paired holdout run per arm; elapsed web data may change between arms.",
+    "Manual selection prioritizes published websites and cannot bound population error."
+  ]
+}

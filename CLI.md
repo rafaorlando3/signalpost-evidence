@@ -1,4 +1,4 @@
-# Plain-list CLI v0.7
+# Plain-list CLI — R5 over v0.7
 
 ## Command
 
@@ -6,7 +6,7 @@
 python3 -B cli.py --org-list orgs.txt --output runs/result.jsonl --cache cache/run --timeout-seconds 2400
 ```
 
-LIVE is the default: `agent.py --fresh --search none` under the existing `evaluator.collect` supervisor. The CLI does not change extraction, identity, comparison or source-selection logic. Python 3.11+ and the standard library are sufficient; no dependency installation is needed.
+LIVE is the default: `agent.py --fresh --search none` under the existing `evaluator.collect` supervisor. R5 adds bounded free discovery and cited readable reports; the legacy terminal schema and refresh comparison remain. Python 3.11+ and the standard library are sufficient; no dependency installation is needed.
 
 Options:
 
@@ -23,7 +23,12 @@ Options:
 | `--fresh` | Explicit LIVE default; mutually exclusive with replay |
 | `--previous PATH` | Previous v0.7 envelopes for the unchanged refresh comparison |
 | `--registry-snapshot PATH` | Documented local frozen-registry JSONL interchange |
-| `--search none` | Only accepted search choice; no provider calls or keys |
+| `--search none` | Default: no provider calls or keys |
+| `--search tavily-free` | Optional fixed-basic discovery after account/free-balance verification |
+| `--search-credit-limit N` | Maximum reserved search attempts for the run, 1..1000 |
+| `--search-free-credit-limit N` | Caller-confirmed free allowance, 0..1000; LIVE search requires nonzero allowance |
+| `--search-strategy MODE` | legacy, name_focus, or adaptive (default) |
+| `--report-dir PATH` | New review directory; default OUTPUT.review |
 
 Registry snapshot mode disables live registry fallback, but still permits public website requests in LIVE mode. Add `--replay` for a fully offline run. Snapshot timestamps/hashes are retained. An unavailable source does not become a deletion, and refresh recovery uses the last supported observation. For repeated numbers in the previous file, the last envelope is selected, matching the underlying agent.
 
@@ -63,3 +68,9 @@ python3 -B -m unittest discover -s tests -p 'test_cli.py' -v
 ```
 
 Tests exercise synthetic replay/refresh, LIVE command construction with a mocked supervisor, six-state preservation, input line accounting, duplicate budgets, deadline-prefix propagation, invalid envelopes, exclusive artifacts and cancellation. No LIVE request is needed for these tests. Live smoke results and the tested installed Python version belong in the delivery evidence section of README after execution.
+
+## R5 billing and cache scope
+
+The evaluator supplies its permitted TAVILY_API_KEY through the server-side environment only. Flags do not verify billing. Confirm a sufficient free balance and PayGo/auto-upgrade off before LIVE search; reconcile all runs against the same monthly account. No paid fallback is activated. Unknown reported usage stops new searches. Duplicate observations are not double-counted in search summaries. Provider request costs remain null until reconciled against account evidence.
+
+Readable reports preserve claim qualifiers and source references. The latest-response cache index is shared by URL; fixed-cache replay is idempotent, but preceding LIVE failed/blocked/ambiguous observations need not be reproduced byte-for-byte from that final index. Exact previous envelopes and immutable source snapshots are retained. See README and smoke-r5 for both the initial strict failure and the successful same-snapshot test.

@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-23T23:38:47.510302+00:00",
+  "base_commit": "c2e81e14f8e7ee7423083710a8244b28970d9adb",
+  "selection_frozen_before_execution": true,
+  "seed": "signalpost-r5-c1134-frozen-unseen-20261023",
+  "method": "105 smallest SHA256(seed:org), first100 paired A/B, next5 cold",
+  "exclusions_count": 1805,
+  "universe_archive_sha256": "1c89710e5b01f8617e86d09fbdff4a52f2f8dbbba297e74f7164b5984f5a0384",
+  "universe_content_sha256": "b82d6a3e7231d1759a958c282bc4366b80ec2fab8095053d8ed7fa9cd01bc838",
+  "inputs": {
+    "orgs100.txt": {
+      "count": 100,
+      "sha256": "504f03681fb41150c90fdaa55a017eae760f8146ae52690b6fd664a04c4b08df"
+    },
+    "cold5.txt": {
+      "count": 5,
+      "sha256": "1009004672b232d13386f316eafad5bc1920b2eb2b5f968f40e226ff632da71c"
+    },
+    "exclusions1805.txt": {
+      "count": 1805,
+      "sha256": "ee01906da52b97f6aee8aca44d1fa4df061d4415208258df185cf564137abe0e"
+    }
+  },
+  "external_proxy_families": {
+    "website_profile": [
+      "website.verified_url",
+      "website.description"
+    ],
+    "contact_channels": [
+      "website.contact_channels"
+    ],
+    "social_links": [
+      "website.social_links"
+    ],
+    "job_postings": [
+      "website.hiring"
+    ],
+    "dated_activity": [
+      "website.activity"
+    ]
+  },
+  "other_reported_families": {
+    "registered_identity": [
+      "legal_name",
+      "legal_form",
+      "industry",
+      "activity",
+      "employees"
+    ],
+    "people_roles": [
+      "roles"
+    ],
+    "registered_locations": [
+      "locations"
+    ],
+    "financial_filings": [
+      "financials.revenue",
+      "financials.net_income",
+      "financials.equity",
+      "financials.history"
+    ]
+  },
+  "family_measure": "company has nonempty available claim with valid evidence; ambiguous/blocked/failed/not_available do not count; proxy grouping is ours, not unpublished official weights",
+  "promotion": "at least3 external proxy families have positive company-coverage delta AND zero material wrong-company publication in20 manually inspected companies; full operational checks also pass",
+  "manual20_selection": "20 smallest SHA256(manual-r5:org) among candidate-available websites; if fewer20, pad by same deterministic hash among remainder. No result-driven hand picking. Inspect legal target, owner/group relationship, social origins, dated item attribution. All manual20 retained with proof and outcome.",
+  "score": "No official score can be computed from local coverage proxies.",
+  "policy_amendment": {
+    "at": "2026-10-23T23:44:25.292691+00:00",
+    "before_candidate_execution_and_before_inspection_of_baseline_family_metrics": true,
+    "reason": "Group website URL and description as one conservative proxy family; do not count same entity website twice for promotion",
+    "previous_policy_sha256": "f1b8efeaa58ce9cde4a6de7d8e467056a704fca6c48466e65564c5b42f50855f"
+  }
+}

@@ -1,95 +1,82 @@
-# Signalpost Evidence v0.7
+# Signalpost Evidence — R5, review 1 over v0.7
 
-Python standard-library research for Norwegian companies. The delivery keeps the v0.7 collection and evidence rules, with reviewed reliability fixes for subprocess deadlines, terminal envelopes and validation. It does not include R3/R4 filters or strategies.
+R5 adds explicitly bounded free search, cited company summaries, and one Markdown report per input plus an HTML index. It starts from public v0.7 `c2e81e14f8e7ee7423083710a8244b28970d9adb`. R3/R4 remain archived. The tested Python sources are frozen in code commit `24071565b899ed87fa9b0bfe6cc87f79fe5e6224`; the delivery commit adds documentation and measured artifacts without changing them. Envelopes retain the legacy v0.7 schema/version for compatibility.
 
-## Run a plain list LIVE
+## One evaluator command
 
-Python 3.11+ is supported. CPython 3.12.15 is pinned in `runtime.txt` and was measured in this delivery's clean Linux virtual environment. No pip packages, API key or model service are required.
+Use CPython **3.12.15**, pinned in `runtime.txt`, with the standard library only. No pip packages or model API are required. A clean clone and empty virtual environment passed all 154 offline tests. Supply a UTF-8 `orgs.txt`, one Norwegian organisation number per physical line; the evaluator supplies its own dynamic batch.
 
-Create a clean virtual environment (CPython 3.12.15 is the pinned runtime in `runtime.txt`; Python 3.11+ is supported). No pip install or third-party runtime packages are needed:
-
- ```sh
- python3 -m venv .venv
- . .venv/bin/activate
- ```
-
- Create a UTF-8 file with one organisation number per line, then run from this repository:
-
-Example `orgs.txt` (the evaluator supplies its own dynamic list):
-
-```text
-810034882
-920295738
-```
+With an existing permitted `TAVILY_API_KEY` already in the **server-side process environment**, and at least 300 free basic credits confirmed for this run:
 
 ```sh
-python3 -B cli.py --org-list orgs.txt --output runs/result.jsonl --cache cache/run --timeout-seconds 2400
+python3 -B cli.py --org-list orgs.txt --output runs/result.jsonl --cache cache/run --timeout-seconds 2400 --search tavily-free --search-credit-limit 300 --search-free-credit-limit 300 --search-strategy adaptive
 ```
 
-This command defaults to LIVE public registry APIs and permitted company pages, fresh retrieval, four workers and `--search none`. It writes one v0.7 JSON envelope per input line, in order, plus `runs/result.summary.json`. A compact copy of the summary goes to stderr. Output/cache directories are created when needed. Use new output and summary filenames for each run; existing files and final-path symlinks are refused.
+Confirm the account's free balance, Pay-as-you-go **Off** and Auto upgrade **Off** before using those flags. Never put the secret in argv, a URL, an env file, an artifact or client page. No key is bundled; evaluators provide their own permitted account. The numeric flags cannot themselves verify billing or authorize payment. Reconcile credits across invocations. Advanced search, automatic expansion and paid fallback are disabled; unknown provider usage halts new searches. Maximum three reserved requests per company, within the run-wide cap.
 
-Invalid numbers and blank lines receive explicit failed envelopes. Duplicates receive separate envelopes linked by `_cli.duplicate_of`; one observation per distinct valid number is reused within the command. The unchanged collector caps that observation at **20 HTTP requests**, including redirects, retries and robots requests, and a 90-second Fetcher budget checked before requests (DNS/lock waits can overrun that local budget). The supervisor caps collection at the supplied finite deadline (default 2400 seconds, maximum 2600). Interrupted rows retain failures and conservative request upper bounds. For 100 distinct valid numbers the request ceiling is 2000; that ceiling is not a performance or coverage result.
+The tested account has **1,000 monthly free credits, not 1,000 per day**. The included 100-company pilot used 184 basic requests. A 300-credit cap does not fund unbounded daily 1,000-company search: after exhaustion, unresolved web fields remain unavailable/ambiguous while other bounded collection continues. No continuously sufficient free allowance for that workload was established. A paid provider requires a separate cost decision; see [SEARCH-COSTS.md](SEARCH-COSTS.md).
 
-## Optional Docker run
-
- The Dockerfile keeps the pinned Python base image and uses the same CLI as its entrypoint. The lower-level evaluator remains installed and can be selected with an explicit entrypoint.
-
- ```sh
- docker build -t signalpost:v0.7 .
- docker run --rm -v "$PWD:/work" signalpost:v0.7 --org-list /work/orgs.txt --output /work/runs/result.jsonl --cache /work/cache/run --timeout-seconds 2400
- ```
-
- The mounted directory retains outputs and source snapshots after the container exits. No pip install or API key is needed.
-
- ## Read the result
-
-Each claim preserves its `availability`: `available`, `not_available`, `blocked`, `not_applicable`, `ambiguous` or `failed`. `run.terminal_status=completed` only means collection finished; it can coexist with failed or unavailable claims. `_cli.claim_status_counts` and the summary show all six states separately. These states are the v0.7 evidence contract, not a claim of compatibility with an unpublished organizer adapter.
-
-An `available` claim has a value and evidence references. Missing data is not zero. Source errors are not deletions. Registry identity uses the exact organisation number; websites require the existing v0.7 identity checks. Contact links do not prove responsiveness or social-account ownership. Source URLs, dates, periods, hashes, pointers and retained snapshot references remain in the envelope.
-
-The exit codes are 0 when every entry finishes with at least one available claim, 2 when complete output includes an invalid/failed/no-available-claim entry or a collector guard failure, 1 for input/output/configuration errors, and 130 for cancellation. Exit 0 does not mean every requested field is available or independently correct. See [CLI.md](CLI.md) for parsing, duplicate accounting and refresh details.
-
-## Replay and refresh
-
-Keep outputs and the complete cache, including immutable `snapshots/`. To replay without HTTP:
+For a LIVE command needing no provider key or search credits:
 
 ```sh
-python3 -B cli.py --org-list orgs.txt --output runs/replay.jsonl --cache cache/run --replay --previous runs/result.jsonl
+python3 -B cli.py --org-list orgs.txt --output runs/no-search.jsonl --cache cache/no-search --timeout-seconds 2400 --search none
 ```
 
-Replay requires an existing cache; cache misses remain explicit unknown/failure states. Fresh collection is the default; add `--previous runs/result.jsonl` to compare with retained supported observations. Repeated unchanged observations have no material changes. Recovery compares against the last supported value through history, preserving original evidence.
+Outputs and review directories must be new. Every input line receives one terminal envelope in order; duplicates link to one reused observation and invalid entries remain explicit failures. Defaults: four workers, 20 HTTP requests per unique company including search/robots/redirects, 90-second local Fetcher budget, and a supervised 2,400-second collection deadline (maximum 2,600). DNS/lock waits can overrun the local budget. Exit 0 means each entry completed with an available claim, not that every field is correct or complete. See [CLI.md](CLI.md).
 
-`--registry-snapshot FILE.jsonl` uses the documented [frozen registry interchange](FROZEN-REGISTRY.md), with preserved source timestamps and no live registry fallback. Company pages can still be fetched unless `--replay` is also supplied. The organizer's snapshot schema is not claimed compatible without confirmation.
+## Measured paired sample
 
-## Validation and public smoke
+Both arms used the same **100 new companies**, selected before execution and excluding 1,805 previously used organisation numbers. Only R5 enabled free search. Source timestamps differ between arms; this is a local functional comparison, not official ground truth or a guaranteed population estimate.
+
+| Companies with a nonempty available, referenced claim | v0.7, search none | R5, free search | Change |
+|---|---:|---:|---:|
+| Website profile (URL or description; one family) | 6 | 8 | +2 |
+| Declared contact channels | 4 | 6 | +2 |
+| Declared social links | 5 | 6 | +1 |
+| Structured job postings | 0 | 0 | 0 |
+| Dated activity | 0 | 0 | 0 |
+
+The predeclared coverage threshold passed in three external proxy families. The gain is **small**, with no gain in jobs/news. Registry/roles/locations/financial coverage stayed 100/98/77/99. These groupings are ours; no official weighted recall or score is inferred. **There is no official 65/100 or 70+ result.**
+
+R5 produced **100/100 terminal envelopes**, no synthesized execution failures, in 431.405 seconds including the root command/report step. The supervisor measured 427.723 seconds. It reported 1,841 HTTP requests including 184 search attempts. Claim states: 1,518 available, 230 not_available, 240 ambiguous, 252 blocked, 60 failed, 0 not_applicable. Completion and syntactic evidence validity are separate from factual accuracy.
+
+Two AI reviewers inspected the fixed 20-case sample against retained primary sources: **zero demonstrated wrong-company publication**. This is case-by-case AI inspection, not a blind human gold set or a 0% error guarantee. The sample prioritizes all eight published websites and pads twelve companies by the frozen hash rule. It does not estimate overall precision.
+
+Known limits remain visible: one generic `info@email.com` website link may be a template artifact and is not a verified contact endpoint; `roles[].effective_at` copies a role-group `sistEndret` update and does not prove an individual appointment date; social links can identify a group/regional channel rather than an exclusive legal-entity account; one business-context summary truncates a legal phrase; some limitations have mixed or missing source references. These findings were retained rather than tuned away using this holdout. Full claims and source references remain available.
+
+## Read and reproduce the evidence
+
+- [Paired metrics and integrity audit](smoke-r5/AB100-METRICS.json)
+- [100 organisation inputs](smoke-r5/orgs100.txt), [sampling policy](smoke-r5/POLICY.json), and [run/reproduction notes](smoke-r5/README.md)
+- [R5 result JSONL](smoke-r5/R5-result.jsonl) and [baseline result JSONL](smoke-r5/baseline-result.jsonl)
+- [Company Markdown index](smoke-r5/review/index.md); download/open `smoke-r5/review/index.html` or `workspace.html` for standalone HTML
+- [20-case summary](smoke-r5/MANUAL20-SUMMARY.json), [first reviewer](smoke-r5/MANUAL20-QA.json), [second reviewer](smoke-r5/MANUAL20-ROOT-DELEGATED.json)
+- [Cost reconciliation](smoke-r5/COST-RECONCILIATION.json), [154 tests](smoke-r5/UNIT3-RESULT.json), [clean clone/empty venv](smoke-r5/CLEAN-VENV-RESULT.json)
+
+Each company report preserves the six claim states, evidence IDs, source URLs, retrieval dates, periods, qualifiers, and refresh history. Concise synthesis is deterministic from supported observations, with references; no paid LLM is used. HTML/Markdown escape untrusted content. `--report-dir` selects a new report directory; the default is `OUTPUT.review`.
+
+## Snapshot idempotence and refresh
+
+Keep the complete local cache, including immutable `snapshots/`, and the previous JSONL:
 
 ```sh
-python3 -B -m unittest discover -s tests -p 'test_cli.py' -v
+python3 -B cli.py --org-list orgs.txt --output runs/replay.jsonl --cache cache/run --replay --previous runs/result.jsonl --search tavily-free --search-credit-limit 300 --search-free-credit-limit 300 --search-strategy adaptive
+```
+
+Replay performs no HTTP and needs no secret. Two replays over the identical completed read-only cache snapshot produced exactly equal claims and evidence for **100/100**, preserved the exact original LIVE envelopes, and reported zero material changes. The 2,942-file cache manifest was unchanged. [Acceptance](smoke-r5/REPLAY-ACCEPTANCE.json) and [independent review](smoke-r5/REPLAY-INDEPENDENT-REVIEW.json) state the precise scope.
+
+The stronger **LIVE versus first replay equality check failed** and is [retained](smoke-r5/REPLAY-INITIAL-STRICT-CHECK.json): states/references of unconfirmed website observations changed. The cache has a shared latest-response index by URL; it is not a per-company replay log of every transient error. All available LIVE claims stayed identical, prior envelopes stayed exact, and original source snapshots remained retained. Do not call the entire LIVE run byte-reproducible from that latest index. Re-running the same fixed cache snapshot and preserving refresh history are the verified properties.
+
+`--registry-snapshot` uses the documented [frozen-registry interchange](FROZEN-REGISTRY.md). The organizer supplies its snapshot/cutoff; compatibility with an unpublished schema is not asserted. External caches and timestamps must be declared.
+
+## Runtime, rights and historical files
+
+```sh
 python3 -B -m unittest discover -s tests -q
 ```
 
-The CLI tests use synthetic fixtures and mocks; they do not establish live source coverage. 112 offline regression tests passed on the same isolated CPython 3.12.15 runtime. The measured code is commit `2b7aaf6260b90a8e78356c4d623f36b93281f772`; this delivery adds reports and aligns runtime/packaging documentation without changing those Python sources.
+154 tests passed without network in CPython 3.12.15, including a clean local clone and an empty venv with no third-party packages. The optional Dockerfile pins the official Python manifest and includes both readable report modules; this revised image recipe was not built or pulled. Tests and live measurement used an already available isolated CPython runtime, with read-only sources and limited CPU/memory. [Release manifest](RELEASE-MANIFEST.json) and [file checksums](checksums.json) bind sources and artifacts.
 
-| Check | Terminal results | Collection time | Requests | New paid API cost |
-| --- | ---: | ---: | ---: | ---: |
-| Fresh clone, empty venv/cache, 5 unseen companies | 5/5; 0 execution failures | 19.650 s | 41 | US$0 |
-| Separate fresh clone/venv/cache, 100 unseen companies | 100/100; 0 execution failures | 111.424 s | 535 | US$0 |
-| Offline replay/refresh of those 100 | 100/100; 0 material changes | 6.479 s | 0 | US$0 |
+Raw downloaded page bodies and account credentials are excluded from the public repository. Evidence bodies remain in the private runtime cache for audit; public reports include extracted claims, URLs, hashes, dates and source pointers. Search snippets/answers/raw responses are not retained. Roles bodies redact birth identifiers. MIT covers our code, not third-party content. Public-source access follows [SOURCES.md](SOURCES.md), [R5 policy](R5-POLICY.md), TLS/public-IP/robots checks and the documented budgets.
 
-The 100-company smoke includes 1497 `available`, 671 `not_available`, 90 `ambiguous`, 36 `blocked` and 6 `failed` claims. Completion does not mean complete or independently verified facts. The offline replay preserved identical claims, evidence IDs/content hashes and complete previous envelopes. One ambiguous/null website observation changed retrieval/path metadata; the envelopes are not byte-identical. See the report for this limitation.
-
-Public reports: [100-company smoke](smoke/smoke100-report.json), [5-company cold run](smoke/cold5-report.json), and [inputs/reproduction notes](smoke/README.md). Inputs were frozen before execution from the verified official universe, excluding 1700 previously used organisation numbers. No private cache or downloaded source body is required to start the LIVE command. The optional Docker recipe pins the upstream Python 3.12.15 image; the validation above used a fresh virtual environment in the already available isolation runtime, not a newly built Docker image.
-
-To run the included smoke input with the same LIVE entrypoint:
-
-```sh
-python3 -B cli.py --org-list smoke/orgs-smoke100.txt --output runs/smoke100.jsonl --cache cache/smoke100 --timeout-seconds 2400
-```
-
-The older measured experiments remain documented in `RESULTS-v07.md`; they are separate from this delivery's smoke. There is no official score or qualification claim.
-
-## Retention and rights
-
-Raw run outputs and source-body caches remain runtime artifacts outside this delivery. The public `smoke/` directory contains only organisation-number inputs and run reports. Historical development profiles in the original v0.7 artifact remain separate and are not read by the LIVE CLI. Do not commit caches, credentials, private inputs or complete downloaded HTML. Keep the cache locally if a source audit must be reproducible. Roles responses redact birth identifiers in retained bodies; original and retained hashes can differ and remain identified.
-
-The lower-level `agent.py` and `evaluator.py` JSONL interfaces remain available. This plain-list CLI exposes only free public collection with search disabled; no paid search is activated. Code is MIT; third-party content retains its own rights. See [SOURCES.md](SOURCES.md).
+`V07-DELIVERY.md`, `smoke/`, `RESULTS-v07.md`, historical profiles and their older reports are historical v0.7 artifacts; the LIVE CLI does not read them. R5 evidence is exclusively under `smoke-r5/`. Publication of this repository commit is not an official activation, an email submission, or qualification.

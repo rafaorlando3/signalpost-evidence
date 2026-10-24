@@ -1,0 +1,300 @@
+{
+  "at": "2026-10-24T00:37:53.250176+00:00",
+  "schema": "signalpost-r5-manual20-summary/1",
+  "code_commit": "24071565b899ed87fa9b0bfe6cc87f79fe5e6224",
+  "companies_reviewed": 20,
+  "fixed_ids": [
+    "928187780",
+    "988692166",
+    "914083419",
+    "939320245",
+    "983639151",
+    "915489028",
+    "917158258",
+    "922703205",
+    "919429380",
+    "932349094",
+    "934070496",
+    "922926204",
+    "918509186",
+    "923208976",
+    "920314767",
+    "829151472",
+    "834958732",
+    "925582654",
+    "931094335",
+    "995992612"
+  ],
+  "published_website_pool": 8,
+  "reviewers": "Two AI reviewers; one contributed implementation. Not blind or a human gold set.",
+  "human_reviewed": false,
+  "wrong_company_demonstrated": 0,
+  "all_claims_verified": false,
+  "unknowns_preserved": true,
+  "selection_replacements": 0,
+  "coverage_gate_pass": true,
+  "manual_identity_gate_pass": true,
+  "same_snapshot_idempotence_pass": true,
+  "operational_gate_pass": true,
+  "local_promotion_gate_pass": true,
+  "official_activation": false,
+  "official_score": null,
+  "limitations": [
+    "Zero demonstrated wrong-company cases is not a population accuracy guarantee.",
+    "roles[].effective_at is group-update metadata, not proven individual appointment date.",
+    "One generic contact may be a template artifact; actual usage is unknown.",
+    "Declared social links do not establish exclusive account ownership.",
+    "One synthesis truncates business-context wording; full claim/source retained.",
+    "Some limitations have mixed or missing source references.",
+    "Initial LIVE-to-completed-cache strict equality failed for unconfirmed web states/provenance; the fixed-cache repeated replay passed."
+  ],
+  "per_case": [
+    {
+      "org": "928187780",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date",
+        "actual use/ownership of generic info@email.com contact"
+      ],
+      "notes": [
+        "Exact company name, organisation number and registered address appear in the local website identity block.",
+        "Description equals the retained meta description.",
+        "The sole published contact info@email.com exists literally in a generic social-widget mail link. Association/use as an actual company contact remains unknown; a placeholder is suspected, not proven. Other company-specific addresses occur visibly in the page.",
+        "Synthesis asserts a literal published link only and explicitly says availability/responsiveness were not tested; no delivery assertion."
+      ]
+    },
+    {
+      "org": "988692166",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "Homepage company name, registry-declared domain and Kanalgata14/3263 corroborate the legal entity.",
+        "Description equals retained meta description. Company contact section supports the two literal mailto/tel channels.",
+        "Facebook/Instagram links are declared on the page; destination ownership remains independently unverified."
+      ]
+    },
+    {
+      "org": "914083419",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "The asserted URL is the branch-specific fus.no/skjoldastraumen, not the group root. Its invoice block gives the exact company name and organisation914083419.",
+        "Description describes this named kindergarten; local visit/phone/email links are in the same page.",
+        "Facebook is a branch-specific declared link. No exclusive profile or fus.no-domain ownership is established."
+      ]
+    },
+    {
+      "org": "939320245",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "The exact company name and organisation939320245 appear in the contact page.",
+        "Homepage self-description is company-declared holding/group context, not audited subsidiary capability.",
+        "Published contact items are literal links in the company contact directory; they do not prove employment, ownership, use or responsiveness. The source also lists other group entities, which must not be inherited as this company.",
+        "Social links are declared links only; neither destination account ownership nor exclusivity is independently verified."
+      ]
+    },
+    {
+      "org": "983639151",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "Contact page states Hovedkontor Sharp Business Systems Norge AS and Ole Deviks vei2/0666, matching the official company record and its registered website. This corroborates association, not exclusive ownership of the domain.",
+        "Homepage description is literal Norwegian site-declared business context, within a broader international brand site. It is not independent proof of every capability of this legal entity.",
+        "LinkedIn33261755 and YouTubeSharpEurope are literal footer links. Claim and synthesis explicitly restrict them to declared links with ownership not independently verified. They must not be promoted to exclusive accounts of the Norwegian AS."
+      ]
+    },
+    {
+      "org": "915489028",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "All role names, role types and active flags match retained official data. roles[*].effective_at is unknown as an effective date: each value equals role-group sistEndret, not a role-specific effective-date assertion.",
+        "Unavailable/ambiguous/blocked fields remain unknown, not proof of absence.",
+        "Exact website association and literal contacts supported. Destination social-profile ownership remains unknown. Revenue history and +38.0% calculation source-bound; inactive MEDL excluded."
+      ]
+    },
+    {
+      "org": "917158258",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "All role names, role types and active flags match retained official data. roles[*].effective_at is unknown as an effective date: each value equals role-group sistEndret, not a role-specific effective-date assertion.",
+        "Unavailable/ambiguous/blocked fields remain unknown, not proof of absence.",
+        "Meta description is literal but sparse/contact-oriented. Literal contact links supported, not tested for responsiveness. Revenue history/+20.5% source-bound."
+      ]
+    },
+    {
+      "org": "922703205",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "All role names, role types and active flags match retained official data. roles[*].effective_at is unknown as an effective date: each value equals role-group sistEndret, not a role-specific effective-date assertion.",
+        "Unavailable/ambiguous/blocked fields remain unknown, not proof of absence.",
+        "Company-declared product context and Facebook/Instagram links supported. Destination ownership unknown. Revenue history/-15.2% source-bound."
+      ]
+    },
+    {
+      "org": "919429380",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "All role names, role types and active flags match retained official data. roles[*].effective_at is unknown as an effective date: each value equals role-group sistEndret, not a role-specific effective-date assertion.",
+        "Unavailable/ambiguous/blocked fields remain unknown, not proof of absence.",
+        "Revenue unavailable is not zero; other filed financial data supported. Empty registry locations result is not proof of no physical activity.",
+        "Source access blocked synthesis has evidence_ids=[] and compresses mixed causes:2 available-but-unattributed candidates,2 blocked,1 failed. This blanket source-backed explanation is unknown/traceability-limited; no false company attribution follows."
+      ]
+    },
+    {
+      "org": "932349094",
+      "wrong_company": false,
+      "unknown_subclaims": [
+        "roles[*].effective_at as an individual effective/appointment date"
+      ],
+      "notes": [
+        "All role names, role types and active flags match retained official data. roles[*].effective_at is unknown as an effective date: each value equals role-group sistEndret, not a role-specific effective-date assertion.",
+        "Unavailable/ambiguous/blocked fields remain unknown, not proof of absence.",
+        "Zero2025revenue is explicit; earlier null revenues remain unknown.",
+        "Different candidate publisher is a successfully withheld mismatch, not a published wrong-company fact."
+      ]
+    },
+    {
+      "org": "934070496",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six website families",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "922926204",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six website families",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "918509186",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six website families blocked",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "923208976",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six website families blocked",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "920314767",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "registered website",
+        "six website families ambiguous",
+        "individual-role effective-date semantics",
+        "complete business-context synthesis after truncation"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "829151472",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six website families blocked",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "834958732",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "financials.revenue",
+        "six own-website families",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "925582654",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six own-website families",
+        "individual-role effective-date semantics",
+        "all physical premises outside registered-unit endpoint scope"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "931094335",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six own-website families",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    },
+    {
+      "org": "995992612",
+      "wrong_company": false,
+      "status": "unknown",
+      "unknowns": [
+        "employees count",
+        "registered website",
+        "six own-website families",
+        "individual-role effective-date semantics"
+      ],
+      "scope": "unqualified material-profile support including role temporal semantics; matching published positive components are detailed separately"
+    }
+  ]
+}

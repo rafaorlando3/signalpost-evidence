@@ -1,0 +1,117 @@
+{
+  "schema": "signalpost-r5-replay-independent-review/1",
+  "at": "2026-10-24T00:33:01.378077+00:00",
+  "reviewer": "agent persistent_flow_qa",
+  "human_reviewed": false,
+  "decision": "limited_acceptance_same_snapshot_idempotence",
+  "requirement_reviewed": "Re-running the same snapshot is idempotent. Refresh preserves prior evidence and exposes material changes.",
+  "read_only_artifact_review": true,
+  "product_executed_by_reviewer": false,
+  "tests_executed_by_reviewer": false,
+  "additional_external_http_requests": 0,
+  "independent_checks": {
+    "at": "2026-10-24T00:31:11.715479Z",
+    "ok": true,
+    "files": {
+      "live": {
+        "path": "/opt/renda-extra/signalpost926-r5-20261023/measurement/candidate-out/runs/result.jsonl",
+        "sha256": "0bf59bfbf5491a65d53d359f3795470704bb769068ba161db0fbba672038105b",
+        "bytes": 1892058
+      },
+      "reference": {
+        "path": "/opt/renda-extra/signalpost926-r5-20261023/measurement/replay100-out/result.jsonl",
+        "sha256": "74bde9bde199283ec5a534d1eb85323d3f81f7f1af0e2eab2b813efa79e79d77",
+        "bytes": 3813455
+      },
+      "repeat": {
+        "path": "/opt/renda-extra/signalpost926-r5-20261023/measurement/snapshot-repeat-out/result.jsonl",
+        "sha256": "3fb9484a800e6206d50a3da78392739e1e9a2e1a7f4488ef65f4d64273f4a282",
+        "bytes": 3813453
+      }
+    },
+    "counts": {
+      "claims_canonical_bytes_exact": 100,
+      "evidence_canonical_bytes_exact": 100,
+      "previous_snapshot_exact_live": 100,
+      "http_zero": 100,
+      "material_changes_zero": 100,
+      "declared_offline_replay": 100,
+      "completed": 100,
+      "discovery_present": 94
+    },
+    "same_input_order": true,
+    "cache": {
+      "manifest_sha256": "c45c2740fdb1ce83d06080f24bde3dc951bcd5ce2721c82b024ca0827c8a95c3",
+      "manifest_files": 2942,
+      "actual_files": 2942,
+      "membership_exact": true,
+      "file_hash_mismatches": [],
+      "source_bodies_decoded": false
+    },
+    "sources": {
+      "manifest_path": "/opt/renda-extra/signalpost926-r5-20261023/reports/SOURCE-FROZEN-3.json",
+      "manifest_sha256": "fbd0d271d04f53902296298fbf0d2ed6ae9527ce71d5af571ffdf198cfb00cc9",
+      "python_files": 27,
+      "hash_mismatches": []
+    },
+    "artifacts": {
+      "acceptance": {
+        "path": "/opt/renda-extra/signalpost926-r5-20261023/reports/REPLAY-ACCEPTANCE.json",
+        "sha256": "44970b393ea54a7b691eefb6a936490ebeace3959bfaf8b87dbd25611319f31c"
+      },
+      "repeat_operational": {
+        "path": "/opt/renda-extra/signalpost926-r5-20261023/measurement/snapshot-repeat-out/OPERATIONAL-RESULT.json",
+        "sha256": "d596d5617bacf416af9927b3958b89023235145399ccaf711e580483072268f9",
+        "network": "none",
+        "cache_mount": "read_only",
+        "exit": 0,
+        "errors": []
+      },
+      "preserved_initial_failure": {
+        "path": "/opt/renda-extra/signalpost926-r5-20261023/measurement/replay100-out/OPERATIONAL-RESULT.json",
+        "sha256": "ec7e9bc81d94bead736fb66b26a59ca51339ee4e10d0139afe9aca5c1aaf3bd6",
+        "ok": false,
+        "assertion_failure_count": 83
+      }
+    },
+    "claim_or_source_values_returned": false
+  },
+  "search_metadata_check": {
+    "discovery_root_rows": 94,
+    "root_plus_nested_stage_objects": 280,
+    "request_attempts_values": "all exact integer zero",
+    "paid_cost_usd_values": "all numeric zero",
+    "missing_objects_not_defaulted_to_zero": true
+  },
+  "interpretation": {
+    "same_pinned_snapshot_claims_and_evidence_idempotence_demonstrated": true,
+    "companies": 100,
+    "original_live_previous_snapshot_exact": 100,
+    "material_changes": 0,
+    "live_vs_completed_cache_index_strict_equivalence": false,
+    "initial_failed_comparison_remains_failed": true,
+    "whole_jsonl_file_byte_identity_claimed": false,
+    "promotion_authorized_by_this_review": false,
+    "official_score": null
+  },
+  "reasoning": [
+    "Independent canonical-byte comparisons preserve list order and distinguish JSON value types; claims and evidence match in every one of the100 paired replay rows.",
+    "The pinned cache manifest contains2942 files; exact current membership and every file SHA256 match.27 Python source hashes also match their frozen manifest.",
+    "The first replay uses the completed latest-observation-per-URL index. Concurrent LIVE rows were produced before that final index existed, so LIVE and completed-cache replay do not have identical observational inputs.",
+    "The first LIVE-to-cache strict failure is retained with ok=false and83 recorded assertion failures. Its varying unknown-state availability/evidence metadata must remain disclosed; it is not relabelled as byte-identical LIVE replay.",
+    "The same-cache second replay satisfies publication idempotence for claims/evidence while the full original LIVE envelope remains exactly in previous_snapshot. All474 original evidence snapshot references were separately confirmed retained by read-only path/stat inspection."
+  ],
+  "limits": [
+    "Acceptance is bounded to the100 cases, frozen source, fixed completed cache and supplied previous snapshots. It does not demonstrate arbitrary LIVE reproducibility, factual correctness of all claims, exclusive site/profile ownership, coverage or an official score.",
+    "Whole JSONL files differ because execution metadata is outside this claims/evidence equality assertion.",
+    "Runtime network isolation and read-only mount are bound to the preserved root operational receipt; the reviewer did not rerun or inspect a new product process."
+  ],
+  "administrative_history": [
+    {
+      "proof": "SP926-R5-QA-REPLAY2-SEARCH-METADATA-RO-GET.json",
+      "outcome": "read-only metadata reducer TypeError; no mutation or product execution",
+      "repair": "Counter.update(keys) and explicit stage dictionary/list handling; second read-only proof preserved separately"
+    }
+  ],
+  "same_snapshot_idempotence_pass": true
+}

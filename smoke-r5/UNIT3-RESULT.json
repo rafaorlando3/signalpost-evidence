@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "exit": 0,
+  "cid": "3146b1a1d61c3231aaf6c57c61fe1ba104ecc49ac52481d05059db349386babd",
+  "runtime_seconds": 16.496,
+  "stdout_tail": "{\n  \"inputs\": 0,\n  \"outputs\": 0,\n  \"failed\": 0,\n  \"requests\": 0,\n  \"runtime_seconds\": 0.01,\n  \"third_party_cost_usd\": 0,\n  \"search_request_attempts\": 0,\n  \"search_basic_credit_upper_bound\": 0,\n  \"coverage\": {},\n  \"source_statuses\": {},\n  \"official_score\": null,\n  \"replay\": true,\n  \"registry_snapshot_sha256\": null\n}\n",
+  "stderr_tail": "usage: agent.py [-h] --input INPUT --output OUTPUT [--cache CACHE]\n                [--previous PREVIOUS] [--replay | --fresh] [--workers WORKERS]\n                [--search {none,tavily,tavily-free}]\n                [--search-free-credit-limit SEARCH_FREE_CREDIT_LIMIT]\n                [--search-credit-limit SEARCH_CREDIT_LIMIT]\n                [--search-strategy {legacy,name_focus,adaptive}]\n                [--registry-snapshot REGISTRY_SNAPSHOT]\nagent.py: error: --search tavily-free requires --search-free-credit-limit with a root-confirmed allowance\n----------------------------------------------------------------------\nRan 154 tests in 13.580s\n\nOK\n",
+  "source_unchanged": true,
+  "network": "none",
+  "source_files": 27,
+  "container_absent": true
+}

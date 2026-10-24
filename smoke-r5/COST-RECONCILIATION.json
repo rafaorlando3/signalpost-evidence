@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-24T00:28:54.436299+00:00",
+  "provider": "Tavily basic",
+  "run_search_request_attempts": 184,
+  "provider_credits_reported_in_search_responses": 184,
+  "api_account_counter": {
+    "current_plan": "Researcher",
+    "plan_usage": 0,
+    "plan_limit": 1000,
+    "paygo_usage": 0
+  },
+  "api_key_usage_counter": 0,
+  "UI_plan": "Researcher Free",
+  "UI_pay_as_you_go": "Off",
+  "UI_auto_upgrade": "Off",
+  "UI_limit_behavior": "Requests stop at the plan limit",
+  "UI_upcoming_invoice": false,
+  "paid_api_cost_usd": 0,
+  "cost_basis": "Confirmed existing free plan with PayGo and auto-upgrade disabled; not inferred from the request cap.",
+  "envelope_costs_remain_null": true,
+  "counter_reconciliation": "Account/key usage counters remain zero despite184 successful basic requests with184 credits reported; timing/accounting remains unresolved. Do not infer that no credits were consumed.",
+  "pilot_credit_ceiling": 300,
+  "remaining_pilot_reservation": 116,
+  "secrets_in_artifact": false,
+  "official_score": null
+}

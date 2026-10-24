@@ -41,3 +41,9 @@ Version 0.7 validation selects 100 additional organisation numbers before collec
 ## Delivery runtime (23 October 2026)
 
 The clean-venv validation used CPython 3.12.15 and no third-party runtime packages. The optional Docker recipe pins the official `python:3.12.15-slim` manifest `sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704`, verified from https://hub.docker.com/v2/repositories/library/python/tags/3.12.15-slim . No image pull or new service purchase was needed for the measured validation. The image recipe itself was not rebuilt in this validation.
+
+## R5 update — 23 October 2026 PY / 24 October UTC
+
+The original sections above retain historical experiment provenance. Current R5 starts from c2e81e14 and excludes R3/R4 strategies. SEARCH-COSTS.md compares additional primary-source tariffs and rights; quoted availability does not establish that another connector is permitted. Only the existing Tavily Researcher free plan was used in this pilot, with PayGo and auto-upgrade off. No provider account, subscription or paid key was activated. The evaluator supplies its own permitted key in the server-side environment; none is distributed.
+
+Current sample inputs, policy, timestamps, extracted claims, company reports, manual uncertainty notes and replay scope are under smoke-r5/. Raw source bodies and credentials remain private runtime artifacts. Operator assertions, group context, social origins and dated-item evidence are qualified separately; missing/ambiguous is not proof of real-world absence.

@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-24T00:05:27.343777+00:00",
+  "python_sha256": {
+    "agent.py": "98fbaab08f275412c223fde6f966e383ae69eabe354331d367180d5e2e851c13",
+    "audit.py": "1de7b6c23778f51fbb49ad03d80cfa7c5c58ad4a2c12538c3823bb04cc215455",
+    "cli.py": "0e24b2ba1ca9f04ead743ecaf6342d8fa4c493e7f2f2cf88c687060ccef5a8d6",
+    "contacts.py": "6e8d6a4c9de785f832ea8ebc891587c41ee57e15f214c862547521fa0801739c",
+    "evaluator.py": "5569a905b2d312ed8a70427e28c1751c16edace5546cc393c1efe4e0c12f86d7",
+    "frozen_registry.py": "222abbca1c9775a2a082a63bd210d7b8a3cfcb1efc3f44f8ffff27d9fa3f71f2",
+    "insights.py": "24e9a5c481cc12c4cf6a66595a85cdf29ed8ea3f0cd5857e17951852c7ea80ca",
+    "readable_report.py": "04773c82ef763780d05d34598c182538c617a03b01fbbec220f5a593d241e68a",
+    "registry_discovery.py": "173f179f5a141156f304d39bc4ab6ca3de9aa82a6ea252be67d0a8e60314f0df",
+    "report.py": "f449fa80b79e7548fed8b7f064e018acdced4d1341b07b172cef90db6be0e1a4",
+    "search.py": "d09be4a434ea4249420cc724e8955b37496027aeb770e2efcdbda270505cb969",
+    "site_discovery.py": "52ee50bc8d46bce31c561c8e515679c6815652ac4c4b86f1003f9e48b6ec8c1f",
+    "tests/test_adaptive_discovery.py": "9666c13e0f04a4fc744f16433b75bd3ae84779c3bb006fdf5ea2da4917270b33",
+    "tests/test_agent.py": "4d00e38e45957f2a963e68fe670b5fd9513996cae31b511ff731f02184d2af22",
+    "tests/test_cli.py": "4860996366de81d4daa8a72823bcfb135f2ef10ea7d27cc5c9007dd65d325b6a",
+    "tests/test_cli_r5.py": "4cea0cae813876a196f4bb5f5415723b7011ea193fb11bf255735475a57faa89",
+    "tests/test_contacts.py": "bf03eb7fd44c9e4eaabec8424773f77de5d454346911559bf3639794cf5a13c0",
+    "tests/test_discovery.py": "5bf0c451be304dfb36847ca2fa1d71a473af52f3a83e2ecaa1958dddb3c4ca02",
+    "tests/test_evaluator.py": "27ea42f634e26104e4cc84109bd6be2434cb854ed17f435605bbdeea8aa8985d",
+    "tests/test_frozen_registry.py": "694148f1de0ee96778d2c124d46d378b1a44b6c2e9170d57b0f8dee874b3db26",
+    "tests/test_insights.py": "eaa374a66f9e54a825b6ea2dd9216c724e9915cfef8aea8b904a75fe8dc0c418",
+    "tests/test_pipeline.py": "5e16817f6cbcc20670b8427819dff1d65fc7600fd8932d16714b0d1c93efe69f",
+    "tests/test_readable_report.py": "4b90aa0d34dd5324497ab5a5498a724f65352d43cce29a626eecc1690c89e005",
+    "tests/test_registry_discovery.py": "4e717deb76076d3f04135f67ea120ff026e578d630b42613b1092574037ecd6f",
+    "tests/test_search.py": "bc985ce79f42445cf7f1f2567a411aa33728c67d59bb1650284fb2e887714f07",
+    "tests/test_site_discovery.py": "0ec8f3840bce6262440230988dedda12e347c86a45d0a9cb1b2fb08d4b573c6a",
+    "validate.py": "2bf28dc232ff97efe3b2a78a23230262b49cbc73d877c825b05903184b327a55"
+  },
+  "candidate_live_not_started": true
+}

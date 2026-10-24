@@ -1,0 +1,17 @@
+{
+  "python": "3.12.15",
+  "venv": true,
+  "sitepackages": [
+    "/out/venv/lib/python3.12/site-packages"
+  ],
+  "ok": true,
+  "exit": 0,
+  "runtime_seconds": 17.847,
+  "network": "none",
+  "empty_virtual_environment": true,
+  "third_party_packages_installed": false,
+  "tested_code_commit": "24071565b899ed87fa9b0bfe6cc87f79fe5e6224",
+  "stderr_tail": "usage: agent.py [-h] --input INPUT --output OUTPUT [--cache CACHE]\n                [--previous PREVIOUS] [--replay | --fresh] [--workers WORKERS]\n                [--search {none,tavily,tavily-free}]\n                [--search-free-credit-limit SEARCH_FREE_CREDIT_LIMIT]\n                [--search-credit-limit SEARCH_CREDIT_LIMIT]\n                [--search-strategy {legacy,name_focus,adaptive}]\n                [--registry-snapshot REGISTRY_SNAPSHOT]\nagent.py: error: --search tavily-free requires --search-free-credit-limit with a root-confirmed allowance\n----------------------------------------------------------------------\nRan 154 tests in 13.811s\n\nOK\n",
+  "container_exit": 0,
+  "source_pins_unchanged": true
+}

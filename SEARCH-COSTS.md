@@ -54,3 +54,9 @@ R5 uses search responses only to discover URLs. It retains only candidate URLs, 
 - SerpAPI: https://serpapi.com/pricing
 - Google: https://developers.google.com/custom-search/v1/overview
 - Signalpost source policy: https://www.builderr.ai/starter-briefs/signalpost-sources.md
+
+## Measured pilot and scaling caveat
+
+The frozen 100-company pilot attempted 184 basic searches (1.84/company), with 184 credits reported in search responses. Researcher Free, PayGo Off and auto-upgrade Off established US$0 paid API cost. Account/key usage counters still displayed zero; the unresolved timing/accounting difference is retained in smoke-r5/COST-RECONCILIATION.json. This is not evidence of zero credit consumption.
+
+At the same observed density, 1,000 companies/day would mean 1,840 queries/day or 55,200/30 days; this is an extrapolation, not a measured production result. Nominal consumption: DataForSEO Normal US$1.104/day or US$33.12/30 days before operator surcharges and its US$50 minimum; Serper Starter US$1.84/day or US$55.20/30 days consumed, with a US$50/50k package and potentially a second US$50 package for 55.2k queries. DataForSEO chargeable operators can cost 5 times the base rate, and queued latency requires a different asynchronous adapter. Serper is the lowest quoted fast option in this comparison, not an activated integration. Monthly credits and one-time trials do not sustain this recurring workload. No payment is authorized.

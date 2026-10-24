@@ -1,0 +1,45 @@
+{
+  "claim_counts_include_duplicate_entries": true,
+  "claim_status_counts": {
+    "ambiguous": 90,
+    "available": 1511,
+    "blocked": 30,
+    "failed": 6,
+    "not_applicable": 0,
+    "not_available": 663
+  },
+  "duplicate_entries": 0,
+  "format": "legacy-evidence-envelope/0.7",
+  "guard": {
+    "collector_exit": 0,
+    "note": "Interrupted-company request counts are conservative upper bounds, not observed usage.",
+    "preserved_outputs": 100,
+    "runtime_seconds": 122.588,
+    "synthesized_failures": 0,
+    "timeout_seconds": 2400.0,
+    "wall_clock_timeout": false
+  },
+  "inputs": 100,
+  "mode": "live",
+  "note": "Run completion is not evidence availability or factual accuracy.",
+  "official_score": null,
+  "output": "/out/runs/result.jsonl",
+  "output_sha256": "8cc5095255b3635064c09709359c016ef37afce86d91ca9cd62f7d680c1141fd",
+  "outputs": 100,
+  "python_version": "3.12.15",
+  "rejected_collector_envelopes": 0,
+  "request_budget_per_unique_company": 20,
+  "request_budget_total": 2000,
+  "requests": 592,
+  "requests_include_upper_bounds": false,
+  "run_terminal_status_counts": {
+    "completed": 100
+  },
+  "schema": "signalpost-list-cli/2",
+  "search": "none",
+  "summary": "/out/runs/result.summary.json",
+  "third_party_cost_usd": 0,
+  "timeout_seconds": 2400.0,
+  "unique_valid_companies": 100,
+  "unsuccessful_entries": 0
+}
