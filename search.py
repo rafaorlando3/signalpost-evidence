@@ -108,6 +108,32 @@ class TavilySearch:
             return json.loads(raw)
         finally: conn.close()
 
+    def _reservation_reason(self, fetcher, remaining, pause, org):
+        if self.attempts >= self.limit or fetcher.requests >= fetcher.limit or remaining <= pause + .1:
+            return 'budget_exhausted'
+        return None
+
+    def _reserved(self, org):
+        pass
+
+    def _reserve(self, fetcher, record, org):
+        # One lock covers run-wide reservations and start spacing. Reservations
+        # are never refunded after a failed/uncertain provider request.
+        with self.lock:
+            remaining = fetcher.end - time.monotonic()
+            pause = max(0, self.last + 1.05 - time.monotonic())
+            reason = self._reservation_reason(fetcher, remaining, pause, org)
+            if reason:
+                record['state'] = reason
+                return False
+            if pause:
+                time.sleep(pause)
+            self.last = time.monotonic()
+            self.attempts += 1
+            self._reserved(org)
+            fetcher.requests += 1
+            return True
+
     def discover(self, org, name, fetcher, mode=None):
         mode=mode or self.strategy
         payload=self.payload(name,org,mode)
@@ -126,14 +152,8 @@ class TavilySearch:
             record['state'] = 'missing_replay_fixture'; return []
         if not self.key:
             record['state'] = 'key_not_configured'; return []
-        # Serialize reservations and starts, enforcing the run-wide credit/request cap.
-        with self.lock:
-            remaining = fetcher.end - time.monotonic()
-            pause = max(0, self.last + 1.05 - time.monotonic())
-            if self.attempts >= self.limit or fetcher.requests >= fetcher.limit or remaining <= pause + .1:
-                record['state'] = 'budget_exhausted'; return []
-            if pause: time.sleep(pause)
-            self.last = time.monotonic(); self.attempts += 1; fetcher.requests += 1
+        if not self._reserve(fetcher, record, org):
+            return []
         record.update(request_attempts=1, credits_reported=None, paid_cost_usd=None)
         try:
             response = self.transport(payload, max(.1, min(8, fetcher.end - time.monotonic())))
@@ -173,3 +193,93 @@ class TavilySearch:
                 if key in seen and not hints.get(url):continue
                 seen.add(key)
                 yield url,len(urls)-index-1+(mode!=modes[-1]),hints.get(url,[])
+
+
+class FreeTavilySearch(TavilySearch):
+    """Basic discovery within a root-confirmed free-credit allowance.
+
+    A credit limit does not verify an account plan, current balance or PayGo
+    setting. The caller must confirm those before enabling this live adapter.
+    Search output still nominates URLs only; it never proves company facts.
+    """
+    def __init__(self, directory, limit=100, key=None, transport=None,
+                 strategy='legacy', *, free_credit_limit):
+        if type(free_credit_limit) is not int or not 0 <= free_credit_limit <= 1000:
+            raise ValueError('confirmed free credit limit must be an integer in 0..1000')
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ValueError('search credit cap must be an integer in 1..1000')
+        self.free_credit_limit = min(limit, free_credit_limit)
+        self.free_halted = None
+        self.free_credits_reported = 0
+        self.company_attempts = {}
+        self.free_dispatch_lock = threading.Lock()
+        super().__init__(directory, max(1, self.free_credit_limit), key, transport, strategy)
+        # Separate discovery cache from legacy/possibly paid provider runs.
+        self.directory = Path(directory) / 'search-free'
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self._provider_transport = self.transport
+        self.transport = self._guarded_transport
+
+    def _reservation_reason(self, fetcher, remaining, pause, org):
+        if self.free_halted:
+            return self.free_halted
+        if self.attempts >= self.free_credit_limit:
+            return 'free_credit_budget_exhausted'
+        if self.company_attempts.get(org, 0) >= 3:
+            return 'company_search_budget_exhausted'
+        return super()._reservation_reason(fetcher, remaining, pause, org)
+
+    def _reserved(self, org):
+        self.company_attempts[org] = self.company_attempts.get(org, 0) + 1
+
+    def _guarded_transport(self, payload, timeout):
+        # Basic costs one credit under the confirmed provider contract. No
+        # automatic parameter expansion or advanced fallback is permitted.
+        if payload.get('search_depth') != 'basic' or payload.get('auto_parameters') is not False:
+            with self.lock:
+                self.free_halted = 'free_payload_not_permitted'
+            raise ValueError('free search requires fixed basic parameters')
+        try:
+            response = self._provider_transport(payload, timeout)
+        except BaseException:
+            with self.lock:
+                self.free_halted = 'free_usage_unknown'
+            raise
+        usage = response.get('usage') if isinstance(response, dict) else None
+        credits = usage.get('credits') if isinstance(usage, dict) else None
+        with self.lock:
+            # bool is an int subclass: accepting True as one credit is unsafe.
+            if type(credits) is not int or credits != 1:
+                self.free_halted = 'free_usage_unknown'
+            else:
+                self.free_credits_reported += credits
+        return response
+
+    def discover(self, org, name, fetcher, mode=None):
+        # A second worker must not reserve/start before the previous request's
+        # usage has been checked. Website collection remains concurrent.
+        with self.free_dispatch_lock:
+            return self._discover_serialized(org, name, fetcher, mode)
+
+    def _discover_serialized(self, org, name, fetcher, mode=None):
+        urls = super().discover(org, name, fetcher, mode)
+        with self.lock:
+            guard = {
+                'confirmed_free_credit_limit': self.free_credit_limit,
+                'request_reservations': self.attempts,
+                'company_request_reservations': self.company_attempts.get(org, 0),
+                'company_request_limit': 3,
+                'credits_reported': self.free_credits_reported,
+                'halted': self.free_halted,
+                'account_verification': 'caller_required',
+                'no_paid_fallback': True,
+            }
+        fetcher.discovery['free_guard'] = guard
+        # A request cap or provider usage alone does not establish actual USD
+        # billing; account-level confirmation remains an external receipt.
+        if fetcher.discovery.get('request_attempts'):
+            reported = fetcher.discovery.get('credits_reported')
+            if type(reported) is not int or reported != 1:
+                fetcher.discovery['credits_reported'] = None
+            fetcher.discovery['paid_cost_usd'] = None
+        return urls

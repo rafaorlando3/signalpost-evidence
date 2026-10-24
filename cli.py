@@ -15,6 +15,7 @@ import tempfile
 from agent import STATES, valid_org
 from evaluator import collect
 from validate import validate
+from readable_report import write_reports
 
 SCHEMA = 'signalpost-list-cli/2'
 FORMAT = 'legacy-evidence-envelope/0.7'
@@ -101,9 +102,13 @@ def execute(items, args, folder, previous):
     command = [
         sys.executable, '-B', str(Path(__file__).with_name('agent.py')),
         '--input', str(source), '--output', str(staged), '--cache', str(args.cache),
-        '--workers', str(args.workers), '--search', 'none',
+        '--workers', str(args.workers), '--search', args.search,
         '--replay' if args.replay else '--fresh',
     ]
+    if args.search == 'tavily-free':
+        command.extend(['--search-credit-limit', str(args.search_credit_limit),
+                        '--search-free-credit-limit', str(args.search_free_credit_limit),
+                        '--search-strategy', args.search_strategy])
     if args.previous is not None:
         # Normalize accepted blank lines once: agent.py expects every line to be JSON.
         prior_path = folder / 'previous.jsonl'
@@ -113,7 +118,7 @@ def execute(items, args, folder, previous):
     if args.registry_snapshot is not None:
         command.extend(['--registry-snapshot', str(args.registry_snapshot)])
     return collect(command, staged, rows, args.timeout_seconds,
-                   folder / 'collector.log', previous, paid_search=False)
+                   folder / 'collector.log', previous, paid_search=args.search != 'none')
 
 
 def counts(row):
@@ -133,11 +138,22 @@ def run(args):
         raise ValueError('timeout must be finite, positive and <=2600 seconds')
     if not 1 <= args.workers <= 8:
         raise ValueError('workers must be between 1 and 8')
+    if (type(args.search_credit_limit) is not int or not 1 <= args.search_credit_limit <= 1000
+            or type(args.search_free_credit_limit) is not int or not 0 <= args.search_free_credit_limit <= 1000):
+        raise ValueError('search limits must be integers within 1..1000 and 0..1000')
+    if args.search == 'tavily-free' and not args.replay:
+        if not os.environ.get('TAVILY_API_KEY'):
+            raise ValueError('TAVILY_API_KEY environment variable is required; no paid fallback')
+        if not args.search_free_credit_limit or args.search_credit_limit > args.search_free_credit_limit:
+            raise ValueError('confirm available free credits and cap this run within that balance')
     items, origin = input_items(args)
     previous = previous_rows(args.previous)
     args.output = args.output.absolute()
     args.cache = args.cache.absolute()
     summary_path = (args.summary or args.output.with_suffix('.summary.json')).absolute()
+    review_path = (args.report_dir or args.output.with_suffix('.review')).absolute()
+    if review_path.exists() or review_path.is_symlink():
+        raise FileExistsError('review directory already exists; choose a new output or --report-dir')
     if args.output == summary_path:
         raise ValueError('output and summary paths must differ')
     for path in (args.output, summary_path):
@@ -153,6 +169,9 @@ def run(args):
     mode = 'replay' if args.replay else 'live'
     unique = list(dict.fromkeys(item['org'] for item in items if item['valid']))
     cancelled = False
+    print(json.dumps({'stage': 'collecting', 'companies': len(unique), 'input_entries': len(items),
+                      'search': args.search, 'search_request_cap': args.search_credit_limit if args.search != 'none' else 0,
+                      'free_credit_cap': args.search_free_credit_limit, 'paid_fallback': False}), file=sys.stderr)
     # Reserve both new artifacts before any collection. Failed publishers never
     # overwrite a pre-existing output or summary.
     with exclusive_file(args.output) as target:
@@ -189,6 +208,10 @@ def run(args):
                     row = failed(org, 'collector envelope shape, budget or input order invalid',
                                  previous.get(org), True)
                     rejected += 1
+                if args.search != 'none' and row['run']['terminal_status'] == 'failed':
+                    row['operations']['third_party_cost_usd'] = None
+                    row['discovery'] = {'state': 'unknown_after_collector_failure',
+                                        'request_attempts': None, 'credits_reported': None}
                 accepted[org] = row
             final = []
             for item in items:
@@ -200,7 +223,7 @@ def run(args):
                            'completed_with_available_claims' if state_counts['available'] else
                            'completed_without_available_claims')
                 row['_cli'] = {
-                    'schema': SCHEMA, 'format': FORMAT, 'mode': mode, 'search': 'none',
+                    'schema': SCHEMA, 'format': FORMAT, 'mode': mode, 'search': args.search,
                     'input_index': item['index'],
                     'source_line': item['index'] if origin == 'file' else None,
                     'input_source': origin, 'raw_input': item['raw'],
@@ -220,8 +243,16 @@ def run(args):
             unsuccessful = sum(row['_cli']['outcome'] != 'completed_with_available_claims'
                                for row in final)
             operations = [row['operations'] for row in accepted.values()]
+            search_unknown = args.search != 'none' and any(
+                (row.get('discovery') or {}).get('request_attempts', 0) is None
+                for row in accepted.values())
+            search_attempts = (None if search_unknown else sum(
+                (row.get('discovery') or {}).get('request_attempts', 0)
+                for row in accepted.values()))
+            search_bound = (min(args.search_credit_limit, args.search_free_credit_limit,
+                                3 * len(unique)) if search_unknown else search_attempts)
             summary = {
-                'schema': SCHEMA, 'format': FORMAT, 'mode': mode, 'search': 'none',
+                'schema': SCHEMA, 'format': FORMAT, 'mode': mode, 'search': args.search,
                 'inputs': len(items), 'outputs': len(final),
                 'unique_valid_companies': len(unique),
                 'duplicate_entries': sum(item['duplicate'] is not None for item in items),
@@ -235,7 +266,14 @@ def run(args):
                                                       for op in operations),
                 'request_budget_per_unique_company': 20,
                 'request_budget_total': 20 * len(unique),
-                'third_party_cost_usd': 0, 'timeout_seconds': args.timeout_seconds,
+                'third_party_cost_usd': (None if any(op.get('third_party_cost_usd') is None for op in operations)
+                                         else sum(op.get('third_party_cost_usd', 0) for op in operations)),
+                'search_request_attempts': search_attempts,
+                'search_attempts_complete': not search_unknown,
+                'search_basic_credit_upper_bound': search_bound,
+                'search_request_cap': args.search_credit_limit if args.search != 'none' else 0,
+                'configured_free_credit_cap': args.search_free_credit_limit,
+                'paid_fallback': False, 'timeout_seconds': args.timeout_seconds,
                 'python_version': sys.version.split()[0],
                 'guard': guard, 'rejected_collector_envelopes': rejected,
                 'output': str(args.output), 'summary': str(summary_path),
@@ -243,6 +281,11 @@ def run(args):
                 'official_score': None,
                 'note': 'Run completion is not evidence availability or factual accuracy.',
             }
+            try:
+                summary['review'] = write_reports(final, review_path)
+            except (OSError, ValueError, TypeError, KeyError) as error:
+                summary['review'] = {'state': 'failed', 'error_type': type(error).__name__}
+                summary['note'] += ' Readable report incomplete; JSONL evidence remains retained.'
             summary_target.write(json.dumps(summary, sort_keys=True, indent=2) + '\n')
             summary_target.flush()
             os.fsync(summary_target.fileno())
@@ -253,7 +296,7 @@ def run(args):
                            or guard.get('synthesized_failures')
                            or guard.get('output_count_mismatch')
                            or guard.get('collector_exit') != 0)
-    return 2 if unsuccessful or rejected or bad_guard else 0
+    return 2 if unsuccessful or rejected or bad_guard or summary['review'].get('state') != 'completed' else 0
 
 
 def main(argv=None):
@@ -271,7 +314,12 @@ def main(argv=None):
     mode.add_argument('--fresh', action='store_true', help='explicit LIVE mode (the default)')
     parser.add_argument('--previous', type=Path, help='previous v0.7 JSONL envelopes for refresh')
     parser.add_argument('--registry-snapshot', type=Path, help='local frozen-registry interchange JSONL')
-    parser.add_argument('--search', choices=['none'], default='none', help='free public sources only')
+    parser.add_argument('--search', choices=['none', 'tavily-free'], default='none',
+                        help='none, or quota-bounded Tavily basic search with paid fallback forbidden')
+    parser.add_argument('--search-credit-limit', type=int, default=100, help='maximum basic search attempts per run')
+    parser.add_argument('--search-free-credit-limit', type=int, default=0, help='confirmed remaining free credits, never a spending authorization')
+    parser.add_argument('--search-strategy', choices=['legacy', 'name_focus', 'adaptive'], default='adaptive')
+    parser.add_argument('--report-dir', type=Path, help='new readable review directory (default: OUTPUT.review)')
     args = parser.parse_args(argv)
     try:
         return run(args)

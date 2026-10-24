@@ -181,6 +181,7 @@ class Page(HTMLParser):
         self.url=url; self.parts=[]; self.links=[]; self.ld=[]; self.skip=0; self.script=None
         self.title=''; self.in_title=False; self.description=''; self.anchor=None;self.meta={}
         self.headings=[];self.heading=None;self.times=[];self.feeds=[];self.link_context=[]
+        self.content_headings=[];self.content_times=[];self.heading_is_content=False
         self.feed(text)
 
     def handle_starttag(self, tag, attrs):
@@ -195,11 +196,15 @@ class Page(HTMLParser):
             self.skip += 1
             if tag=='script' and a.get('type')=='application/ld+json': self.script=[]
         if tag=='title': self.in_title=True
-        if tag=='h1':self.heading=''
+        if tag=='h1':
+            self.heading=''
+            self.heading_is_content=not any(t in {'nav','header','footer','aside'} for t,_ in self.link_context)
         if tag=='time' and a.get('datetime'):
             semantic=((a.get('itemprop') or '')+' '+(a.get('class') or '')).casefold()
             if re.search(r'\b(datepublished|published|entry-date)\b',semantic) and not re.search(r'updated|modified',semantic):
                 self.times.append(a['datetime'])
+                if not any(t in {'nav','header','footer','aside'} for t,_ in self.link_context):
+                    self.content_times.append(a['datetime'])
         if tag=='link' and 'alternate' in (a.get('rel') or '').split() and a.get('type') in ('application/rss+xml','application/atom+xml') and a.get('href'):
             self.feeds.append(urljoin(self.url,a['href']))
         if tag=='meta' and (a.get('name') or '').lower()=='description': self.description=a.get('content') or ''
@@ -220,8 +225,16 @@ class Page(HTMLParser):
             self.skip=max(0,self.skip-1)
         if tag=='title': self.in_title=False
         if tag=='h1' and self.heading is not None:
-            self.headings.append(re.sub(r'\s+',' ',self.heading).strip());self.heading=None
+            heading=re.sub(r'\s+',' ',self.heading).strip()
+            self.headings.append(heading)
+            if self.heading_is_content:self.content_headings.append(heading)
+            self.heading=None
         if tag=='a' and self.anchor:
+            # Visible share actions can link directly to profile URLs. Ordinary
+            # footer/follow links remain declarations, not proof of ownership.
+            if re.search(r'^(?:share(?:\s|$)|del(?:\s+p[åa]\s)|dela(?:\s|$)|teilen(?:\s|$))',
+                         self.anchor['text'].strip(), re.I):
+                self.anchor['third_party_context']=True
             self.links.append(self.anchor); self.anchor=None
 
     def handle_data(self, value):
@@ -252,7 +265,128 @@ def typed_json(response, expected, required=None):
         return {**response,'status':'failed','error':'unexpected source schema','json':None}
     return response
 
-def website_identity(org, page):
+
+def site_operator_identity(org, page, data=None, site_url=None):
+    """Resolve local JSON-LD WebSite publisher/operator assertions only.
+
+    Article publishers, sponsors and parent/subOrganization links do not declare
+    the site's operator. A different legal name without an ID is unresolved,
+    not proof that two legally distinct companies exist.
+    """
+    data=data or {};site_url=site_url or page.url
+    records=[];by_id={}
+    def walk(value, script, pointer):
+        if isinstance(value,dict):
+            records.append((value,script,pointer))
+            identifier=value.get('@id')
+            if isinstance(identifier,str):
+                key=urljoin(page.url,identifier)
+                by_id.setdefault(key,[]).append((value,script,pointer))
+            for key,item in value.items():
+                escaped=str(key).replace('~','~0').replace('/','~1')
+                walk(item,script,pointer+'/'+escaped)
+        elif isinstance(value,list):
+            for index,item in enumerate(value):walk(item,script,pointer+'/'+str(index))
+    for index,value in enumerate(page.ld):walk(value,index,'')
+    def current_site(value):
+        if not isinstance(value,str) or not value.strip():return False
+        try:
+            p=urlsplit(urljoin(page.url,value));q=urlsplit(site_url)
+            if (p.scheme not in {'http','https'} or p.username or p.password
+                    or p.port not in (None,80,443)
+                    or (p.hostname or '').casefold().removeprefix('www.') !=
+                       (q.hostname or '').casefold().removeprefix('www.')):
+                return False
+            prefix=p.path.rstrip('/')
+            return not prefix or q.path.rstrip('/')==prefix or q.path.startswith(prefix+'/')
+        except ValueError:return False
+    def resolve(value, script, pointer):
+        if isinstance(value,str):
+            return by_id.get(urljoin(page.url,value),[])
+        if not isinstance(value,dict):return []
+        reference=value.get('@id')
+        resolved=by_id.get(urljoin(page.url,reference),[]) if isinstance(reference,str) else []
+        if resolved:
+            # Inspect all local definitions; never pick an arbitrary winner
+            # when the same @id has conflicting corporate identifiers.
+            return [*resolved,(value,script,pointer)]
+        return [(value,script,pointer)]
+    def number(value):
+        if type(value) is int:value=str(value)
+        if not isinstance(value,str):return None
+        match=re.fullmatch(r'(?:NO\s*)?([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})(?:\s*MVA)?',
+                           value.strip(),re.I)
+        result=re.sub(r'\D','',match.group(1)) if match else None
+        return result if result and valid_org(result) else None
+    def operator_numbers(operator):
+        numbers=set()
+        for field in ('taxID','vatID'):
+            found=number(operator.get(field))
+            if found:numbers.add(found)
+        identifiers=operator.get('identifier',[])
+        if not isinstance(identifiers,list):identifiers=[identifiers]
+        allowed={'organisasjonsnummer','organisasjonsnr','orgnr','noorgnr',
+                 'organizationnumber','organisationnumber',
+                 'norwegianorganizationnumber','norwegianorganisationnumber'}
+        for identifier in identifiers:
+            if not isinstance(identifier,dict):continue
+            label=re.sub(r'[^a-z0-9]','',str(identifier.get('propertyID','')).casefold())
+            if label in allowed:
+                found=number(identifier.get('value'))
+                if found:numbers.add(found)
+        return sorted(numbers)
+    proofs=[];states=[]
+    expected=normalized(data.get('navn',''))
+    for website,script,pointer in records:
+        if 'WebSite' not in schema_types(website):continue
+        # An explicit URL governs the WebSite binding, even when malformed
+        # or foreign. A local fragment must never override that declaration.
+        location=website['url'] if 'url' in website else website.get('@id')
+        declared=location if current_site(location) else None
+        if declared is None:continue
+        for relationship in ('publisher','operator'):
+            operators=website.get(relationship,[])
+            if not isinstance(operators,list):operators=[operators]
+            for index,value in enumerate(operators):
+                reference=pointer+'/'+relationship+('/'+str(index) if isinstance(website.get(relationship),list) else '')
+                for operator,operator_script,operator_pointer in resolve(value,script,reference):
+                    numbers=operator_numbers(operator)
+                    legal_name=operator.get('legalName')
+                    legal_name=legal_name if isinstance(legal_name,str) else None
+                    if numbers and valid_org(org):
+                        state='target' if set(numbers)=={org} else 'different'
+                    elif legal_name and expected and normalized(legal_name)!=expected:
+                        state='unresolved'
+                    else:
+                        # Matching names alone are not new identity proof. Unknown
+                        # operator metadata does not veto the baseline checks.
+                        continue
+                    proof={'relationship':relationship,'website_url':urljoin(page.url,declared),
+                        'website_script_index':script,'website_json_pointer':pointer,
+                        'operator_script_index':operator_script,'operator_json_pointer':operator_pointer,
+                        'organisation_numbers':numbers,'legal_name':legal_name,
+                        'source_url':page.url}
+                    if proof not in proofs:
+                        if len(proofs)>=20:
+                            return {'state':'unresolved','reason':'operator assertion limit exceeded; own-entity attribution unresolved',
+                                    'operators':proofs}
+                        proofs.append(proof)
+                    states.append(state)
+    if 'different' in states:
+        return {'state':'different','reason':'current WebSite declares an operator organisation number different from the requested entity',
+                'operators':proofs}
+    if 'unresolved' in states:
+        return {'state':'unresolved','reason':'current WebSite declares a different legal name without an organisation number; own-entity operator is unresolved',
+                'operators':proofs}
+    if 'target' in states:
+        return {'state':'target','reason':'current WebSite explicitly declares the requested organisation as operator',
+                'operators':proofs}
+    return {'state':'absent','reason':'no conflicting or exact operator assertion for this WebSite','operators':[]}
+
+def website_identity(org, page, data=None, *, site_url=None):
+    operator=site_operator_identity(org,page,data,site_url)
+    if operator['state']=='target':return 'exact'
+    if operator['state'] in ('different','unresolved'):return 'ambiguous'
     numbers=set(re.sub(r'\s','',v) for v in re.findall(
         r'\b(?:organisasjons(?:nummer|nr\.?)|org\.?\s*(?:nr\.?|no\.?|nummer)|org\.?(?=\s*[:\-])|organisation\s+number|organization\s+number)[\s:\-–—]*(?:NO\s*)?([0-9]{3}[ \t]?[0-9]{3}[ \t]?[0-9]{3})(?![0-9])', page.text, re.I))
     numbers.update(re.sub(r'\s','',v) for v in re.findall(r'\bNO\s*([0-9]{3}\s?[0-9]{3}\s?[0-9]{3})\s*MVA\b',page.text,re.I))
@@ -303,8 +437,20 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
     """Explore distinct purposes and linked detail pages within the existing request cap."""
     home=Page(response.get('text',''),response['url']); host=urlsplit(response['url']).hostname
     pages=[];verified=[];seen={urlunsplit((*urlsplit(response['url'])[:4],''))};queue={};counts=collections.Counter();discovered=False
+    operator_blocked=False;known_operator=None
     def ingest(page,rsp):
-        identity=website_identity(org,page)
+        nonlocal operator_blocked,known_operator
+        operator=site_operator_identity(org,page,data,response['url'])
+        if operator['state'] in ('different','unresolved'):
+            operator_blocked=True
+            pages.append((page,{**rsp,'site_operator':operator},'operator_ambiguous'))
+            return False
+        if operator['state']=='target':
+            known_operator=operator
+            rsp={**rsp,'site_operator':operator}
+        # A declared target operator is role-specific proof. IDs of article
+        # subjects or sponsors must not be a global census veto on this site.
+        identity=('exact' if known_operator else website_identity(org,page,data,site_url=response['url']))
         if identity=='conflict': return False
         pages.append((page,rsp,identity))
         if identity=='exact' or corroborated_site(data,page,registry_redirect_host): verified.append((page,rsp))
@@ -316,7 +462,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             if family and urlsplit(url).scheme in ('https','http') and urlsplit(url).hostname==host and url not in seen:
                 queue[url]=family
         return True
-    if not ingest(home,response): return [],[]
+    if not ingest(home,response): return [],pages
     for url in seed_urls:
         p=urlsplit(url)
         if p.hostname==host and p.scheme in ('https','http') and not p.username and not p.password and link_family(url)=='identity' and url not in seen:
@@ -351,7 +497,78 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         child=fetcher.get(url,site=True,raw=True)
         if child['status']!='available' or urlsplit(child['url']).hostname!=host: continue
         ingest(Page(child.get('text',''),child['url']),child)
-    return verified,pages
+        if operator_blocked:break
+    return ([] if operator_blocked else verified),pages
+
+
+def group_description(text):
+    """Explicit collective wording cannot establish an own-entity description."""
+    return bool(re.search(
+        r"\b(?:the|our|entire|whole)\s+group\b|"
+        r"\bwe\s+(?:are|operate)\s+(?:a|an)\s+group\b|"
+        r"\b(?:group|gruppen)\s+(?:consists|comprises|includes|employs)\b|"
+        r"\b(?:konsernet|konsernets|hele\s+gruppen|vårt\s+konsern)\b",
+        text, re.I))
+
+
+def activity_candidates(page, response):
+    """Return article candidates tied to this page, plus bounded limitations.
+
+    Menu/product/collection metadata and modified-only timestamps cannot be
+    promoted to published news. One uncertain item never removes valid siblings.
+    """
+    candidates=[];limitations=[]
+    def limit(reason):
+        if reason not in limitations:limitations.append(reason)
+    def same_page(value):
+        if isinstance(value,dict):value=value.get('@id') or value.get('url')
+        if value is None:return True
+        if not isinstance(value,str):return False
+        try:
+            p=urlsplit(urljoin(response['url'],value))
+            q=urlsplit(response['url'])
+            return (p.scheme,p.netloc,p.path.rstrip('/'),p.query)==(q.scheme,q.netloc,q.path.rstrip('/'),q.query)
+        except ValueError:return False
+    product_or_index=False
+    for root in page.ld:
+        roots=list(root) if isinstance(root,list) else [root]
+        if isinstance(root,dict) and isinstance(root.get('@graph'),list):
+            roots.extend(root['@graph'])
+        for obj in roots:
+            if not isinstance(obj,dict):continue
+            if schema_types(obj) & {'Product','Offer','Service','ItemList','CollectionPage','SearchResultsPage'}:
+                product_or_index=True
+            main=obj.get('mainEntity')
+            if isinstance(main,dict) and schema_types(main) & {'Product','Offer','Service','ItemList'}:
+                product_or_index=True
+    for obj in objects(page.ld):
+        types=schema_types(obj)
+        if not types & {'NewsArticle','Article','BlogPosting'}:continue
+        if not same_page(obj.get('url')) or not same_page(obj.get('mainEntityOfPage')):
+            limit('article describes another URL; fetch its own page before attribution')
+            continue
+        if not (types & {'NewsArticle','BlogPosting'}) and not article_detail(response['url']):
+            limit('generic Article outside a dated-activity detail path')
+            continue
+        if product_or_index and not obj.get('url') and not obj.get('mainEntityOfPage'):
+            limit('article nested in product or collection lacks its own page attribution')
+            continue
+        candidates.append(obj)
+    detail=article_detail(response['url'])
+    headings=page.content_headings
+    if detail and product_or_index:
+        limit('product or collection page metadata is not publication evidence')
+    elif detail and len(headings)==1:
+        if page.meta.get('article:published_time'):
+            candidates.append({'@type':'NewsArticle',
+                'headline':page.meta.get('og:title') or headings[0],
+                'datePublished':page.meta['article:published_time']})
+        if len(set(page.content_times))==1:
+            candidates.append({'@type':'NewsArticle','headline':headings[0],
+                               'datePublished':page.content_times[0]})
+    elif detail and (page.meta.get('article:published_time') or page.times):
+        limit('publication metadata lacks a single content heading; menu/header/footer is insufficient')
+    return candidates,limitations
 
 def corroborated_site(data, page, registry_redirect_host=None):
     """Only registry-declared domains: name AND exact postal address corroboration.
@@ -359,7 +576,9 @@ def corroborated_site(data, page, registry_redirect_host=None):
     Email domains, group sites and name alone cannot satisfy this alternative.
     Explicit conflicting organisation numbers always take precedence.
     """
-    if website_identity(str(data.get('organisasjonsnummer','')),page)=='conflict':return False
+    org=str(data.get('organisasjonsnummer',''))
+    if site_operator_identity(org,page,data)['state'] in ('different','unresolved'):return False
+    if website_identity(org,page,data)=='conflict':return False
     registered=data.get('hjemmeside') or ''
     if not registered: return False
     registered=registered if '://' in registered else 'https://'+registered
@@ -503,7 +722,7 @@ def research(row, fetcher, previous=None, search=None):
     from registry_discovery import registry_candidates,host_key
     leads=registry_candidates(org,data,pick(locations.get('json') or {},'_embedded','underenheter') or [])
     webstate={'url':'','status':'not_available','retrieved_at':now()}
-    attempts=[]
+    attempts=[];operator_limits=[]
     def candidates():
         for index,lead in enumerate(leads):yield lead['url'],lead['origin'],len(leads)-index-1+(bool(search)),[]
         if search and data.get('navn'):
@@ -526,26 +745,41 @@ def research(row, fetcher, previous=None, search=None):
                                             reserve_requests=6 if remaining_leads else 0,seed_urls=hints)
             attempt.update(identity='verified' if verified else 'not_established',pages_inspected=len(inspected),
                            requests=fetcher.requests-started_requests)
+            blockers=[(rsp,rsp['site_operator']) for pg,rsp,identity in inspected
+                      if rsp.get('site_operator',{}).get('state') in ('different','unresolved')]
+            if blockers:
+                operator_limits.extend(blockers)
+                attempt['operator_limitations']=[operator for rsp,operator in blockers]
             if verified:
                 verified=[(pg,{**rsp,'identity_verified':True}) for pg,rsp in verified]
                 anchor,anchor_response=verified[0]
                 # Same-host pages can inherit the established site identity, except conflicts.
                 content_pages=[(pg,{**rsp,'identity_verified':True}) for pg,rsp,identity in inspected
                     if identity!='conflict' and urlsplit(rsp['url']).hostname==urlsplit(anchor_response['url']).hostname]
-                method='explicit_org_number' if website_identity(org,anchor)=='exact' else 'registry_domain_name_and_postal_address'
+                method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
+                        'explicit_org_number' if website_identity(org,anchor,data)=='exact' else 'registry_domain_name_and_postal_address')
                 add('website.verified_url',response['url'],anchor_response,pointer=method,
                     excerpt=identity_excerpt(org,anchor) if method=='explicit_org_number' else anchor.text[:1500])
-                if method!='explicit_org_number':
+                if method=='registry_domain_name_and_postal_address':
                     extra=claim('identity_anchor',org,entity,evidence)
                     claims[-1]['evidence_ids']+=extra['evidence_ids']
                     claims[-1]['identity_support']=corroboration_evidence(data,anchor,response)
+                    claims[-1]['evidence_excerpt']=None
+                elif method=='explicit_site_operator':
+                    claims[-1]['identity_support']=anchor_response['site_operator']
                     claims[-1]['evidence_excerpt']=None
                 # Identity may be proved on a privacy/contact page. Describe the
                 # homepage instead of publishing that legal page's boilerplate.
                 description_page,description_response=content_pages[0]
                 description=description_page.description or description_page.text[:500]
+                collective=group_description(description)
                 add('website.description',description or None,description_response,
+                    state='ambiguous' if collective else None,
                     pointer='meta[name=description]' if description_page.description else 'visible homepage text excerpt',excerpt=description)
+                if collective:
+                    claims[-1]['qualifiers']={'subject_scope':'group',
+                        'own_entity_description':'not_established',
+                        'reason':'explicit collective wording; legal site identity does not attribute group statements to this entity'}
                 social_by_url={};social_sources=[]
                 for pg,rsp in content_pages:
                     for link in pg.links:
@@ -554,6 +788,8 @@ def research(row, fetcher, previous=None, search=None):
                             social_by_url[social_url]={'url':social_url,'text':link['text'].strip()};social_sources.append(rsp)
                 social=list(social_by_url.values())
                 add('website.social_links',social or None,anchor_response,pointer='a[href]; sharing and identified third-party contexts excluded; destination ownership not separately checked')
+                claims[-1]['qualifiers']={'relationship':'links_declared_on_identity_checked_pages',
+                    'profile_ownership':'not_independently_verified'}
                 for rsp in social_sources:
                     extra=claim('supporting',None,rsp,evidence)
                     claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
@@ -570,25 +806,37 @@ def research(row, fetcher, previous=None, search=None):
                     extra=claim('supporting',None,rsp,evidence)
                     claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 for field,types in [('hiring',{'JobPosting'}),('activity',{'NewsArticle','Article','BlogPosting'})]:
-                    items=[]; evidence_responses=[]
+                    items=[]; evidence_responses=[];limitations=[]
+                    def limitation(response,reason):
+                        item={'source_url':response['url'],'reason':reason}
+                        if item not in limitations and len(limitations)<20:limitations.append(item)
+                        # Unknown/partial attribution also needs the retained
+                        # source that caused it, not only the site's anchor.
+                        if not any(r['url']==response['url'] and r.get('content_sha256')==response.get('content_sha256')
+                                   for r in evidence_responses):
+                            evidence_responses.append(response)
                     for pg,rsp in content_pages:
-                        candidates=list(objects(pg.ld))
-                        if field=='activity' and article_detail(rsp['url']) and pg.meta.get('article:published_time'):
-                            candidates.append({'@type':'NewsArticle','headline':pg.meta.get('og:title') or pg.title,'datePublished':pg.meta['article:published_time']})
-                        if (field=='activity' and article_detail(rsp['url']) and len(pg.headings)==1
-                                and len(set(pg.times))==1):
-                            candidates.append({'@type':'NewsArticle','headline':pg.headings[0],
-                                'datePublished':pg.times[0]})
+                        if field=='activity':
+                            candidates,reasons=activity_candidates(pg,rsp)
+                            for reason in reasons:limitation(rsp,reason)
+                        else:
+                            candidates=list(objects(pg.ld))
                         for obj in candidates:
                             if schema_types(obj) & types:
                                 if field=='activity' and not (schema_types(obj)&{'NewsArticle','BlogPosting'}) and not article_detail(rsp['url']):
                                     continue
                                 title=obj.get('title') or obj.get('headline')
                                 date=obj.get('datePosted') or obj.get('datePublished')
-                                if not isinstance(title,str) or not isinstance(date,str): continue
+                                if not isinstance(title,str) or not isinstance(date,str):
+                                    limitation(rsp,'candidate lacks a literal title and publication date')
+                                    continue
                                 try:
-                                    if dt.date.fromisoformat(date[:10])>dt.date.fromisoformat(rsp['retrieved_at'][:10]): continue
-                                except ValueError: continue
+                                    if dt.date.fromisoformat(date[:10])>dt.date.fromisoformat(rsp['retrieved_at'][:10]):
+                                        limitation(rsp,'candidate publication date is in the future')
+                                        continue
+                                except ValueError:
+                                    limitation(rsp,'candidate publication date is not a valid ISO date')
+                                    continue
                                 if field=='hiring':
                                     expiry=obj.get('validThrough')
                                     if isinstance(expiry,str):
@@ -597,12 +845,17 @@ def research(row, fetcher, previous=None, search=None):
                                         except ValueError: continue
                                     employer=pick(obj,'hiringOrganization','name')
                                     legal=re.sub(r' (as|asa|sti)$','',normalized(data.get('navn','')))
-                                    if employer and re.sub(r' (as|asa|sti)$','',normalized(employer))!=legal: continue
+                                    if employer and re.sub(r' (as|asa|sti)$','',normalized(employer))!=legal:
+                                        limitation(rsp,'posting names another employer; own-entity attribution unresolved')
+                                        continue
                                 item={'title':title,'date':date,'url':rsp['url']}
                                 if field=='hiring': item.update(valid_through=obj.get('validThrough'),status='published_posting; application availability not independently checked')
                                 if not any(i['url']==item['url'] and i['date'][:10]==item['date'][:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp)
-                    add('website.'+field,items or None,anchor_response,pointer=('JSON-LD, article:published_time, or a single h1/time[datetime] on detail pages' if field=='activity' else 'script[type=application/ld+json]; JobPosting'))
+                    add('website.'+field,items or None,anchor_response,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, or a single h1/time[datetime] on detail pages' if field=='activity' else 'script[type=application/ld+json]; JobPosting'))
+                    if limitations:
+                        claims[-1]['qualifiers']={'coverage':'partial' if items else 'unresolved',
+                            'candidate_limitations':limitations}
                     for rsp in evidence_responses:
                         extra=claim('supporting',None,rsp,evidence)
                         claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
@@ -610,7 +863,20 @@ def research(row, fetcher, previous=None, search=None):
             else:
                 errors.append({'source':response['url'],'reason':'exact legal entity not established; no website facts published'})
     for field in ('website.verified_url','website.description','website.social_links','website.hiring','website.activity','website.contact_channels'):
-        if not any(c['field']==field for c in claims): add(field,None,webstate,state=webstate['status'] if webstate['status']!='available' else 'ambiguous')
+        if not any(c['field']==field for c in claims):
+            if operator_limits:
+                blocker,operator=operator_limits[0]
+                add(field,None,blocker,state='ambiguous',pointer='current WebSite publisher/operator assertion',
+                    excerpt=None)
+                claims[-1]['identity_support']=operator
+                claims[-1]['qualifiers']={'own_entity_attribution':'unresolved','reason':operator['reason']}
+                for rsp,proof in operator_limits:
+                    extra=claim('operator_support',None,rsp,evidence)
+                    claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
+                extra=claim('identity_anchor',org,entity,evidence)
+                claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
+            else:
+                add(field,None,webstate,state=webstate['status'] if webstate['status']!='available' else 'ambiguous')
     output['evidence']=list(evidence.values())
     output['website_attempts']=attempts
     output['changes']=compare(previous or {},output)
@@ -641,7 +907,8 @@ def main():
     p.add_argument('--cache',default='cache'); p.add_argument('--previous')
     mode=p.add_mutually_exclusive_group();mode.add_argument('--replay',action='store_true');mode.add_argument('--fresh',action='store_true')
     p.add_argument('--workers',type=int,default=4)
-    p.add_argument('--search',choices=['none','tavily'],default='none')
+    p.add_argument('--search',choices=['none','tavily','tavily-free'],default='none')
+    p.add_argument('--search-free-credit-limit',type=int,help='root-confirmed remaining free basic credits; requires account/PayGo verification')
     p.add_argument('--search-credit-limit',type=int,default=100)
     p.add_argument('--search-strategy',choices=['legacy','name_focus','adaptive'],default='legacy')
     p.add_argument('--registry-snapshot',help='Frozen registry responses in the documented local JSONL interchange format')
@@ -651,10 +918,18 @@ def main():
         from frozen_registry import FrozenRegistry
         registry_snapshot=FrozenRegistry(args.registry_snapshot)
     search=None
-    if args.search=='tavily':
-        from search import TavilySearch
-        search=TavilySearch(args.cache,args.search_credit_limit,strategy=args.search_strategy)
+    if args.search in ('tavily','tavily-free'):
+        from search import TavilySearch,FreeTavilySearch
+        if args.search=='tavily-free':
+            if args.search_free_credit_limit is None:
+                p.error('--search tavily-free requires --search-free-credit-limit with a root-confirmed allowance')
+            search=FreeTavilySearch(args.cache,args.search_credit_limit,
+                strategy=args.search_strategy,free_credit_limit=args.search_free_credit_limit)
+        else:
+            search=TavilySearch(args.cache,args.search_credit_limit,strategy=args.search_strategy)
         if not args.replay and not search.key: p.error('TAVILY_API_KEY is required for live search; no account was created')
+    elif args.search_free_credit_limit is not None:
+        p.error('--search-free-credit-limit is valid only with --search tavily-free')
     prior={r['organisation_number']:r for r in (json.loads(x) for x in Path(args.previous).read_text().splitlines())} if args.previous else {}
     output=Path(args.output); output.parent.mkdir(parents=True,exist_ok=True); start=time.monotonic()
     def work(row):

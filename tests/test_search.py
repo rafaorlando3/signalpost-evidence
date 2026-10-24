@@ -120,3 +120,162 @@ class SearchStrategyIsolation(unittest.TestCase):
     def test_no_unknown_strategy_can_enable_paid_fallback(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(ValueError):TavilySearch(d,strategy='advanced')
+
+
+class FreeSearchTests(unittest.TestCase):
+    def make(self, directory, credits=3, **kwargs):
+        from search import FreeTavilySearch
+        return FreeTavilySearch(directory, limit=10, key='fixture-not-a-real-key',
+                                free_credit_limit=credits, **kwargs)
+
+    def test_allowance_is_exact_integer_not_bool_and_no_call_is_implicit(self):
+        from search import FreeTavilySearch
+        for value in (True, False, 1.0, '3', None, -1, 1001):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as d:
+                with self.assertRaises(ValueError):
+                    FreeTavilySearch(d, free_credit_limit=value)
+        with tempfile.TemporaryDirectory() as d:
+            s=self.make(d, credits=0, transport=lambda *a: self.fail('no provider call'))
+            f=Fetcher(d, fresh=True)
+            self.assertEqual(s.discover(ORG, 'Example AS', f), [])
+            self.assertEqual(s.attempts, 0)
+            self.assertEqual(f.discovery['state'], 'free_credit_budget_exhausted')
+
+    def test_global_free_cap_and_company_http_cap_are_reserved_before_transport(self):
+        calls=[]
+        def post(payload, timeout):
+            calls.append(payload)
+            return {'results':[{'url':'https://candidate.test/'}], 'usage':{'credits':1}}
+        with tempfile.TemporaryDirectory() as d, patch('search.time.sleep'):
+            s=self.make(d, credits=2, transport=post)
+            for index in range(3):
+                s.discover(str(index), 'Example '+str(index), Fetcher(d, fresh=True))
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(s.attempts, 2)
+            f=Fetcher(d, fresh=True);f.requests=20
+            self.assertEqual(s.discover('other', 'Other AS', f), [])
+            self.assertEqual(f.requests, 20)
+            self.assertEqual(len(calls), 2)
+
+    def test_three_search_attempts_max_per_company_even_with_new_queries(self):
+        calls=[]
+        def post(payload, timeout):
+            calls.append(payload)
+            return {'results':[], 'usage':{'credits':1}}
+        with tempfile.TemporaryDirectory() as d, patch('search.time.sleep'):
+            s=self.make(d, credits=10, transport=post)
+            for index in range(4):
+                f=Fetcher(d, fresh=True)
+                s.discover(ORG, 'Query '+str(index), f)
+            self.assertEqual(len(calls), 3)
+            self.assertEqual(s.attempts, 3)
+            self.assertEqual(f.discovery['state'], 'company_search_budget_exhausted')
+
+    def test_missing_boolean_or_unexpected_usage_halts_further_calls_without_refund(self):
+        for credits in (None, True, False, 1.0, '1', 0, 2):
+            with self.subTest(credits=credits), tempfile.TemporaryDirectory() as d:
+                calls=[]
+                def post(payload, timeout):
+                    calls.append(payload)
+                    return {'results':[{'url':'https://candidate.test/'}],
+                            'usage':{} if credits is None else {'credits':credits}}
+                s=self.make(d, transport=post)
+                f=Fetcher(d, fresh=True)
+                self.assertEqual(s.discover(ORG, 'Example AS', f), ['https://candidate.test/'])
+                self.assertEqual(f.requests, 1)
+                self.assertIsNone(f.discovery['credits_reported'])
+                self.assertIsNone(f.discovery['paid_cost_usd'])
+                self.assertEqual(s.discover('other', 'Other AS', Fetcher(d, fresh=True)), [])
+                self.assertEqual(s.attempts, 1)
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(s.free_halted, 'free_usage_unknown')
+
+    def test_uncertain_timeout_consumes_reservation_and_stops_next_search(self):
+        calls=[]
+        def post(payload, timeout):
+            calls.append(payload)
+            raise TimeoutError('sensitive-provider-body')
+        with tempfile.TemporaryDirectory() as d:
+            s=self.make(d, transport=post);f=Fetcher(d, fresh=True)
+            self.assertEqual(s.discover(ORG, 'Example AS', f), [])
+            self.assertEqual(f.requests, 1)
+            self.assertEqual(s.attempts, 1)
+            self.assertEqual(s.discover('other', 'Other AS', Fetcher(d, fresh=True)), [])
+            self.assertEqual(len(calls), 1)
+            self.assertNotIn('sensitive-provider-body', json.dumps(f.discovery))
+            self.assertNotIn('fixture-not-a-real-key', json.dumps(f.discovery))
+
+    def test_free_payload_never_expands_to_advanced_or_auto_parameters(self):
+        with tempfile.TemporaryDirectory() as d:
+            s=self.make(d, transport=lambda *a: self.fail('no paid fallback'))
+            s.payload=lambda *a: {'query':'fixture', 'search_depth':'advanced',
+                                  'auto_parameters':False}
+            f=Fetcher(d, fresh=True)
+            self.assertEqual(s.discover(ORG, 'Example AS', f), [])
+            self.assertEqual(s.free_halted, 'free_payload_not_permitted')
+            self.assertEqual(s.attempts, 1)
+
+    def test_free_cache_replay_retains_candidates_without_keys_snippets_or_calls(self):
+        calls=[]
+        def post(payload, timeout):
+            calls.append(payload)
+            return {'results':[{'url':'https://candidate.test/contact',
+                                'content':'private-search-snippet'}], 'usage':{'credits':1}}
+        with tempfile.TemporaryDirectory() as d:
+            first=self.make(d, transport=post)
+            first.discover(ORG, 'Example AS', Fetcher(d, fresh=True))
+            replay=self.make(d, credits=0, transport=lambda *a: self.fail('replay network'))
+            f=Fetcher(d, replay=True)
+            self.assertEqual(replay.discover(ORG, 'Example AS', f), ['https://candidate.test/'])
+            self.assertEqual(f.requests, 0)
+            self.assertEqual(replay.attempts, 0)
+            self.assertEqual(len(calls), 1)
+            for path in (Path(d)/'search-free').glob('*.json'):
+                self.assertNotIn('private-search-snippet', path.read_text())
+                self.assertNotIn('fixture-not-a-real-key', path.read_text())
+
+    def test_threaded_reservations_never_exceed_free_cap(self):
+        import concurrent.futures
+        calls=[]
+        def post(payload, timeout):
+            calls.append(payload)
+            return {'results':[], 'usage':{'credits':1}}
+        with tempfile.TemporaryDirectory() as d, patch('search.time.sleep'):
+            s=self.make(d, credits=2, transport=post)
+            def work(index):
+                return s.discover(str(index), 'Example '+str(index), Fetcher(d, fresh=True))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+                list(pool.map(work, range(6)))
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(s.attempts, 2)
+            self.assertEqual(s.free_credits_reported, 2)
+
+    def test_lazy_free_adaptive_still_stops_when_caller_accepts_first_site(self):
+        calls=[]
+        def post(payload, timeout):
+            calls.append(payload)
+            return {'results':[{'url':'https://candidate.test/'}], 'usage':{'credits':1}}
+        with tempfile.TemporaryDirectory() as d:
+            s=self.make(d, strategy='adaptive', transport=post)
+            iterator=s.iter_candidates(ORG, 'Example AS', Fetcher(d, fresh=True))
+            self.assertEqual(next(iterator)[0], 'https://candidate.test/')
+            iterator.close()
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(s.attempts, 1)
+
+
+    def test_unknown_usage_stops_other_workers_before_another_reservation(self):
+        import concurrent.futures
+        calls=[]
+        def post(payload, timeout):
+            calls.append(payload)
+            return {'results':[], 'usage':{}}
+        with tempfile.TemporaryDirectory() as d, patch('search.time.sleep'):
+            s=self.make(d, credits=3, transport=post)
+            def work(index):
+                return s.discover(str(index), 'Example '+str(index), Fetcher(d, fresh=True))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                list(pool.map(work, range(4)))
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(s.attempts, 1)
+            self.assertEqual(s.free_halted, 'free_usage_unknown')
