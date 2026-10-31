@@ -4,6 +4,13 @@ from agent import Page,activity_candidates,link_family,article_detail
 from test_agent import R5Precision
 
 class IndependentDiagnostics(unittest.TestCase):
+    def test_plain_org_period_label_requires_checksum_and_preserves_other_entity_conflict(self):
+        from agent import website_identity
+        org='810034882';u='https://example.test/'
+        self.assertEqual(website_identity(org,Page('<footer>Org. 810 034 882</footer>',u)),'exact')
+        self.assertEqual(website_identity(org,Page('<footer>Org. 810 034 883</footer>',u)),'ambiguous')
+        self.assertEqual(website_identity(org,Page('Order 810 034 882; Phone 810034882',u)),'ambiguous')
+        self.assertEqual(website_identity(org,Page('Org. 810 034 882 Org.nr 974 761 076',u)),'conflict')
     def candidates(self,body,path='news-presse/factory'):
         url='https://example.test/'+path
         return activity_candidates(Page(body,url),{'url':url})

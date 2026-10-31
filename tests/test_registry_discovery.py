@@ -63,6 +63,12 @@ class RegistryDiscovery(unittest.TestCase):
 if __name__=='__main__':unittest.main()
 
 class HeuristicLeads(unittest.TestCase):
+    def test_dotted_initials_are_grouped_without_expanding_domain_guess_budget(self):
+        from registry_discovery import name_domain_candidates
+        self.assertEqual(name_domain_candidates({'navn':'A.B. Example AS'}),
+                         ['https://abexample.no/','https://ab-example.no/'])
+        self.assertEqual(name_domain_candidates({'navn':'A Example AS'}),
+                         ['https://aexample.no/','https://a-example.no/'])
     def test_domains_are_generic_bounded_and_never_identity_proof(self):
         from registry_discovery import name_domain_candidates
         self.assertEqual(name_domain_candidates({'navn':'ÆØÅ Industri AS'}),['https://aeoaindustri.no/','https://aeoa-industri.no/'])

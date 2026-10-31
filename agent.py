@@ -447,6 +447,11 @@ def website_identity(org, page, data=None, *, site_url=None):
     for value in re.findall(r'\b(?:organisasjons\s*(?:nummer|nr)|org\.?\s*(?:nr|no|nummer)|foretaksnummer|company\s+registration\s+(?:number|no))[.\s:\-]*(?:NO\s*)?([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})(?![0-9])',page.text,re.I):
         number=re.sub(r'\D','',value)
         if valid_org(number):numbers.add(number)
+    # A literal "Org." label with a valid Norwegian checksum is also explicit
+    # corporate identity. Unlabelled numbers, order IDs and phone labels are not.
+    for value in re.findall(r'\borg\.[ \t]*[:\-]?[ \t]*(?:NO[ \t]*)?([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})(?![0-9])',page.text,re.I):
+        number=re.sub(r'\D','',value)
+        if valid_org(number):numbers.add(number)
     for item in objects(page.ld):
         if schema_types(item) & {'Organization','Corporation','LocalBusiness'}:
             for key in ('taxID','vatID'):

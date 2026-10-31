@@ -57,5 +57,12 @@ def name_domain_candidates(data):
     if not words or len(words)>5 or any(w in {'holding','holdings','invest','eiendom','borettslag','sameiet','sameie','boligsameie'} for w in words):return []
     compact=''.join(words)
     if not 6<=len(compact)<=55 or compact.isdigit():return []
-    hosts=[compact+'.no',('-'.join(words)+'.no') if len(words)>1 else compact+'.com']
+    # Dotted initials are commonly one component in a branded domain (A.B.
+    # Example -> ab-example), not a separate hyphen between every letter.
+    grouped=list(words)
+    initials=[]
+    while grouped and len(grouped[0])==1:initials.append(grouped.pop(0))
+    if len(initials)>=2:grouped=[''.join(initials),*grouped]
+    else:grouped=words
+    hosts=[compact+'.no',('-'.join(grouped)+'.no') if len(grouped)>1 else compact+'.com']
     return list(dict.fromkeys('https://'+h+'/' for h in hosts))[:2]
