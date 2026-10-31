@@ -214,6 +214,17 @@ class ArticleHeaderScope(unittest.TestCase):
         cs,_=activity_candidates(p,{'url':u});self.assertEqual(cs,[])
 
 class BoundedNewsPriority(unittest.TestCase):
+    def test_detached_mega_menu_navigation_and_nested_product_paths_are_not_post_leads(self):
+        from agent import crawl_company
+        from test_discovery import Pages, ORG
+        home={'url':'https://example.test/','text':'Org nr '+ORG+'<a href="/news">News</a>'}
+        index='<main><a href="/real-story">Company opens a new factory</a></main><div class="navbar-collapse"><a class="nav-link" href="/catalogue">Product catalogue</a></div><a href="/products/pumps">Our pumps</a>'
+        f=Pages({'https://example.test/news':index})
+        crawl_company(ORG,{},home,f)
+        self.assertIn('https://example.test/real-story',f.visited)
+        self.assertNotIn('https://example.test/catalogue',f.visited)
+        self.assertNotIn('https://example.test/products/pumps',f.visited)
+
     def test_article_body_product_links_are_not_promoted_to_news_index_leads(self):
         from agent import crawl_company
         from test_discovery import Pages, ORG

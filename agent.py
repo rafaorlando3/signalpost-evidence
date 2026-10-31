@@ -245,7 +245,9 @@ class Page(HTMLParser):
         if tag=='meta' and (a.get('property') or a.get('name')):
             self.meta[(a.get('property') or a.get('name')).lower()]=a.get('content') or ''
         if tag=='a' and a.get('href'):
-            try:self.anchor={'url':urljoin(self.url,a['href']), 'text':'','third_party_context':third_party,'in_navigation':any(t in {'nav','header','footer','aside'} for t,_ in self.link_context)}
+            try:self.anchor={'url':urljoin(self.url,a['href']), 'text':'','third_party_context':third_party,
+                'in_navigation':any(t in {'nav','header','footer','aside'} for t,_ in self.link_context)
+                    or bool(re.search(r'(?<![\w-])(?:nav-link|dropdown-item|menu-link)(?![\w-])',a.get('class') or '',re.I))}
             except ValueError:self.anchor=None
 
     def handle_endtag(self, tag):
@@ -518,6 +520,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             if (family not in ('identity',) and verified and activity_index
                     and not link.get('in_navigation') and not link.get('third_party_context')
                     and len(link['text'].strip())>=5 and urlsplit(url).path not in ('','/')
+                    and (family is not None or len([p for p in urlsplit(url).path.split('/') if p])==1)
                     and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)$',urlsplit(url).path,re.I)
                     and url!=rsp['url']):
                 # A real post may use a root slug. This only discovers it;
