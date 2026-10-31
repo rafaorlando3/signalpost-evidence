@@ -40,7 +40,14 @@ def audit(rows, cache):
                 if pointer=='explicit_org_number' and not any(website_identity(row['organisation_number'],Page(s.get('text',''),s['url']))=='exact' for s in web):
                     errors.append([row['organisation_number'],'identity number not supported by retained page'])
                 support=c.get('identity_support')
-                if support:
+                if support and pointer=='explicit_site_operator':
+                    from agent import site_operator_identity
+                    name=next((x.get('value') for x in row['claims'] if x.get('field')=='legal_name'),None)
+                    if not any(site_operator_identity(row['organisation_number'],Page(s.get('text',''),s['url']),
+                               {'organisasjonsnummer':row['organisation_number'],'navn':name})==support for s in web):
+                        errors.append([row['organisation_number'],'site-operator role proof differs from retained source'])
+                    else:counts['explicit_site_operator_assertions_checked']+=len(support.get('operators',[]))
+                elif support:
                     spans=support.get('literal_spans',[])
                     if not spans or not any(all(Page(s.get('text',''),s['url']).text[x['start']:x['end']]==x['text'] for x in spans) for s in web):
                         errors.append([row['organisation_number'],'identity spans not literal source text'])
@@ -52,7 +59,11 @@ def audit(rows, cache):
                 retained=[i for eid,s in sources.items() if eid in c['evidence_ids'] and 'text' in s
                           for i in contact_links(Page(s['text'],s['url']))]
                 for item in c['value']:
-                    if item not in retained:errors.append([row['organisation_number'],'contact link not supported by retained page'])
+                    if item.get('source_kind')=='literal_visible_text':
+                        if not any(item['value'] in Page(s.get('text',''),s['url']).text for eid,s in sources.items() if eid in c['evidence_ids']):
+                            errors.append([row['organisation_number'],'visible contact not literal retained text'])
+                        else:counts['literal_visible_contacts_checked']+=1
+                    elif item not in retained:errors.append([row['organisation_number'],'contact link not supported by retained page'])
                     else:counts['literal_contact_links_checked']+=1
         if compare(row,row): errors.append([row['organisation_number'],'false self change'])
     return {'passed':not errors,'counts':dict(counts),'errors':errors,'external_identity_review':external,

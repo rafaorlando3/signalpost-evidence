@@ -41,3 +41,21 @@ def registry_candidates(org, data, units):
         seen.add(host_key(url))
         result.append({'url': url, 'origin': origin})
     return result
+
+
+def name_domain_candidates(data):
+    """At most two heuristic URL leads; never website ownership evidence.
+
+    Used only after official links/search did not establish a site. Norwegian
+    commercial name transliterations are generic, never company allowlists.
+    """
+    import re,unicodedata
+    name=str(data.get('navn') or '').casefold().translate(str.maketrans({'ø':'o','æ':'ae','å':'a'}))
+    name=''.join(c for c in unicodedata.normalize('NFKD',name) if not unicodedata.combining(c))
+    words=re.findall(r'[a-z0-9]+',name)
+    while words and words[-1] in {'as','asa','nuf','enk','ans','da','sa','ba','brl','sti','co'}:words.pop()
+    if not words or len(words)>5 or any(w in {'holding','holdings','invest','eiendom','borettslag','sameiet','sameie','boligsameie'} for w in words):return []
+    compact=''.join(words)
+    if not 6<=len(compact)<=55 or compact.isdigit():return []
+    hosts=[compact+'.no',('-'.join(words)+'.no') if len(words)>1 else compact+'.com']
+    return list(dict.fromkeys('https://'+h+'/' for h in hosts))[:2]

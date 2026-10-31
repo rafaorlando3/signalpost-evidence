@@ -64,6 +64,7 @@ def profile_identifier(profile):
     host=p.hostname
     if host=='facebook.com' and len(parts)==3 and parts[0]=='pages':value=parts[1]
     elif host=='linkedin.com' and len(parts)==2 and parts[0]=='company':value=parts[1]
+    elif host=='youtube.com' and len(parts)==2 and parts[0] in {'user','c'}:value=parts[1]
     elif len(parts)==1 and parts[0]!='profile.php':value=parts[0].lstrip('@')
     else:return None
     if host=='facebook.com':value=re.sub(r'-\d{8,}$','',value)
@@ -78,12 +79,15 @@ class Controls(HTMLParser):
     def handle_starttag(self,tag,attrs):
         attrs=dict(attrs);context=' '.join((attrs.get(k) or '') for k in ('class','id','aria-label','title','itemprop','rel'))
         excluded=(any(n['excluded'] for n in self.stack) or bool(EXCLUDED.search(context)))
-        node={'tag':tag,'context':normal(context),'excluded':excluded,'text':'','links':[]}
+        semantic_context=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',context).replace('_',' ')
+        node={'tag':tag,'context':normal(semantic_context),'excluded':excluded,'text':'','links':[]}
         if tag not in VOID:self.stack.append(node)
         if tag in {'script','style','noscript'}:self.skip+=1
         if tag=='a' and attrs.get('href') and not self.skip:
-            profile=canonical_profile(urljoin(self.url,attrs['href']))
-            self.anchor={'profile':profile,'href':urljoin(self.url,attrs['href']),
+            try:destination=urljoin(self.url,attrs['href'])
+            except ValueError:self.anchor=None;return
+            profile=canonical_profile(destination)
+            self.anchor={'profile':profile,'href':destination,
                          'excluded':excluded,'label':attrs.get('aria-label') or attrs.get('title') or '',
                          'rel':(attrs.get('rel') or '').split(),'scopes':self.stack[-7:],
                          'chrome':any(n['tag'] in {'header','nav','footer'} for n in self.stack)}
@@ -155,7 +159,7 @@ def asserted_profiles(pages,data):
                     break
                 branded_social=(len(text)<900 and SOCIAL.search(normal(text)) and
                     bool(re.search(r'(?<!\w)'+re.escape(legal_words(data.get('navn','')))+r'(?!\w)',normal(folded(text)))))
-                if SOCIAL.search(scope['context']) or branded_social:
+                if SOCIAL.search(scope['context']) or re.search(r'\bso\s*me\b',scope['context']) or branded_social:
                     proof='explicit_social_control_and_exact_entity_identifier';excerpt=scope['context']+' '+text
                     break
                 peers={urlsplit(peer['profile']).hostname for peer in scope['links']

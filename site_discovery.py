@@ -13,7 +13,19 @@ def xml_candidates(text, source_url, host):
     kind=tag(root)
     if kind not in {'urlset','sitemapindex','rss','feed'}: return [],[]
     pages=[];maps=[];seen=set()
-    for el in root.iter():
+    # Only top-level <url>/<sitemap> locations. Image/video extension loc
+    # elements are assets, not candidate company pages. lastmod orders leads
+    # only and is never exported as a publication date.
+    if kind in {'urlset','sitemapindex'}:
+        entries=[]
+        for entry in root:
+            loc=next((e for e in entry if tag(e)=='loc'),None)
+            modified=next((str(e.text or '') for e in entry if tag(e)=='lastmod'),'')
+            if loc is not None:entries.append((loc,modified))
+        if kind=='urlset':entries.sort(key=lambda x:x[1] if re.match(r'20[0-9]{2}-[0-9]{2}-[0-9]{2}',x[1]) else '',reverse=True)
+        elements=[x[0] for x in entries]
+    else:elements=root.iter()
+    for el in elements:
         name=tag(el); value=None
         if name=='loc' and kind in {'urlset','sitemapindex'}: value=el.text
         elif name=='link' and kind in {'rss','feed'}:

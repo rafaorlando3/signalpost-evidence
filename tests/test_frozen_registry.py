@@ -14,13 +14,16 @@ class FrozenSnapshots(unittest.TestCase):
         path=Path(d)/'registry.jsonl';path.write_text(''.join(json.dumps(r)+'\n' for r in records))
         return path
 
-    def test_fresh_mode_uses_supplied_snapshot_without_network(self):
-        with tempfile.TemporaryDirectory() as source,tempfile.TemporaryDirectory() as cache,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
+    def test_fresh_mode_uses_supplied_snapshot_without_live_registry(self):
+        # The frozen snapshot governs registry I/O; optional external discovery
+        # may still attempt public sites. Deny those safely in this fixture.
+        with tempfile.TemporaryDirectory() as source,tempfile.TemporaryDirectory() as cache,patch('agent.safe_url',side_effect=ValueError('external fixture unavailable')) as outgoing:
             snapshot=FrozenRegistry(self.bundle(source))
             row=research({'organisation_number':ORG},Fetcher(cache,fresh=True,registry_snapshot=snapshot))
             self.assertEqual(row['operations']['requests'],0)
             self.assertEqual(next(c['value'] for c in row['claims'] if c['field']=='legal_name'),'Fixture AS')
             self.assertTrue(all(e['retrieved_at']=='2026-09-26T00:00:00+00:00' for e in row['evidence']))
+            self.assertTrue(all(not c.args[0].startswith('https://data.brreg.no/') for c in outgoing.call_args_list))
 
     def test_missing_snapshot_never_falls_back_to_live_registry(self):
         with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):

@@ -50,3 +50,19 @@ class Insights(unittest.TestCase):
         self.assertEqual(s['kind'],'refresh');self.assertEqual(s['evidence_ids'],['new'])
 
 if __name__=='__main__':unittest.main()
+
+class UsefulProfile(unittest.TestCase):
+    def test_role_subunit_and_bankruptcy_context_are_attributed(self):
+        from insights import synthesize
+        cs=[{'field':f,'availability':'available','value':v,'evidence_ids':['source-'+f]} for f,v in [
+            ('roles',[{'name':'Ada Example','description':'Board chair'}]),
+            ('locations',[{'name':'Branch','address':{'kommune':'OSLO'}}]),('bankrupt',False)]]
+        out=synthesize(cs);text=' '.join(x['text'] for x in out)
+        self.assertIn('Ada Example',text);self.assertIn('OSLO',text)
+        self.assertIn('not a credit assessment',text)
+        self.assertTrue(all(x['evidence_ids'] for x in out))
+
+    def test_activity_summary_retains_literal_title_and_date(self):
+        from insights import synthesize
+        out=synthesize([{'field':'website.activity','availability':'available','value':[{'title':'New factory','date':'2026-09-01T00:00:00Z'}],'evidence_ids':['news']}])
+        self.assertIn('2026-09-01',out[0]['text']);self.assertIn('New factory',out[0]['text'])

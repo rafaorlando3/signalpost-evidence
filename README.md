@@ -51,3 +51,11 @@ The last public standings still say reviewed **17 October 2026**, despite checki
 ## Historical evidence
 
 `review-20261031/`, `ARCHIVE-THREE-FIXES-README.md` and `runs/CLEAN-VERIFICATION.json` refer to the previous local three-fix candidate. `ARCHIVE-R5-README.md`, `smoke-r5/`, old `RELEASE-MANIFEST.json` and `checksums.json` describe historical R5. `smoke/`, historical profiles and v0.7 documents describe earlier versions. Their measurements/hashes do not identify the current candidate.
+
+### Additional local evaluation (31 October 2026)
+
+The agent now also uses bounded, untrusted name/domain leads and ordinary canonical-host candidates. Every site must still pass exact entity checks. Public dual-stack DNS prefers IPv4 without weakening private-address rejection or TLS validation. Company-contact extraction supports literal visible text as well as actual contact links, and withholds unresolved regional-company contact blocks on shared sites. No registry phone/email is promoted into website contacts.
+
+The local scale protocol uses 1,100 randomly selected previously unused organisation numbers, an explicitly supplied frozen registry snapshot, and fresh external website requests. The interchange snapshot is our documented adapter, not a claim of compatibility with an unpublished Builderr format. Report capture and final-extractor replay are recorded separately. Missing or failed source fields stay explicit even when the overall envelope is completed.
+
+A larger smoke test does not yield an official score. Official family weights, the private verified union and actual evaluator resource budget are not published. The old starter proxy must not be presented as the current 50/30/12/8 score. Primary-source rechecks of independent research are tracked locally; training cohorts are not labelled unseen validation.

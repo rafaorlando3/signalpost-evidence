@@ -10,6 +10,8 @@ import html
 from html.parser import HTMLParser
 import http.client
 import ipaddress
+import io
+import zlib
 import json
 from pathlib import Path
 import re
@@ -52,7 +54,7 @@ def safe_url(url):
     addresses = {a[4][0] for a in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
     if not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses):
         raise ValueError('Non-public destination blocked')
-    return p, host, port, sorted(addresses)[0]
+    return p, host, port, sorted(addresses,key=lambda a:(ipaddress.ip_address(a).version,a))[0]
 
 class Fetcher:
     locks = collections.defaultdict(threading.Lock)
@@ -133,11 +135,24 @@ class Fetcher:
                     current = target; continue
                 data = response.read(2_000_001); connection.close()
                 if len(data) > 2_000_000: return self.failure(current, 'blocked', 'response size limit')
+                wire_digest=digest(data)
+                coding=response.getheader('Content-Encoding')
+                coding=coding.strip().casefold() if isinstance(coding,str) else 'identity'
+                if coding=='gzip':
+                    with gzip.GzipFile(fileobj=io.BytesIO(data)) as decoded:
+                        data=decoded.read(2_000_001)
+                elif coding=='deflate':
+                    decoder=zlib.decompressobj();data=decoder.decompress(data,2_000_001)
+                elif coding not in ('identity',''):
+                    return self.failure(current,'blocked','unsupported content encoding')
+                if len(data)>2_000_000:return self.failure(current,'blocked','decoded response size limit')
                 charset = response.headers.get_content_charset() or 'utf-8'
                 text = data.decode(charset, errors='replace')
                 state = 'available' if status == 200 else 'not_available' if status in (404,410) else 'blocked' if status in (401,403,429) else 'failed'
                 result = {'url':current, 'requested_url':url, 'status':state, 'status_code':status,
-                    'retrieved_at':now(), 'content_sha256':digest(data), 'text':text}
+                    'retrieved_at':now(), 'content_sha256':wire_digest, 'text':text}
+                if coding not in ('identity',''):
+                    result.update(content_encoding=coding,decoded_content_sha256=digest(data))
                 if not raw:
                     try: result['json'] = json.loads(text)
                     except ValueError: pass
@@ -149,7 +164,7 @@ class Fetcher:
                 temporary=path.with_suffix('.'+uuid.uuid4().hex+'.tmp')
                 temporary.write_text(encode(result)); temporary.replace(path)
                 self.records.append(result); return result
-            except (OSError, ValueError, http.client.HTTPException) as error:
+            except (OSError, ValueError, EOFError, zlib.error, http.client.HTTPException) as error:
                 if connection is not None: connection.close()
                 result = self.failure(current, 'failed', type(error).__name__)
                 if isinstance(error,(OSError,http.client.HTTPException)) and urlsplit(current).hostname=='data.brreg.no' and not retried:
@@ -178,15 +193,18 @@ def redact(value):
 class Page(HTMLParser):
     def __init__(self, text, url):
         super().__init__(convert_charrefs=True)
-        self.url=url; self.parts=[]; self.links=[]; self.ld=[]; self.skip=0; self.script=None
-        self.title=''; self.in_title=False; self.description=''; self.anchor=None;self.meta={}
+        self.url=url; self.raw_html=text; self.parts=[]; self.links=[]; self.ld=[]; self.skip=0; self.script=None
+        self.title=''; self.in_title=False; self.description=''; self.anchor=None;self.meta={};self.post_container=False
         self.headings=[];self.heading=None;self.times=[];self.feeds=[];self.link_context=[]
-        self.content_headings=[];self.content_times=[];self.heading_is_content=False;self.body_parts=[];self.post_parts=[];self.main_parts=[]
+        self.content_headings=[];self.content_times=[];self.main_headings=[];self.main_times=[];self.semantic_headings=[];self.heading_is_semantic=False;self.heading_is_main=False;self.heading_is_content=False;self.body_parts=[];self.post_parts=[];self.main_parts=[]
+        self.footer_parts=[];self.paragraphs=[];self.paragraph=None;self.paragraph_is_content=False
         self.feed(text)
 
     def handle_starttag(self, tag, attrs):
         a=dict(attrs)
         context=' '.join((a.get(k) or '') for k in ('class','id','aria-label','title','data-sentry-component','data-sentry-source-file'))
+        post_context=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',a.get('class') or '').replace('_',' ')
+        if tag=='article' and re.search(r'(?:^|\s)type-post(?:\s|$)|\bsingle[ -]+post\b',post_context,re.I):self.post_container=True
         third_party=(self.link_context[-1][1] if self.link_context else False) or bool(re.search(r'sponsor|partner|customer|testimonial|shar(?:e|ing)|author|agency|webdesign|site-credit|powered-by|theme-credit',context,re.I))
         if tag not in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:
             self.link_context.append((tag,third_party))
@@ -195,23 +213,30 @@ class Page(HTMLParser):
         if tag in ('script','style','noscript'):
             self.skip += 1
             if tag=='script' and a.get('type')=='application/ld+json': self.script=[]
+        if tag=='p':
+            self.paragraph=''
+            self.paragraph_is_content=not self.skip and not third_party and not any(t in {'nav','header','footer','aside','form','dialog'} for t,_ in self.link_context)
         if tag=='title': self.in_title=True
         if tag=='h1':
             self.heading=''
-            self.heading_is_content=not any(t in {'nav','header','footer','aside'} for t,_ in self.link_context)
+            self.heading_is_content=not any(t in {'nav','header','footer','aside','dialog','form'} for t,_ in self.link_context)
+            self.heading_is_main=self.heading_is_content and any(t in {'article','main'} for t,_ in self.link_context)
+            self.heading_is_semantic=self.heading_is_content and 'headline' in (a.get('itemprop') or '').split()
         if tag=='time' and a.get('datetime'):
             semantic=((a.get('itemprop') or '')+' '+(a.get('class') or '')).casefold()
             if re.search(r'\b(datepublished|published|entry-date)\b',semantic) and not re.search(r'updated|modified',semantic):
                 self.times.append(a['datetime'])
                 if not any(t in {'nav','header','footer','aside'} for t,_ in self.link_context):
                     self.content_times.append(a['datetime'])
+                    if any(t in {'article','main'} for t,_ in self.link_context):self.main_times.append(a['datetime'])
         if tag=='link' and 'alternate' in (a.get('rel') or '').split() and a.get('type') in ('application/rss+xml','application/atom+xml') and a.get('href'):
             self.feeds.append(urljoin(self.url,a['href']))
         if tag=='meta' and (a.get('name') or '').lower()=='description': self.description=a.get('content') or ''
         if tag=='meta' and (a.get('property') or a.get('name')):
             self.meta[(a.get('property') or a.get('name')).lower()]=a.get('content') or ''
         if tag=='a' and a.get('href'):
-            self.anchor={'url':urljoin(self.url,a['href']), 'text':'','third_party_context':third_party}
+            try:self.anchor={'url':urljoin(self.url,a['href']), 'text':'','third_party_context':third_party,'in_navigation':any(t in {'nav','header','footer','aside'} for t,_ in self.link_context)}
+            except ValueError:self.anchor=None
 
     def handle_endtag(self, tag):
         for i in range(len(self.link_context)-1,-1,-1):
@@ -223,11 +248,17 @@ class Page(HTMLParser):
                 except ValueError: pass
                 self.script=None
             self.skip=max(0,self.skip-1)
+        if tag=='p' and self.paragraph is not None:
+            paragraph=re.sub(r'\s+',' ',self.paragraph).strip()
+            if self.paragraph_is_content and paragraph:self.paragraphs.append(paragraph)
+            self.paragraph=None
         if tag=='title': self.in_title=False
         if tag=='h1' and self.heading is not None:
             heading=re.sub(r'\s+',' ',self.heading).strip()
             self.headings.append(heading)
             if self.heading_is_content:self.content_headings.append(heading)
+            if self.heading_is_main:self.main_headings.append(heading)
+            if self.heading_is_semantic:self.semantic_headings.append(heading)
             self.heading=None
         if tag=='a' and self.anchor:
             # Visible share actions can link directly to profile URLs. Ordinary
@@ -242,7 +273,9 @@ class Page(HTMLParser):
         if self.in_title: self.title += value
         if not self.skip:
             if self.heading is not None:self.heading+=value+' '
+            if self.paragraph is not None:self.paragraph+=value+' '
             self.parts.append(value)
+            if any(t=='footer' for t,_ in self.link_context):self.footer_parts.append(value)
             if not any(t in {'head','title','nav','header','footer','aside'} for t,_ in self.link_context):
                 self.body_parts.append(value)
                 if any(t=='article' for t,_ in self.link_context):self.post_parts.append(value)
@@ -423,13 +456,14 @@ def identity_excerpt(org,page):
 def link_family(url):
     path=urlsplit(url).path.casefold()
     if re.search(r'nyhetsbrev|newsletter|\.pdf$|\.jpg$|\.png$',path): return None
+    # Whole path words: 'bestillinger' means orders, not 'stillinger' (jobs).
+    if re.search(r'(?:^|[/_-])(?:karriere|careers?|jobb(?:er|e)?|jobs?|stillinger?|vacanc(?:y|ies))(?:$|[/_-])',path): return 'hiring'
+    if re.search(r'(?:^|[/_-])(?:news|nyheter?|aktuelt|blogg?|presse|press|artikler|articles?|stories|insights)(?:$|[/_-])|/20\d{2}/',path): return 'activity'
     if re.search(r'kontakt|contact|personvern|privacy|beting|vilk|impressum|legal|om-oss|about',path): return 'identity'
-    if re.search(r'karriere|career|jobb|jobbe|jobs|stilling|vacanc',path): return 'hiring'
-    if re.search(r'news|nyheter|aktuelt|blog|presse|/20\d{2}/',path): return 'activity'
     return None
 
 def article_detail(url):
-    return bool(re.search(r'/(?:news|nyheter|aktuelt|blog|presse)/[^/]+|/20\d{2}/',urlsplit(url).path,re.I))
+    return bool(re.search(r'/(?:news|nyheter?|aktuelt|blogg?|presse|press|artikler|articles?|stories|insights)(?:[-_](?:og[-_])?(?:presse|press|news))?/[^/]+|/20\d{2}/',urlsplit(url).path,re.I))
 
 def social_profile(url):
     from attribution import canonical_profile
@@ -466,6 +500,12 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             if family is None:
                 label=normalized(link['text'])
                 if re.search(r'\b(kontakt|contact|personvern|privacy|om oss|about us)\b',label): family='identity'
+            if (family is None and verified and link_family(rsp['url'])=='activity'
+                    and not link.get('in_navigation') and not link.get('third_party_context')
+                    and len(link['text'].strip())>=5 and urlsplit(url).path not in ('','/')):
+                # A real post may use a root slug. This only discovers it;
+                # publication still requires dated, scoped article evidence.
+                family='activity'
             if family and urlsplit(url).scheme in ('https','http') and urlsplit(url).hostname==host and url not in seen:
                 queue[url]=family
         return True
@@ -487,9 +527,12 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             used.add(url); rsp=fetcher.get(url,site=True,raw=True)
             if rsp['status']!='available' or urlsplit(rsp['url']).hostname!=host:continue
             urls,maps=xml_candidates(rsp.get('text',''),rsp['url'],host)
-            sources.extend(sorted(maps,key=lambda u:(not bool(re.search(r'post|page|news',u,re.I)),u)))
+            sources.extend(sorted(maps,key=lambda u:(0 if re.search(r'post|news',u,re.I) else 1 if re.search(r'page',u,re.I) else 2,u)))
             for candidate in urls:
                 family=link_family(candidate)
+                if (family is None and verified and re.search(r'post|news|feed',url,re.I)
+                        and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)(?:$|[?#])',candidate,re.I)):
+                    family='activity'
                 if family and candidate not in seen:queue.setdefault(candidate,family)
     while len(seen)<9 and fetcher.requests<fetcher.limit-(0 if verified else reserve_requests):
         if not discovered and (not queue or (verified and len(seen)>=4)):
@@ -499,7 +542,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             url,family=item
             base=({'hiring':0,'activity':1,'identity':5} if verified else {'identity':0,'hiring':5,'activity':6})[family]
             depth=len([s for s in urlsplit(url).path.split('/') if s])
-            return (base+counts[family]*4, (-min(depth,3) if verified else depth),len(url),url)
+            return (base+counts[family]*4, (0 if verified else depth),list(queue).index(url),len(url),url)
         url,family=min(queue.items(),key=rank);del queue[url];seen.add(url);counts[family]+=1
         child=fetcher.get(url,site=True,raw=True)
         if child['status']!='available' or urlsplit(child['url']).hostname!=host: continue
@@ -554,7 +597,7 @@ def activity_candidates(page, response):
         if not same_page(obj.get('url')) or not same_page(obj.get('mainEntityOfPage')):
             limit('article describes another URL; fetch its own page before attribution')
             continue
-        if not (types & {'NewsArticle','BlogPosting'}) and not article_detail(response['url']):
+        if not (types & {'NewsArticle','BlogPosting'}) and not article_detail(response['url']) and not page.post_container:
             limit('generic Article outside a dated-activity detail path')
             continue
         if product_or_index:
@@ -564,21 +607,58 @@ def activity_candidates(page, response):
             limit('structured article lacks visible post heading/body')
             continue
         candidates.append(obj)
-    detail=article_detail(response['url'])
-    headings=page.content_headings
+    detail=article_detail(response['url']) or page.post_container
+    headings=page.semantic_headings or page.main_headings or page.content_headings
+    publication_times=page.main_times or page.content_times
     if detail and product_or_index:
         limit('product or collection page metadata is not publication evidence')
     elif detail and len(headings)==1 and len(' '.join(page.article_parts).strip())>=80:
-        if page.meta.get('article:published_time'):
+        # The visible, semantically published date governs the post. CMS
+        # migrations often overwrite OpenGraph dates with the import time.
+        if len(set(publication_times))==1:
+            visible=publication_times[0]
+            meta=page.meta.get('article:published_time')
+            if meta and meta[:10]!=visible[:10]:
+                limit('visible publication date differs from OpenGraph; visible date retained')
+            candidates.append({'@type':'NewsArticle','headline':headings[0],
+                               'datePublished':visible})
+        elif not publication_times and page.meta.get('article:published_time'):
             candidates.append({'@type':'NewsArticle',
                 'headline':page.meta.get('og:title') or headings[0],
                 'datePublished':page.meta['article:published_time']})
-        if len(set(page.content_times))==1:
-            candidates.append({'@type':'NewsArticle','headline':headings[0],
-                               'datePublished':page.content_times[0]})
+        elif publication_times:
+            limit('multiple content publication dates; no unique date established')
     elif detail and (page.meta.get('article:published_time') or page.times):
         limit('publication metadata lacks a single content heading; menu/header/footer is insufficient')
     return candidates,limitations
+
+def legal_footer_identity(data,page):
+    """An exact own legal imprint, not a directory/customer paragraph."""
+    from registry_discovery import FREE_EMAIL
+    p=urlsplit(page.url)
+    if (p.hostname or '').casefold().removeprefix('www.') in FREE_EMAIL:return False
+    if p.path.rstrip('/') not in ('','/home','/hjem','/index.html','/index.php'):return False
+    if website_identity(str(data.get('organisasjonsnummer','')),page,data)=='conflict':return False
+    full=normalized(data.get('navn',''));stem=re.sub(r' (as|asa|sti|nuf)$','',full)
+    if len(stem)<5 or not full:return False
+    title=re.split(r'\s+[|–—-]\s*|\|',page.title)[0]
+    brand=normalized(page.meta.get('og:site_name') or title)
+    neutral={'','hjem','home','homepage','velkommen','welcome','coming soon','under construction','ny nettside underveis'}
+    if brand not in {stem,full} and brand not in neutral:return False
+    blocks=[]
+    footer=' '.join(page.footer_parts)
+    if ' '+full+' ' in ' '+normalized(footer)+' ':blocks.append(footer)
+    # Some simple builders have no footer tag. A standalone full legal-name
+    # paragraph followed by its exact registered address is an explicit imprint.
+    for index,paragraph in enumerate(page.paragraphs):
+        if normalized(paragraph)==full:blocks.append(' '.join(page.paragraphs[index:index+4]))
+    for block in blocks:
+        text=' '+normalized(block)+' '
+        for field in ('forretningsadresse','postadresse'):
+            a=data.get(field) or {};street=next(iter(a.get('adresse') or []),'');code=a.get('postnummer')
+            if street and code and ' '+normalized(street)+' ' in text and re.search(r'(?<!\d)'+re.escape(str(code))+r'(?!\d)',text):return True
+    return False
+
 
 def corroborated_site(data, page, registry_redirect_host=None):
     """Only registry-declared domains: name AND exact postal address corroboration.
@@ -589,8 +669,25 @@ def corroborated_site(data, page, registry_redirect_host=None):
     org=str(data.get('organisasjonsnummer',''))
     if site_operator_identity(org,page,data)['state'] in ('different','unresolved'):return False
     if website_identity(org,page,data)=='conflict':return False
+    if legal_footer_identity(data,page):return True
     registered=data.get('hjemmeside') or ''
-    if not registered: return False
+    footer_only=False
+    if not registered:
+        # An official corporate email domain is only a lead. Require the full
+        # legal name AND exact registered street/postcode in the site's legal
+        # footer, plus a matching first-party brand. Never publish the email.
+        from registry_discovery import FREE_EMAIL
+        email=data.get('epostadresse')
+        domain=email.rsplit('@',1)[-1].strip().casefold() if isinstance(email,str) and '@' in email else ''
+        footer=' '+normalized(' '.join(page.footer_parts))+' '
+        full=normalized(data.get('navn',''))
+        brand=page.meta.get('og:site_name') or page.title
+        stem=re.sub(r' (as|asa|sti)$','',full)
+        compact=lambda v:re.sub(r'[^\w]','',normalized(v))
+        if (not domain or domain in FREE_EMAIL or not full or ' '+full+' ' not in footer
+                or len(stem)<5 or compact(stem) not in compact(brand)):
+            return False
+        registered='https://'+domain;footer_only=True
     registered=registered if '://' in registered else 'https://'+registered
     registered_host=(urlsplit(registered).hostname or '').casefold().removeprefix('www.')
     page_host=(urlsplit(page.url).hostname or '').casefold().removeprefix('www.')
@@ -598,12 +695,14 @@ def corroborated_site(data, page, registry_redirect_host=None):
         return False
     name=normalized(data.get('navn',''))
     name=re.sub(r' (as|asa|sti)$','',name)
-    text=' '+normalized(page.text)+' '
-    if len(name)<8 or ' '+name+' ' not in text:return False
+    evidence_text=' '.join(page.footer_parts) if footer_only else page.text
+    text=' '+normalized(evidence_text)+' '
+    if len(name)<3 or ' '+name+' ' not in text:return False
+    if len(name)<8 and ' '+normalized(data.get('navn',''))+' ' not in text:return False
     for kind in ('forretningsadresse','postadresse'):
         address=data.get(kind) or {}
         street=next(iter(address.get('adresse') or []),''); postal=address.get('postnummer','')
-        if street and postal and ' '+normalized(street)+' ' in text and re.search(r'(?<!\d)'+re.escape(postal)+r'(?!\d)',page.text):return True
+        if street and postal and ' '+normalized(street)+' ' in text and re.search(r'(?<!\d)'+re.escape(postal)+r'(?!\d)',evidence_text):return True
     return False
 
 def corroboration_evidence(data,page,entry_response):
@@ -619,6 +718,7 @@ def corroboration_evidence(data,page,entry_response):
         street_span=span(street);postal_span=span(postal)
         if name_span and street_span and postal_span:
             return {'registered_name':data.get('navn'),'registered_website':data.get('hjemmeside'),
+                    'domain_origin':('exact first-party legal footer, matching homepage brand and official postal address; URL may originate as an untrusted lead' if legal_footer_identity(data,page) else 'entity website declaration' if data.get('hjemmeside') else 'corporate email domain lead plus full legal footer and registered address; registry email not published'),
                     'requested_entry_url':entry_response.get('requested_url'),
                     'observed_entry_url':entry_response['url'],'address_kind':kind,
                     'registry_street':street,'registry_postcode':postal,
@@ -764,13 +864,26 @@ def research(row, fetcher, previous=None, search=None):
     webstate={'url':'','status':'not_available','retrieved_at':now()}
     attempts=[];operator_limits=[]
     def candidates():
-        for index,lead in enumerate(leads):yield lead['url'],lead['origin'],len(leads)-index-1+(bool(search)),[]
+        for index,lead in enumerate(leads):
+            lead_url=lead['url'];parsed=urlsplit(lead_url)
+            remaining=len(leads)-index-1+bool(search)+2
+            yield lead_url,lead['origin'],remaining,[]
+            # Ordinary canonical hostname candidate, independently identity-
+            # checked. TLS validation, robots policy and public-IP checks stay on.
+            if (parsed.hostname or '').startswith('www.'):
+                root=parsed.hostname[4:]+(':'+str(parsed.port) if parsed.port else '')
+                alternate=urlunsplit((parsed.scheme,root,parsed.path,parsed.query,''))
+                yield alternate,'canonical_host_candidate',remaining,[]
         if search and data.get('navn'):
             if hasattr(search,'iter_candidates'):
                 for url,remaining,hints in search.iter_candidates(org,data['navn'],fetcher):yield url,'search',remaining,hints
             else:
                 urls=search.discover(org,data['navn'],fetcher)
                 for i,url in enumerate(urls):yield url,'search',len(urls)-i-1,[]
+        from registry_discovery import name_domain_candidates
+        existing={host_key(lead['url']) for lead in leads}
+        derived=[u for u in name_domain_candidates(data) if host_key(u) not in existing]
+        for index,url in enumerate(derived):yield url,'name_domain_heuristic',len(derived)-index-1,[]
     for url,origin,remaining_leads,hints in candidates():
         started_requests=fetcher.requests
         response=fetcher.get(url,site=True,raw=True); webstate=response
@@ -797,10 +910,11 @@ def research(row, fetcher, previous=None, search=None):
                 content_pages=[(pg,{**rsp,'identity_verified':True}) for pg,rsp,identity in inspected
                     if identity!='conflict' and urlsplit(rsp['url']).hostname==urlsplit(anchor_response['url']).hostname]
                 method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
-                        'explicit_org_number' if website_identity(org,anchor,data)=='exact' else 'registry_domain_name_and_postal_address')
+                        'explicit_org_number' if website_identity(org,anchor,data)=='exact' else
+                        'exact_legal_footer_and_registered_address' if legal_footer_identity(data,anchor) else 'registry_domain_name_and_postal_address')
                 add('website.verified_url',response['url'],anchor_response,pointer=method,
                     excerpt=identity_excerpt(org,anchor) if method=='explicit_org_number' else anchor.text[:1500])
-                if method=='registry_domain_name_and_postal_address':
+                if method in {'registry_domain_name_and_postal_address','exact_legal_footer_and_registered_address'}:
                     extra=claim('identity_anchor',org,entity,evidence)
                     claims[-1]['evidence_ids']+=extra['evidence_ids']
                     claims[-1]['identity_support']=corroboration_evidence(data,anchor,response)
@@ -811,29 +925,43 @@ def research(row, fetcher, previous=None, search=None):
                 # Identity may be proved on a privacy/contact page. Describe the
                 # homepage instead of publishing that legal page's boilerplate.
                 description_page,description_response=content_pages[0]
-                description=description_page.description or description_page.text[:500]
-                collective=group_description(description)
+                description=description_page.description
+                if not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4:
+                    description=next((v for v in description_page.paragraphs if 70<=len(v)<=2000 or (len(v)>=20 and group_description(v))),None)
+                if description and re.search(r'lorem ipsum|dolor sit amet',description,re.I):description=None
+                if description:description=description[:700]
+                collective=group_description(description or '')
                 add('website.description',description or None,description_response,
                     state='ambiguous' if collective else None,
-                    pointer='meta[name=description]' if description_page.description else 'visible homepage text excerpt',excerpt=description)
+                    pointer='meta[name=description] or scoped visible homepage paragraph; navigation and footer excluded',excerpt=description)
                 if collective:
                     claims[-1]['qualifiers']={'subject_scope':'group',
                         'own_entity_description':'not_established',
                         'reason':'explicit collective wording; legal site identity does not attribute group statements to this entity'}
-                from contacts import contact_links
-                contacts=[];contact_sources=[];seen_contacts=set()
+                from contacts import entity_contacts
+                contacts=[];contact_sources=[];seen_contacts=set();contact_limits=[]
                 for pg,rsp in content_pages:
-                    for item in contact_links(pg):
+                    scoped,held=entity_contacts(pg,data,sites)
+                    contact_limits.extend(held[:10])
+                    for item in scoped:
                         key=(item['type'],item['value'])
                         if key not in seen_contacts and len(contacts)<10:
                             contacts.append(item);seen_contacts.add(key);contact_sources.append(rsp)
-                add('website.contact_channels',contacts or None,anchor_response,
-                    pointer='literal mailto/tel links on verified company pages; third-party contexts excluded; ownership/use not independently checked')
+                contact_anchor=contact_sources[0] if contact_sources else anchor_response
+                add('website.contact_channels',contacts or None,contact_anchor,excerpt=(contacts[0].get('source_href') or contacts[0]['value']) if contacts else None,
+                    pointer='literal mailto/tel links on verified company pages; third-party and unresolved regional contact blocks excluded; ownership/use not independently checked')
+                if contact_limits:
+                    claims[-1]['qualifiers']={'coverage':'partial' if contacts else 'unresolved','candidate_limitations':contact_limits[:20]}
                 for rsp in contact_sources:
-                    extra=claim('supporting',None,rsp,evidence)
+                    item=next((c for c in contacts if c['source_url']==rsp['url']),None)
+                    extra=claim('website.contact_channels',None,rsp,evidence,
+                                pointer='literal contact href or visible company contact block',
+                                excerpt=(item.get('source_href') or item['value']) if item else None)
                     claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
+                from hiring_discovery import delegated_hiring_pages
+                hiring_pages=content_pages+delegated_hiring_pages(content_pages,fetcher,Page)
                 for field,types in [('hiring',{'JobPosting'}),('activity',{'NewsArticle','Article','BlogPosting'})]:
-                    items=[]; evidence_responses=[];limitations=[]
+                    items=[]; evidence_responses=[];positive_responses=[];limitations=[]
                     def limitation(response,reason):
                         item={'source_url':response['url'],'reason':reason}
                         if item not in limitations and len(limitations)<20:limitations.append(item)
@@ -842,7 +970,7 @@ def research(row, fetcher, previous=None, search=None):
                         if not any(r['url']==response['url'] and r.get('content_sha256')==response.get('content_sha256')
                                    for r in evidence_responses):
                             evidence_responses.append(response)
-                    for pg,rsp in content_pages:
+                    for pg,rsp in (hiring_pages if field=='hiring' else content_pages):
                         if field=='activity':
                             candidates,reasons=activity_candidates(pg,rsp)
                             for reason in reasons:limitation(rsp,reason)
@@ -850,7 +978,7 @@ def research(row, fetcher, previous=None, search=None):
                             candidates=list(objects(pg.ld))
                         for obj in candidates:
                             if schema_types(obj) & types:
-                                if field=='activity' and not (schema_types(obj)&{'NewsArticle','BlogPosting'}) and not article_detail(rsp['url']):
+                                if field=='activity' and not (schema_types(obj)&{'NewsArticle','BlogPosting'}) and not article_detail(rsp['url']) and not pg.post_container:
                                     continue
                                 title=obj.get('title') or obj.get('headline')
                                 date=obj.get('datePublished') if field=='activity' else obj.get('datePosted')
@@ -873,8 +1001,8 @@ def research(row, fetcher, previous=None, search=None):
                                         except ValueError: continue
                                     employer=pick(obj,'hiringOrganization','name')
                                     legal=re.sub(r' (as|asa|sti)$','',normalized(data.get('navn','')))
-                                    if employer and re.sub(r' (as|asa|sti)$','',normalized(employer))!=legal:
-                                        limitation(rsp,'posting names another employer; own-entity attribution unresolved')
+                                    if not employer or re.sub(r' (as|asa|sti)$','',normalized(employer))!=legal:
+                                        limitation(rsp,'posting lacks an exact named hiring entity; own-entity attribution unresolved')
                                         continue
                                 attribution=None
                                 if field=='activity':
@@ -884,16 +1012,24 @@ def research(row, fetcher, previous=None, search=None):
                                         limitation(rsp,'dated post does not establish the target company as its subject; footer identity is insufficient')
                                         continue
                                 item={'title':title,'date':date,'url':rsp['url']}
+                                if field=='hiring' and isinstance(obj.get('url'),str):
+                                    job_url=urljoin(rsp['url'],obj['url']);pjob=urlsplit(job_url)
+                                    if (pjob.scheme in ('http','https') and not pjob.username and not pjob.password
+                                            and pjob.port in (None,80,443) and pjob.hostname==urlsplit(rsp['url']).hostname):
+                                        item['url']=job_url
+                                if field=='hiring':item['hiring_organisation']=employer
                                 if attribution:item['attribution']=attribution
                                 if field=='hiring': item.update(valid_through=obj.get('validThrough'),status='published_posting; application availability not independently checked')
                                 if not any(i['url']==item['url'] and i['date'][:10]==item['date'][:10] for i in items): items.append(item)
-                                evidence_responses.append(rsp)
-                    add('website.'+field,items or None,anchor_response,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, or a single h1/time[datetime] on detail pages' if field=='activity' else 'script[type=application/ld+json]; JobPosting'))
+                                evidence_responses.append(rsp);positive_responses.append(rsp)
+                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, or a single h1/time[datetime] on detail pages' if field=='activity' else 'script[type=application/ld+json]; JobPosting'))
                     if limitations:
                         claims[-1]['qualifiers']={'coverage':'partial' if items else 'unresolved',
                             'candidate_limitations':limitations}
                     for rsp in evidence_responses:
-                        extra=claim('supporting',None,rsp,evidence)
+                        source_text=Page(rsp.get('text',''),rsp['url']).text
+                        literal_title=next((item['title'] for item in items if item['title'] in source_text),None)
+                        extra=claim('website.'+field,None,rsp,evidence,pointer='literal post title; publication date retained in source snapshot',excerpt=literal_title)
                         claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 # Verify social destinations after collecting dated activity, so
                 # the small social budget cannot starve post detail discovery.

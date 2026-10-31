@@ -89,6 +89,26 @@ def synthesize(claims, changes=()):
                                      'new': new['revenue'], 'currency': old['currency'],
                                      'old_period': old['period'], 'new_period': new['period'], 'percent': change})
 
+    if 'roles' in known and isinstance(value('roles'), list):
+        holders=value('roles')
+        labels=[_short(str(x.get('name') or x.get('organisation_number')) +
+                       ' ('+str(x.get('description') or x.get('role') or 'registered role')+')',180)
+                for x in holders if isinstance(x,dict) and (x.get('name') or x.get('organisation_number'))]
+        if labels:
+            add('Public active role records: '+ '; '.join(labels[:5])+
+                (f'; {len(labels)-5} additional role record(s) in the evidence.' if len(labels)>5 else '.')+
+                ' Registry roles do not independently establish current employment.', ['roles'])
+    if 'locations' in known and isinstance(value('locations'), list):
+        locations=value('locations')
+        places=sorted({str((x.get('address') or {}).get('kommune')) for x in locations
+                       if isinstance(x,dict) and isinstance(x.get('address'),dict) and x['address'].get('kommune')})
+        add(f'Registry returned {len(locations)} subunit record(s)'+
+            (' in '+', '.join(places[:8]) if places else '')+
+            '. These are registered units, not independently verified open offices.', ['locations'])
+    if 'bankrupt' in known:
+        add('Registry bankruptcy flag: '+str(value('bankrupt'))+
+            '. This flag alone is not a credit assessment or proof of solvency.', ['bankrupt'])
+
     if 'website.verified_url' in known:
         add('Website identity established against the legal entity: ' + _short(value('website.verified_url')) + '.',
             ['website.verified_url'])
@@ -97,7 +117,11 @@ def synthesize(claims, changes=()):
             ' This is company-declared context.', ['website.description'])
     for field, label in [('website.hiring', 'job posting'), ('website.activity', 'dated activity item')]:
         if field in known and isinstance(value(field), list):
-            add(f'{len(value(field))} supported {label}(s) in the checked company sources. '
+            items=value(field)
+            details='; '.join(_short(str(x.get('date','unknown date'))[:10]+' — '+str(x.get('title','untitled')),200)
+                              for x in items[:3] if isinstance(x,dict))
+            add(f'{len(items)} supported {label}(s) in the checked company sources. '+
+                (details+'. ' if details else '')+
                 'Check source dates and closing dates before acting.', [field])
     if 'website.contact_channels' in known and isinstance(value('website.contact_channels'), list):
         contacts = value('website.contact_channels')
