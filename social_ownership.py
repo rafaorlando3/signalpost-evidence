@@ -10,6 +10,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit, unquote
 import re
 import unicodedata
+import datetime as dt
 from attribution import canonical_profile, normal, objects, own_organization, types, ORGANIZATION_TYPES, organization_numbers
 
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
@@ -35,9 +36,32 @@ def legal_words(value):
     return ' '.join(words)
 
 
+def registered_historical_names(data):
+    """Dated names on the current entity record, never another org's alias."""
+    org=str(data.get('organisasjonsnummer',''))
+    records=data.get('historiskeNavn')
+    if not re.fullmatch(r'[0-9]{9}',org) or not isinstance(records,list):return []
+    result=[]
+    for item in records[:30]:
+        if not isinstance(item,dict) or str(item.get('organisasjonsnummer',org))!=org:continue
+        name=item.get('navn');start=item.get('fraDato');end=item.get('tilDato')
+        if not isinstance(name,str) or not isinstance(start,str) or not isinstance(end,str):continue
+        try:
+            if dt.date.fromisoformat(start[:10])>dt.date.fromisoformat(end[:10]):continue
+        except ValueError:continue
+        if len(identifier(name))>=5:
+            result.append({'name':name,'valid_from':start,'valid_until':end,
+                           'organisation_number':org,'registry_field':'historiskeNavn'})
+    return result
+
+
 def company_labels(data,page):
     name=data.get('navn','');legal=legal_words(name)
     labels={identifier(name):('exact_legal_name',name),identifier(legal):('exact_legal_name',name)}
+    # Keep the entire former legal name, including regional/form qualifiers.
+    # It is a discovery/matching label only when the current site declares it.
+    for historical in registered_historical_names(data):
+        labels.setdefault(identifier(historical['name']),('exact_registered_historical_name',historical['name']))
     # A trade-name must include the entire legal stem, on the already verified
     # homepage. Never drop a regional/legal differentiator to match a group.
     fragments=[page.meta.get('og:site_name','')]
@@ -150,6 +174,12 @@ def asserted_profiles(pages,data):
             profile=link['profile'];handle=profile_identifier(profile)
             if link['excluded'] or profile in blocked or handle not in labels:continue
             basis,label=labels[handle];proof=None;excerpt=None
+            historical=None
+            if basis=='exact_registered_historical_name':
+                historical=next((h for h in registered_historical_names(data) if h['name']==label),None)
+                try:
+                    if not historical or dt.date.fromisoformat(historical['valid_until'][:10])>dt.date.fromisoformat(response['retrieved_at'][:10]):continue
+                except (KeyError,ValueError,TypeError):continue
             if 'me' in link['rel']:
                 proof='rel_me_and_exact_entity_identifier';excerpt=link['label']
             for scope in link['scopes']:
@@ -178,5 +208,6 @@ def asserted_profiles(pages,data):
                     'identity_basis':basis,'asserted_company_label':label,'profile_identifier':handle,
                     'source_url':page.url,'source_href':link['href'],'context_excerpt':(excerpt or link['label'])[:700],
                     'verification_scope':'explicit company declaration plus entity matching; destination access not independently verified'}}
+                if historical:record['proof']['historical_name_binding']=historical
                 found.setdefault(profile,[]).append(record)
     return found,blocked

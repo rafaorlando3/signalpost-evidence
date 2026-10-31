@@ -8,6 +8,34 @@ from social_ownership import asserted_profiles,company_labels,profile_identifier
 
 
 class SocialRecovery(unittest.TestCase):
+    def test_current_site_can_declare_full_dated_historical_name_of_same_org(self):
+        h=test_agent.R5Precision()
+        history=[{'navn':'Previous Entity ASA','fraDato':'2001-01-01 00:00:00','tilDato':'2017-02-10 11:37:16'}]
+        body='<nav class="social"><a href="https://linkedin.com/company/previous-entity-asa">LinkedIn</a></nav>'
+        row=h.observe({h.HOME:'Org nr '+h.ORG+body},{'historiskeNavn':history})
+        c=h.by_field(row,'website.social_links');proof=c['value'][0]['ownership_evidence'][0]
+        self.assertEqual(proof['identity_basis'],'exact_registered_historical_name')
+        self.assertEqual(proof['historical_name_binding']['organisation_number'],h.ORG)
+        self.assertTrue(any(e['id'] in c['evidence_ids'] and e['source_url'].endswith('/enheter/'+h.ORG) for e in row['evidence']))
+        self.assertIsNone(self.observe(body)['value'])
+
+    def test_historical_name_needs_valid_finished_period_same_org_and_complete_identifier(self):
+        history={'navn':'Previous Entity ASA','fraDato':'2001-01-01','tilDato':'2017-01-01'}
+        body='<nav class="social"><a href="https://linkedin.com/company/previous-entity-asa">LinkedIn</a></nav>'
+        for bad in [{**history,'organisasjonsnummer':'974761076'},
+                    {**history,'fraDato':'invalid'}, {**history,'tilDato':'2027-01-01'},
+                    {**history,'navn':'Previous Entity West ASA'}, {'navn':'Previous Entity ASA'}]:
+            self.assertIsNone(self.observe(body,{'historiskeNavn':[bad]})['value'])
+        self.assertIsNone(self.observe('<footer><a href="https://linkedin.com/company/previous-entity-asa">LinkedIn</a></footer>',{'historiskeNavn':[history]})['value'])
+
+    def test_historical_alias_still_rejects_person_and_foreign_org_assertions(self):
+        history=[{'navn':'Previous Entity ASA','fraDato':'2001-01-01','tilDato':'2017-01-01'}]
+        u='https://linkedin.com/company/previous-entity-asa'
+        for node in [{'@type':'Person','sameAs':u},
+                     {'@type':'Organization','name':'Previous Entity ASA','vatID':'974761076','sameAs':u}]:
+            body='<nav class="social"><a href="'+u+'">LinkedIn</a></nav><script type="application/ld+json">'+json.dumps(node)+'</script>'
+            self.assertIsNone(self.observe(body,{'historiskeNavn':history})['value'])
+
     def observe(self,body,extra=None):
         h=test_agent.R5Precision()
         row=h.observe({h.HOME:'Org nr '+h.ORG+body},extra)

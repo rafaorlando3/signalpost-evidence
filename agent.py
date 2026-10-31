@@ -475,12 +475,12 @@ def link_family(url):
     if re.search(r'nyhetsbrev|newsletter|\.pdf$|\.jpg$|\.png$',path): return None
     # Whole path words: 'bestillinger' means orders, not 'stillinger' (jobs).
     if re.search(r'(?:^|[/_-])(?:karriere|careers?|jobb(?:er|e)?|jobs?|stillinger?|vacanc(?:y|ies))(?:$|[/_-])',path): return 'hiring'
-    if re.search(r'(?:^|[/_-])(?:news|nyheter?|aktuelt|blogg?|presse|press|artikler|articles?|stories|insights)(?:$|[/_-])|/20\d{2}/',path): return 'activity'
+    if re.search(r'(?:^|[/_-])(?:news|nyheter?|aktuelt|blogg?|presse|press|presserom|pressroom|newsroom|artikler|articles?|stories|insights)(?:$|[/_-])|/20\d{2}/',path): return 'activity'
     if re.search(r'kontakt|contact|personvern|privacy|beting|vilk|impressum|legal|om-oss|about',path): return 'identity'
     return None
 
 def article_detail(url):
-    return bool(re.search(r'/(?:news|nyheter?|aktuelt|blogg?|presse|press|artikler|articles?|stories|insights)(?:[-_](?:og[-_])?(?:presse|press|news))?/[^/]+|/20\d{2}/',urlsplit(url).path,re.I))
+    return bool(re.search(r'/(?:news|nyheter?|aktuelt|blogg?|presse|press|artikler|articles?|stories|insights)(?:[-_](?:og[-_])?(?:presse|press|news))?/[^/]+|/(?:[\w]+[-_])?(?:presserom|pressroom|newsroom)/[^/]+|/20\d{2}/',urlsplit(url).path,re.I))
 
 def social_profile(url):
     from attribution import canonical_profile
@@ -545,7 +545,9 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
                 family='activity'
                 post_leads.setdefault(url,len(post_leads))
             if family and urlsplit(url).scheme in ('https','http') and urlsplit(url).hostname==host and url not in seen:
-                queue[url]=family
+                from site_discovery import identity_content_candidate
+                if family=='identity':url=identity_content_candidate(url)
+                if url not in seen:queue[url]=family
         return True
     if not ingest(home,response): return [],pages
     for url in seed_urls:
@@ -1110,6 +1112,8 @@ def research(row, fetcher, previous=None, search=None):
                         proof='explicit_company_declaration_and_entity_identifier'
                         ownership_evidence=[record['proof'] for record in assertions[profile]][:3]
                         supports += [record['response'] for record in assertions[profile]]
+                        if any(record['proof'].get('historical_name_binding') for record in assertions[profile]):
+                            supports.append(entity)
                     elif checked<2 and fetcher.requests<fetcher.limit-1:
                         checked+=1
                         destination=fetcher.get(link.get('url') or profile,site=True,raw=True)

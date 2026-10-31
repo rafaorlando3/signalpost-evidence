@@ -4,6 +4,20 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 
 
+def identity_content_candidate(url):
+    """Drop an isolated cookie-dialog UI toggle from an identity-page lead.
+
+    The requested content response still supplies all identity evidence. Other
+    query parameters, including combined/versioned queries, are left intact.
+    """
+    try:
+        p=urlsplit(url)
+        if p.scheme in {'http','https'} and not p.username and not p.password and p.query=='cookie_settings=true':
+            return urlunsplit((p.scheme,p.netloc,p.path,'',''))
+    except ValueError:pass
+    return url
+
+
 def xml_candidates(text, source_url, host):
     if len(text)>2_000_000 or re.search(r'<!\s*(DOCTYPE|ENTITY)\b',text,re.I):
         return [],[]

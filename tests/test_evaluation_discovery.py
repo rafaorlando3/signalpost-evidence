@@ -4,6 +4,26 @@ from agent import Page,activity_candidates,link_family,article_detail
 from test_agent import R5Precision
 
 class IndependentDiagnostics(unittest.TestCase):
+    def test_cookie_dialog_identity_lead_uses_content_url_without_changing_business_queries(self):
+        from site_discovery import identity_content_candidate
+        u='https://example.test/privacy?cookie_settings=true'
+        self.assertEqual(identity_content_candidate(u),'https://example.test/privacy')
+        for other in ['https://example.test/privacy?lang=no',u+'&version=2',
+                      'https://example.test/privacy?version=2&cookie_settings=true',
+                      'https://user:pass@example.test/privacy?cookie_settings=true']:
+            self.assertEqual(identity_content_candidate(other),other)
+
+    def test_pressroom_routes_are_leads_but_still_need_real_dated_detail_content(self):
+        body='<main><h1>Example AS opens factory</h1><p>'+('Example AS announces a new factory opening. '*5)+'</p><time class="published" datetime="2026-09-01">Published</time></main>'
+        for path in ['pressroom/factory','newsroom/factory','provider-presserom/factory']:
+            self.assertEqual(link_family('https://example.test/'+path),'activity')
+            self.assertTrue(article_detail('https://example.test/'+path))
+            self.assertEqual(len(self.candidates(body,path)[0]),1)
+        self.assertEqual(self.candidates(body,'pressroom')[0],[])
+        self.assertEqual(self.candidates(body.replace('class="published"','class="updated"'),'pressroom/factory')[0],[])
+        product=body+'<script type="application/ld+json">{"@type":"Product","name":"Example product"}</script>'
+        self.assertEqual(self.candidates(product,'pressroom/factory')[0],[])
+
     def test_plain_org_period_label_requires_checksum_and_preserves_other_entity_conflict(self):
         from agent import website_identity
         org='810034882';u='https://example.test/'
