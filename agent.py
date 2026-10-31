@@ -200,6 +200,16 @@ class Page(HTMLParser):
         self.footer_parts=[];self.paragraphs=[];self.paragraph=None;self.paragraph_is_content=False
         self.feed(text)
 
+    def content_scope(self):
+        # A post's own <article><header> is content. Site navigation headers
+        # remain chrome; merely nesting an article inside a global header does
+        # not turn that global header into a publication source.
+        tags=[t for t,_ in self.link_context]
+        if any(t in {'head','title','nav','footer','aside','form','dialog'} for t in tags):return False
+        for index,tag in enumerate(tags):
+            if tag=='header' and 'article' not in tags[:index]:return False
+        return True
+
     def handle_starttag(self, tag, attrs):
         a=dict(attrs)
         context=' '.join((a.get(k) or '') for k in ('class','id','aria-label','title','data-sentry-component','data-sentry-source-file'))
@@ -215,18 +225,18 @@ class Page(HTMLParser):
             if tag=='script' and a.get('type')=='application/ld+json': self.script=[]
         if tag=='p':
             self.paragraph=''
-            self.paragraph_is_content=not self.skip and not third_party and not any(t in {'nav','header','footer','aside','form','dialog'} for t,_ in self.link_context)
+            self.paragraph_is_content=not self.skip and not third_party and self.content_scope()
         if tag=='title': self.in_title=True
         if tag=='h1':
             self.heading=''
-            self.heading_is_content=not any(t in {'nav','header','footer','aside','dialog','form'} for t,_ in self.link_context)
+            self.heading_is_content=self.content_scope()
             self.heading_is_main=self.heading_is_content and any(t in {'article','main'} for t,_ in self.link_context)
             self.heading_is_semantic=self.heading_is_content and 'headline' in (a.get('itemprop') or '').split()
         if tag=='time' and a.get('datetime'):
             semantic=((a.get('itemprop') or '')+' '+(a.get('class') or '')).casefold()
             if re.search(r'\b(datepublished|published|entry-date)\b',semantic) and not re.search(r'updated|modified',semantic):
                 self.times.append(a['datetime'])
-                if not any(t in {'nav','header','footer','aside'} for t,_ in self.link_context):
+                if self.content_scope():
                     self.content_times.append(a['datetime'])
                     if any(t in {'article','main'} for t,_ in self.link_context):self.main_times.append(a['datetime'])
         if tag=='link' and 'alternate' in (a.get('rel') or '').split() and a.get('type') in ('application/rss+xml','application/atom+xml') and a.get('href'):
@@ -276,7 +286,7 @@ class Page(HTMLParser):
             if self.paragraph is not None:self.paragraph+=value+' '
             self.parts.append(value)
             if any(t=='footer' for t,_ in self.link_context):self.footer_parts.append(value)
-            if not any(t in {'head','title','nav','header','footer','aside'} for t,_ in self.link_context):
+            if self.content_scope():
                 self.body_parts.append(value)
                 if any(t=='article' for t,_ in self.link_context):self.post_parts.append(value)
                 if any(t=='main' for t,_ in self.link_context):self.main_parts.append(value)

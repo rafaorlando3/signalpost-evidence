@@ -61,3 +61,21 @@ class RegistryDiscovery(unittest.TestCase):
         self.assertEqual(c['source_pointer'],'explicit_org_number')
 
 if __name__=='__main__':unittest.main()
+
+class HeuristicLeads(unittest.TestCase):
+    def test_domains_are_generic_bounded_and_never_identity_proof(self):
+        from registry_discovery import name_domain_candidates
+        self.assertEqual(name_domain_candidates({'navn':'ÆØÅ Industri AS'}),['https://aeoaindustri.no/','https://aeoa-industri.no/'])
+        self.assertEqual(name_domain_candidates({'navn':'Somebody Invest AS'}),[])
+        self.assertEqual(name_domain_candidates({'navn':'ABC AS'}),[])
+        self.assertEqual(name_domain_candidates({'navn':'Example AS'}),['https://example.no/','https://example.com/'])
+
+    def test_unknown_domain_requires_own_legal_footer_brand_and_exact_address(self):
+        from agent import legal_footer_identity
+        data={'navn':'Example Business AS','organisasjonsnummer':ORG,'forretningsadresse':{'adresse':['Road 12'],'postnummer':'1234'}}
+        good='<title>Example Business</title><footer>Example Business AS Road 12, 1234 Oslo</footer>'
+        self.assertTrue(legal_footer_identity(data,Page(good,'https://new.test/')))
+        self.assertFalse(legal_footer_identity(data,Page(good,'https://new.test/customers/example')))
+        self.assertFalse(legal_footer_identity(data,Page(good.replace('Example Business</title>','Other Group</title>'),'https://new.test/')))
+        self.assertFalse(legal_footer_identity(data,Page(good.replace('1234','9999'),'https://new.test/')))
+        self.assertFalse(legal_footer_identity(data,Page(good.replace('<footer>','<div>').replace('</footer>','</div>'),'https://new.test/')))

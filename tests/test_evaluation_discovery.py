@@ -199,3 +199,15 @@ class OperatorAudit(unittest.TestCase):
             self.assertTrue(audit([row],d)['passed'])
             c['identity_support']['operators'][0]['organisation_numbers']=['974761076']
             self.assertFalse(audit([row],d)['passed'])
+
+class ArticleHeaderScope(unittest.TestCase):
+    def test_post_header_has_its_own_publication_title_and_date(self):
+        u='https://example.test/new-factory'
+        body='<header><h1>Global brand</h1><time itemprop="datePublished" datetime="2026-01-01">Menu date</time></header><main><article class="singlePostSection"><header><h1>Example AS opens factory</h1><time itemprop="datePublished" datetime="2026-09-01">Published</time></header><p>'+('Example AS has opened its new factory. '*4)+'</p></article></main>'
+        p=Page(body,u);cs,_=activity_candidates(p,{'url':u})
+        self.assertEqual(p.content_headings,['Example AS opens factory'])
+        self.assertEqual(p.content_times,['2026-09-01'])
+        self.assertEqual([c['datePublished'] for c in cs],['2026-09-01'])
+        # A global header cannot become content just by containing an article.
+        p=Page('<header><article><h1>Menu headline</h1><time itemprop="datePublished" datetime="2026-09-01">Date</time></article></header>',u)
+        cs,_=activity_candidates(p,{'url':u});self.assertEqual(cs,[])
