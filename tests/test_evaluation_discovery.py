@@ -214,6 +214,14 @@ class ArticleHeaderScope(unittest.TestCase):
         cs,_=activity_candidates(p,{'url':u});self.assertEqual(cs,[])
 
 class BoundedNewsPriority(unittest.TestCase):
+    def test_supported_staff_contacts_are_not_lost_at_the_old_ten_item_cutoff(self):
+        h=R5Precision()
+        body='Org nr '+h.ORG+'<footer>Example AS '+''.join('<a href="mailto:person'+str(i)+'@example.test">Contact colleague</a>' for i in range(15))+'</footer>'
+        row=h.observe({h.HOME:body})
+        contacts=h.by_field(row,'website.contact_channels')['value']
+        self.assertEqual(len(contacts),15)
+        self.assertIn('person14@example.test',{c['value'] for c in contacts})
+        self.assertTrue(all(c['source_url']==h.HOME for c in contacts))
     def test_shallow_branded_business_page_can_supply_literal_contacts(self):
         h=R5Precision()
         body='Org nr '+h.ORG+'<a href="/example-support">Example services</a>'

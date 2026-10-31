@@ -991,7 +991,7 @@ def research(row, fetcher, previous=None, search=None):
                     contact_limits.extend(held[:10])
                     for item in scoped:
                         key=(item['type'],item['value'])
-                        if key not in seen_contacts and len(contacts)<10:
+                        if key not in seen_contacts and len(contacts)<25:
                             contacts.append(item);seen_contacts.add(key);contact_sources.append(rsp)
                 contact_anchor=contact_sources[0] if contact_sources else anchor_response
                 add('website.contact_channels',contacts or None,contact_anchor,excerpt=(contacts[0].get('source_href') or contacts[0]['value']) if contacts else None,
