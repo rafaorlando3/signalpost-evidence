@@ -484,6 +484,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
     """Explore distinct purposes and linked detail pages within the existing request cap."""
     home=Page(response.get('text',''),response['url']); host=urlsplit(response['url']).hostname
     pages=[];verified=[];seen={urlunsplit((*urlsplit(response['url'])[:4],''))};queue={};counts=collections.Counter();discovered=False
+    post_leads={}
     operator_blocked=False;known_operator=None
     def ingest(page,rsp):
         nonlocal operator_blocked,known_operator
@@ -510,12 +511,14 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             if family is None:
                 label=normalized(link['text'])
                 if re.search(r'\b(kontakt|contact|personvern|privacy|om oss|about us)\b',label): family='identity'
-            if (family is None and verified and link_family(rsp['url'])=='activity'
+            if (family not in ('identity',) and verified and link_family(rsp['url'])=='activity'
                     and not link.get('in_navigation') and not link.get('third_party_context')
-                    and len(link['text'].strip())>=5 and urlsplit(url).path not in ('','/')):
+                    and len(link['text'].strip())>=5 and urlsplit(url).path not in ('','/')
+                    and url!=rsp['url']):
                 # A real post may use a root slug. This only discovers it;
                 # publication still requires dated, scoped article evidence.
                 family='activity'
+                post_leads.setdefault(url,len(post_leads))
             if family and urlsplit(url).scheme in ('https','http') and urlsplit(url).hostname==host and url not in seen:
                 queue[url]=family
         return True
@@ -544,15 +547,25 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
                         and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)(?:$|[?#])',candidate,re.I)):
                     family='activity'
                 if family and candidate not in seen:queue.setdefault(candidate,family)
-    while len(seen)<9 and fetcher.requests<fetcher.limit-(0 if verified else reserve_requests):
-        if not discovered and (not queue or (verified and len(seen)>=4)):
+    while len(seen)<10 and fetcher.requests<fetcher.limit-(0 if verified else reserve_requests):
+        # An already fetched news index provides stronger discovery leads than
+        # another map request. XML remains a fallback when those leads run out.
+        pending_posts=any(u not in seen and u in queue for u in post_leads)
+        if not discovered and (not queue or (verified and len(seen)>=4 and not pending_posts)):
             discovered=True;discover()
         if not queue:break
         def rank(item):
             url,family=item
             base=({'hiring':0,'activity':1,'identity':5} if verified else {'identity':0,'hiring':5,'activity':6})[family]
             depth=len([s for s in urlsplit(url).path.split('/') if s])
-            return (base+counts[family]*4, (0 if verified else depth),list(queue).index(url),len(url),url)
+            # Inspect legal ownership before repeatedly exploring auxiliary
+            # identity pages; still leave a balanced path to jobs and articles.
+            legal=bool(re.search(r'personvern|privacy|legal|impressum|vilk|beting',urlsplit(url).path,re.I))
+            penalty=counts[family]*(8 if verified and family=='identity' else 4)
+            identity_order=0 if legal else 1 if re.search(r'kontakt|contact|kundeservice',urlsplit(url).path,re.I) else 2
+            detail_order=post_leads.get(url,10_000+list(queue).index(url)) if family=='activity' else list(queue).index(url)
+            return (base+penalty, identity_order if family=='identity' and verified else 0,
+                    (0 if verified else depth),detail_order,len(url),url)
         url,family=min(queue.items(),key=rank);del queue[url];seen.add(url);counts[family]+=1
         child=fetcher.get(url,site=True,raw=True)
         if child['status']!='available' or urlsplit(child['url']).hostname!=host: continue

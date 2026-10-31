@@ -208,9 +208,46 @@ class ArticleHeaderScope(unittest.TestCase):
         self.assertEqual(p.content_headings,['Example AS opens factory'])
         self.assertEqual(p.content_times,['2026-09-01'])
         self.assertEqual([c['datePublished'] for c in cs],['2026-09-01'])
+
         # A global header cannot become content just by containing an article.
         p=Page('<header><article><h1>Menu headline</h1><time itemprop="datePublished" datetime="2026-09-01">Date</time></article></header>',u)
         cs,_=activity_candidates(p,{'url':u});self.assertEqual(cs,[])
+
+class BoundedNewsPriority(unittest.TestCase):
+    def test_news_index_is_used_before_redundant_sitemaps_and_preserves_legal_check(self):
+        from agent import crawl_company
+        from test_discovery import Pages, ORG
+        home={'url':'https://example.test/', 'text':'Org nr '+ORG+
+              '<nav><a href="/careers">Careers</a><a href="/news">News</a>'
+              '<a href="/about">About us</a><a href="/contact">Contact</a>'
+              '<a href="/privacy">Privacy</a></nav>'}
+        urls=['https://example.test/article-'+str(i) for i in range(1,7)]
+        pages={'https://example.test/news': '<main>'+''.join('<a href="'+u+'">Company update '+str(i)+'</a>' for i,u in enumerate(urls))+'</main>',
+               'https://example.test/privacy':'Org nr '+ORG}
+        f=Pages(pages)
+        verified,inspected=crawl_company(ORG,{},home,f)
+        self.assertTrue(verified)
+        self.assertIn('https://example.test/privacy',f.visited)
+        self.assertGreaterEqual(sum(u in f.visited for u in urls),5)
+        self.assertFalse(any('sitemap' in u for u in f.visited))
+        self.assertLessEqual(len(inspected),10)
+        self.assertLessEqual(f.requests,f.limit)
+
+    def test_empty_news_index_still_falls_back_to_sitemap(self):
+        from agent import crawl_company
+        from test_discovery import Pages, ORG
+        home={'url':'https://example.test/','text':'Org nr '+ORG+'<a href="/news">News</a>'}
+        f=Pages({'https://example.test/sitemap.xml':'<urlset><url><loc>https://example.test/news/hidden</loc></url></urlset>'})
+        crawl_company(ORG,{},home,f)
+        self.assertIn('https://example.test/news/hidden',f.visited)
+
+    def test_news_discovery_does_not_turn_undated_index_links_into_published_posts(self):
+        h=R5Precision()
+        root='Org nr '+h.ORG+'<a href="/news">News</a>'
+        index='<main><a href="/undated-update">Example AS news update</a></main>'
+        post='<main><h1>Example AS news update</h1><p>'+('Example AS business update. '*10)+'</p></main>'
+        row=h.observe({h.HOME:root,h.HOME+'news':index,h.HOME+'undated-update':post})
+        self.assertIsNone(h.by_field(row,'website.activity')['value'])
 
 class PlaceholderDescription(unittest.TestCase):
     def test_under_construction_notice_is_not_an_operational_description(self):
