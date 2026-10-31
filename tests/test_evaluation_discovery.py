@@ -211,3 +211,11 @@ class ArticleHeaderScope(unittest.TestCase):
         # A global header cannot become content just by containing an article.
         p=Page('<header><article><h1>Menu headline</h1><time itemprop="datePublished" datetime="2026-09-01">Date</time></article></header>',u)
         cs,_=activity_candidates(p,{'url':u});self.assertEqual(cs,[])
+
+class PlaceholderDescription(unittest.TestCase):
+    def test_under_construction_notice_is_not_an_operational_description(self):
+        from test_agent import R5Precision as Helper
+        h=Helper();body='<footer>Org nr '+h.ORG+'</footer><meta name="description" content="Our new website is under construction. Follow us for future updates and more information.">'
+        r=h.observe({h.HOME:body})
+        self.assertEqual(h.by_field(r,'website.verified_url')['availability'],'available')
+        self.assertIsNone(h.by_field(r,'website.description')['value'])
