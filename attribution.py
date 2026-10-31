@@ -181,6 +181,16 @@ def article_attribution(obj, page, data):
                 return 'article_subject_exact_organisation_number'
     content = ' '.join(str(obj.get(k) or '') for k in ('headline', 'title', 'articleBody', 'description'))
     content += ' ' + ' '.join(page.article_parts)
+    # A shared brand does not turn a Swedish AB's post into a Norwegian AS's
+    # own activity. Exact target subject IDs above take precedence; otherwise
+    # an explicitly different legal suffix requires an explicit target name.
+    target=normal(data.get('navn',''));stem=legal_stem(target)
+    if target and stem and not re.search(r'(?<!\w)'+re.escape(target)+r'(?!\w)',normal(content)):
+        other_forms={'as','asa','nuf','sti','ab','abp','oy','aps','gmbh','ltd','llc','inc','bv'}
+        expected=target.rsplit(' ',1)[-1]
+        for suffix in other_forms-{expected}:
+            if re.search(r'(?<!\w)'+re.escape(stem)+r'\s+'+suffix+r'(?!\w)',normal(content)):
+                return None
     # Navigation/footer and the site's generic description are deliberately absent.
     if mentions(content, data.get('navn', '')):
         return 'target_name_in_post_content'

@@ -214,6 +214,31 @@ class ArticleHeaderScope(unittest.TestCase):
         cs,_=activity_candidates(p,{'url':u});self.assertEqual(cs,[])
 
 class BoundedNewsPriority(unittest.TestCase):
+    def test_shallow_branded_business_page_can_supply_literal_contacts(self):
+        h=R5Precision()
+        body='Org nr '+h.ORG+'<a href="/example-support">Example services</a>'
+        support='<footer>Example AS <a href="mailto:office@example.test">Contact us</a></footer>'
+        row=h.observe({h.HOME:body,h.HOME+'example-support':support})
+        contacts=h.by_field(row,'website.contact_channels')['value']
+        self.assertEqual(contacts[0]['value'],'office@example.test')
+
+    def test_feed_channel_home_and_reply_links_are_not_post_discovery(self):
+        from site_discovery import xml_candidates
+        xml='<rss><channel><link>https://example.test/</link><item><link>https://example.test/new-story</link><comments>https://example.test/new-story?replytocom=1</comments></item></channel></rss>'
+        urls,_=xml_candidates(xml,'https://example.test/feed/','example.test')
+        self.assertEqual(urls,['https://example.test/new-story'])
+
+    def test_other_legal_suffix_is_not_own_entity_news_from_shared_brand(self):
+        from attribution import article_attribution
+        obj={'headline':'Example AB launches a new product','articleBody':'Example AB has opened a new factory.'}
+        page=Page('<main><h1>Example AB launches a new product</h1></main>','https://example.test/news/new')
+        data={'navn':'Example AS','organisasjonsnummer':'810034882'}
+        self.assertIsNone(article_attribution(obj,page,data))
+        obj['about']={'@type':'Organization','taxID':'810034882'}
+        self.assertEqual(article_attribution(obj,page,data),'article_subject_exact_organisation_number')
+        obj.pop('about');obj['articleBody']='Example AS and Example AB have jointly opened a factory.'
+        self.assertEqual(article_attribution(obj,page,data),'target_name_in_post_content')
+
     def test_detached_mega_menu_navigation_and_nested_product_paths_are_not_post_leads(self):
         from agent import crawl_company
         from test_discovery import Pages, ORG

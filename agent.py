@@ -517,6 +517,18 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             url=urlunsplit((*urlsplit(link['url'])[:4],''));family=link_family(url)
             if family is None:
                 if re.search(r'\b(kontakt|contact|personvern|privacy|om oss|about us)\b',label): family='identity'
+            if family is None and verified and page is home:
+                # A shallow branded business page may contain the contact or
+                # imprint without being labelled "about". This is only a URL
+                # lead on an already checked site, never identity evidence.
+                path_parts=[p for p in urlsplit(url).path.split('/') if p]
+                brand=re.sub(r'[^a-z0-9]','',(host or '').removeprefix('www.').split('.')[0].casefold())
+                slug=re.sub(r'[^a-z0-9]','',path_parts[0].casefold()) if len(path_parts)==1 else ''
+                shared=0
+                for a,b in zip(brand,slug):
+                    if a!=b:break
+                    shared+=1
+                if shared>=6:family='identity'
             if (family not in ('identity',) and verified and activity_index
                     and not link.get('in_navigation') and not link.get('third_party_context')
                     and len(link['text'].strip())>=5 and urlsplit(url).path not in ('','/')

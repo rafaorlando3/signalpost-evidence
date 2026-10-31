@@ -24,7 +24,11 @@ def xml_candidates(text, source_url, host):
             if loc is not None:entries.append((loc,modified))
         if kind=='urlset':entries.sort(key=lambda x:x[1] if re.match(r'20[0-9]{2}-[0-9]{2}-[0-9]{2}',x[1]) else '',reverse=True)
         elements=[x[0] for x in entries]
-    else:elements=root.iter()
+    else:
+        # Feed/channel home links and reply/comment endpoints are navigation,
+        # not individual post leads. Only item/entry alternate links count.
+        elements=[link for entry in root.iter() if tag(entry) in {'item','entry'}
+                  for link in entry if tag(link)=='link']
     for el in elements:
         name=tag(el); value=None
         if name=='loc' and kind in {'urlset','sitemapindex'}: value=el.text
