@@ -18,6 +18,21 @@ class SocialRecovery(unittest.TestCase):
         self.assertEqual(c['value'][0]['url'],'https://facebook.com/example')
         self.assertIn('follow_statement',c['value'][0]['ownership_evidence'][0]['method'])
 
+    def test_possessive_company_page_declaration_requires_matching_entity_and_not_another_party(self):
+        for prefix,suffix in [('på vår','side'),('on our','page')]:
+            c=self.observe('<p>'+prefix+' <a href="https://facebook.com/example">Facebook</a> '+suffix+'</p>')
+            self.assertEqual(c['value'][0]['url'],'https://facebook.com/example')
+            self.assertIn('company_profile_reference',c['value'][0]['ownership_evidence'][0]['method'])
+        for body in ['<p>on their <a href="https://facebook.com/example">Facebook</a> page</p>',
+                     '<p>on our <a href="https://facebook.com/othercompany">Facebook</a> page</p>',
+                     '<section class="partner"><p>on our <a href="https://facebook.com/example">Facebook</a> page</p></section>']:
+            self.assertIsNone(self.observe(body)['value'])
+
+    def test_possessive_declaration_excerpt_keeps_the_literal_phrase_in_long_blocks(self):
+        c=self.observe('<div>'+('General company information. '*35)+'<p>på vår <a href="https://facebook.com/example">Facebook</a> side</p></div>')
+        proof=c['value'][0]['ownership_evidence'][0]
+        self.assertIn('vår Facebook side',proof['context_excerpt'])
+
     def test_footer_link_alone_stays_unresolved_even_when_name_matches(self):
         c=self.observe('<footer><a href="https://facebook.com/example">Facebook</a></footer>')
         self.assertIsNone(c['value'])

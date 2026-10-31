@@ -16,6 +16,7 @@ VOID={'area','base','br','col','embed','hr','img','input','link','meta','param',
 EXCLUDED=re.compile(r'sponsor|partner|customer|testimonial|author|agency|webdesign|site.credit|powered.by|theme.credit|shar(?:e|ing)|comment',re.I)
 SOCIAL=re.compile(r'\b(?:social|socials|sosial|sosiale|follow|følg)\b',re.I)
 FOLLOW=re.compile(r'\b(?:follow\s+(?:us|our)|følg(?:e)?\s+(?:oss|våre)|følg\s+gjerne\s+.{0,35}\bvåre|suivez.nous)\b',re.I)
+POSSESSIVE_PROFILE=re.compile(r'\b(?:vår(?:e)?\s+(?:facebook|instagram|linkedin|youtube|tiktok)\s+(?:side|profil|konto|kanal)|our\s+(?:facebook|instagram|linkedin|youtube|tiktok)\s+(?:page|profile|account|channel))\b',re.I)
 
 
 def folded(value):
@@ -156,6 +157,11 @@ def asserted_profiles(pages,data):
                 text=re.sub(r'\s+',' ',scope['text']).strip()
                 if FOLLOW.search(text):
                     proof='explicit_follow_statement_and_exact_entity_identifier';excerpt=text
+                    break
+                declaration=POSSESSIVE_PROFILE.search(text)
+                if declaration:
+                    proof='explicit_company_profile_reference_and_exact_entity_identifier'
+                    excerpt=text[max(0,declaration.start()-180):declaration.end()+180]
                     break
                 branded_social=(len(text)<900 and SOCIAL.search(normal(text)) and
                     bool(re.search(r'(?<!\w)'+re.escape(legal_words(data.get('navn','')))+r'(?!\w)',normal(folded(text)))))
