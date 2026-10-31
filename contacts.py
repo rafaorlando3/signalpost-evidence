@@ -44,8 +44,15 @@ def _contact_scopes(page,include_text=False):
             if t in {'h1','h2','h3','h4','h5','h6'}:
                 self.section={'tag':'heading_section','text':'','excluded':excluded};self.sections.append(self.section)
             if t not in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:
+                inside_article=any(n['tag']=='article' for n in self.stack)
                 self.stack.append({'tag':t,'text':'','excluded':excluded})
-                if t=='footer':self.footers.append(self.stack[-1])
+                semantic=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',context).replace('_',' ')
+                path=urlsplit(page.url).path.casefold().rstrip('/')
+                contact_page=bool(re.search(r'kontakt|contact',path))
+                homepage=path in ('','/home','/hjem','/index.html','/index.php')
+                global_footer=(t=='footer' or a.get('role')=='contentinfo' or bool(re.search(r'\bfooter\b',semantic,re.I))) and not inside_article
+                contact_component=bool(re.search(r'\bcontact(?:s|info|information)?\b|\bkontakt(?:informasjon)?\b',semantic,re.I)) and (contact_page or homepage and not inside_article)
+                if global_footer or contact_component:self.footers.append(self.stack[-1])
             if t in {'script','style','noscript'}:self.skip+=1
             if t=='a' and a.get('href'):
                 try:u=urljoin(page.url,a['href'])
@@ -89,6 +96,9 @@ def entity_contacts(page,data,units=()):
         for match in re.finditer(r'\b(?:Tel(?:efon)?|Tlf|Phone|Mobil)\s*:?[ \t]*(\+?[0-9 () .-]{7,25})',text,re.I):
             value=match.group(1).strip().rstrip(' .-')
             if 7<=len(re.sub(r'\D','',value))<=15:found.append(('phone',value,match.group(0).strip()))
+        for match in re.finditer(r'(?m)^[ \t]*(\+[0-9][0-9 () .-]{7,22})[ \t]*$',text):
+            value=match.group(1).strip()
+            if 8<=len(re.sub(r'\D','',value))<=15:found.append(('phone',value,value))
         for kind,value,label in found:
             item={'type':kind,'value':value,'label':label[:160],'source_url':page.url,'source_href':None,
                   'source_kind':'literal_visible_text','source_pointer':'visible company contact/footer or exact legal-imprint block'}

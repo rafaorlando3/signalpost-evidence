@@ -938,7 +938,7 @@ def research(row, fetcher, previous=None, search=None):
                 description=description_page.description
                 if not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4:
                     description=next((v for v in description_page.paragraphs if 70<=len(v)<=2000 or (len(v)>=20 and group_description(v))),None)
-                if description and re.search(r'lorem ipsum|dolor sit amet|under construction|coming soon|ny(?:e)? nettside(?:r)? under(?:veis| arbeid)|nettsiden er under',description,re.I):description=None
+                if description and re.search(r'lorem ipsum|dolor sit amet|(?:web\s*site|nettside).{0,45}(?:under construction|coming soon|underveis|under arbeid)|^(?:under construction|coming soon)[.! ]*$',description,re.I):description=None
                 if description:description=description[:700]
                 collective=group_description(description or '')
                 add('website.description',description or None,description_response,

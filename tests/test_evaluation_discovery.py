@@ -219,3 +219,6 @@ class PlaceholderDescription(unittest.TestCase):
         r=h.observe({h.HOME:body})
         self.assertEqual(h.by_field(r,'website.verified_url')['availability'],'available')
         self.assertIsNone(h.by_field(r,'website.description')['value'])
+        real=body.replace('Our new website is under construction. Follow us for future updates and more information.','Example AS supplies doors for buildings under construction and for industrial refurbishment projects.')
+        r=h.observe({h.HOME:real})
+        self.assertIn('supplies doors',h.by_field(r,'website.description')['value'])

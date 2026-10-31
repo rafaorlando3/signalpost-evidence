@@ -90,3 +90,13 @@ class VisibleThirdPartyExclusion(unittest.TestCase):
         p=Page('<footer><h3>Contact</h3><p>office@example.no</p><div class="webdesign agency"><p>agency@other.no</p><p>Tel: 12345678</p></div></footer>','https://example.no')
         items,_=entity_contacts(p,{'navn':'Example AS'})
         self.assertEqual([x['value'] for x in items],['office@example.no'])
+
+class SemanticContactContainers(unittest.TestCase):
+    def test_builder_footer_and_contact_component_preserve_literal_channels(self):
+        from contacts import entity_contacts
+        html='<div class="siteFooter"><div class="contactInfo"><p>office@example.no</p><p>+4712345678</p><p>Org nr 810034882</p></div><div class="agency"><p>agency@other.no</p></div></div>'
+        items,_=entity_contacts(Page(html,'https://example.no'),{'navn':'Example AS'})
+        self.assertEqual({x['value'] for x in items},{'office@example.no','+4712345678'})
+        html='<article><div class="entryFooter"><p>author@other.no</p></div></article>'
+        items,_=entity_contacts(Page(html,'https://example.no/news/post'),{'navn':'Example AS'})
+        self.assertEqual(items,[])
