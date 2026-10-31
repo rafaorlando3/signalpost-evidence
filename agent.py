@@ -547,7 +547,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
                         and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)(?:$|[?#])',candidate,re.I)):
                     family='activity'
                 if family and candidate not in seen:queue.setdefault(candidate,family)
-    while len(seen)<10 and fetcher.requests<fetcher.limit-(0 if verified else reserve_requests):
+    while len(seen)<12 and fetcher.requests<fetcher.limit-(0 if verified else reserve_requests):
         # An already fetched news index provides stronger discovery leads than
         # another map request. XML remains a fallback when those leads run out.
         pending_posts=any(u not in seen and u in queue for u in post_leads)
@@ -561,7 +561,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             # Inspect legal ownership before repeatedly exploring auxiliary
             # identity pages; still leave a balanced path to jobs and articles.
             legal=bool(re.search(r'personvern|privacy|legal|impressum|vilk|beting',urlsplit(url).path,re.I))
-            penalty=counts[family]*(8 if verified and family=='identity' else 4)
+            penalty=counts[family]*4
             identity_order=0 if legal else 1 if re.search(r'kontakt|contact|kundeservice',urlsplit(url).path,re.I) else 2
             detail_order=post_leads.get(url,10_000+list(queue).index(url)) if family=='activity' else list(queue).index(url)
             return (base+penalty, identity_order if family=='identity' and verified else 0,

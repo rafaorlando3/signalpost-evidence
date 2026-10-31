@@ -228,9 +228,11 @@ class BoundedNewsPriority(unittest.TestCase):
         verified,inspected=crawl_company(ORG,{},home,f)
         self.assertTrue(verified)
         self.assertIn('https://example.test/privacy',f.visited)
+        self.assertIn('https://example.test/contact',f.visited)
+        self.assertIn('https://example.test/about',f.visited)
         self.assertGreaterEqual(sum(u in f.visited for u in urls),5)
         self.assertFalse(any('sitemap' in u for u in f.visited))
-        self.assertLessEqual(len(inspected),10)
+        self.assertLessEqual(len(inspected),12)
         self.assertLessEqual(f.requests,f.limit)
 
     def test_empty_news_index_still_falls_back_to_sitemap(self):
