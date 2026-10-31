@@ -1,0 +1,166 @@
+{
+  "scope": "Local comparison. Original 100 are development cases; separate fresh 100 were selected before runs. Both are stratified 50 registered websites / 50 without, not population estimates.",
+  "commits": {
+    "submitted_baseline": "c2e81e14f8e7ee7423083710a8244b28970d9adb",
+    "strict_previous": "2aaaef3cac092c04f58e8b2f27fbb59de696c20e"
+  },
+  "original100": {
+    "baseline": {
+      "website.verified_url": {
+        "companies": 16,
+        "items": 16
+      },
+      "website.social_links": {
+        "companies": 12,
+        "items": 27
+      },
+      "website.activity": {
+        "companies": 1,
+        "items": 4
+      },
+      "website.hiring": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.contact_channels": {
+        "companies": 15,
+        "items": 49
+      }
+    },
+    "strict": {
+      "website.verified_url": {
+        "companies": 16,
+        "items": 16
+      },
+      "website.social_links": {
+        "companies": 1,
+        "items": 1
+      },
+      "website.activity": {
+        "companies": 1,
+        "items": 1
+      },
+      "website.hiring": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.contact_channels": {
+        "companies": 15,
+        "items": 49
+      }
+    },
+    "recovery": {
+      "website.verified_url": {
+        "companies": 16,
+        "items": 16
+      },
+      "website.social_links": {
+        "companies": 9,
+        "items": 18
+      },
+      "website.activity": {
+        "companies": 1,
+        "items": 1
+      },
+      "website.hiring": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.contact_channels": {
+        "companies": 15,
+        "items": 49
+      }
+    }
+  },
+  "fresh100": {
+    "baseline": {
+      "website.verified_url": {
+        "companies": 16,
+        "items": 16
+      },
+      "website.social_links": {
+        "companies": 12,
+        "items": 40
+      },
+      "website.activity": {
+        "companies": 1,
+        "items": 1
+      },
+      "website.hiring": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.contact_channels": {
+        "companies": 13,
+        "items": 60
+      }
+    },
+    "strict": {
+      "website.verified_url": {
+        "companies": 16,
+        "items": 16
+      },
+      "website.social_links": {
+        "companies": 1,
+        "items": 2
+      },
+      "website.activity": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.hiring": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.contact_channels": {
+        "companies": 13,
+        "items": 60
+      }
+    },
+    "recovery": {
+      "website.verified_url": {
+        "companies": 16,
+        "items": 16
+      },
+      "website.social_links": {
+        "companies": 7,
+        "items": 14
+      },
+      "website.activity": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.hiring": {
+        "companies": 0,
+        "items": 0
+      },
+      "website.contact_channels": {
+        "companies": 13,
+        "items": 60
+      }
+    }
+  },
+  "fresh_validation": {
+    "structurally_valid": true,
+    "errors": [],
+    "companies": 100,
+    "official_score": null,
+    "note": "Does not establish factual accuracy, source completeness or competition qualification."
+  },
+  "minimal_contract_errors": 0,
+  "shared_cache_unchanged": true,
+  "source_freeze_matches": true,
+  "known_bad_urls_reintroduced": [],
+  "availability_states": {
+    "available": 1626,
+    "ambiguous": 148,
+    "blocked": 133,
+    "not_available": 486,
+    "failed": 7,
+    "not_applicable": 0
+  },
+  "verification_scope": "Recovered URLs are supported by exact-company declarations and source identity. No independent social-platform login/ownership or population precision assertion.",
+  "duplicate_scope": "Items count URL observations; different URLs on the same platform are not asserted to be distinct accounts.",
+  "official_score": null,
+  "third_party_cost_usd": 0
+}

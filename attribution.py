@@ -1,5 +1,9 @@
 """Conservative legal-entity attribution. No registry contact claims or paid APIs."""
 import re
+import json
+from pathlib import Path
+
+ORGANIZATION_TYPES=set(json.loads(Path(__file__).with_name("organization_types.json").read_text())["types"])
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 
@@ -28,10 +32,10 @@ def objects(value):
 
 def types(obj):
     t = obj.get('@type', [])
-    return set(v for v in (t if isinstance(t, list) else [t]) if isinstance(v, str))
+    return {v.removeprefix('https://schema.org/').removeprefix('http://schema.org/').removeprefix('schema:') for v in (t if isinstance(t,list) else [t]) if isinstance(v,str)}
 
 
-def own_organization(obj, data):
+def organization_numbers(obj):
     """Only this node's identifiers, never a parent's/child's nested identifier."""
     identifiers = [obj.get('taxID'), obj.get('vatID')]
     props = obj.get('identifier', [])
@@ -47,7 +51,23 @@ def own_organization(obj, data):
         match = re.fullmatch(r'(?:NO\s*)?([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})(?:\s*MVA)?', str(value).strip(), re.I)
         if match:
             numbers.add(re.sub(r'\D', '', match[1]))
-    return bool(numbers == {str(data.get('organisasjonsnummer'))})
+    return numbers
+
+
+def own_organization(obj,data):
+    return organization_numbers(obj)=={str(data.get('organisasjonsnummer'))}
+
+
+def named_address(obj,data):
+    address=obj.get('address')
+    if not isinstance(address,dict):return False
+    for field in ('forretningsadresse','postadresse'):
+        registered=data.get(field) or {}
+        if (isinstance(registered,dict) and address.get('postalCode') and
+                str(address['postalCode'])==str(registered.get('postnummer')) and
+                any(normal(address.get('streetAddress',''))==normal(street) and bool(normal(street)) for street in registered.get('adresse',[]))):
+            return True
+    return False
 
 
 def group_site_reason(page, data):
@@ -70,6 +90,8 @@ def canonical_profile(url):
         if p.scheme not in {'https', 'http'} or p.username or p.password or p.port not in (None, 80, 443):
             return None
         host = (p.hostname or '').casefold().removeprefix('www.')
+        if re.fullmatch(r'[a-z]{2}\.linkedin\.com',host):host='linkedin.com'
+        if host=='m.facebook.com':host='facebook.com'
         if host not in {'linkedin.com', 'facebook.com', 'youtube.com', 'instagram.com', 'twitter.com', 'x.com', 'vimeo.com', 'tiktok.com'}:
             return None
         path = p.path.rstrip('/')
@@ -107,14 +129,16 @@ def declared_profiles(pages, data):
     found = {}
     for page, response in pages:
         for obj in objects(page.ld):
-            if not types(obj) & {'Organization', 'Corporation', 'LocalBusiness'}:
+            if not types(obj) & ORGANIZATION_TYPES:
                 continue
             # On an already identity-checked site, an exact legal name plus
             # its own site URL is also a scoped ownership declaration.
             node_url=obj.get('url')
             named_site=(legal_stem(obj.get('legalName') or obj.get('name',''))==legal_stem(data.get('navn',''))
                         and bool(legal_stem(data.get('navn','')))
-                        and isinstance(node_url,str) and same_public_host(node_url,page.url))
+                        and ((isinstance(node_url,str) and same_public_host(node_url,page.url)) or named_address(obj,data)))
+            numbers=organization_numbers(obj)
+            if numbers and numbers!={str(data.get('organisasjonsnummer'))}:continue
             if not own_organization(obj, data) and not named_site:
                 continue
             values = obj.get('sameAs', [])
@@ -131,7 +155,7 @@ def profile_identity(page, data, site_url):
     A name or handle alone never suffices. Blocked destinations stay unresolved.
     """
     for obj in objects(page.ld):
-        if (types(obj) & {'Organization', 'Corporation', 'LocalBusiness'} and own_organization(obj, data)
+        if (types(obj) & ORGANIZATION_TYPES and own_organization(obj, data)
                 and isinstance(obj.get('url'),str) and canonical_profile(obj['url'])==canonical_profile(page.url)):
             return 'destination_exact_organisation_number'
     title = page.meta.get('og:title') or page.title

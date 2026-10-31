@@ -899,6 +899,8 @@ def research(row, fetcher, previous=None, search=None):
                 # the small social budget cannot starve post detail discovery.
                 from attribution import canonical_profile, declared_profiles, profile_identity
                 declarations=declared_profiles(content_pages,data)
+                from social_ownership import asserted_profiles
+                assertions,contradictions=asserted_profiles(content_pages,data)
                 candidates={};social_sources=[];social_limitations=[];social=[]
                 for pg,rsp in content_pages:
                     for link in pg.links:
@@ -907,14 +909,23 @@ def research(row, fetcher, previous=None, search=None):
                             candidates.setdefault(profile,(link,rsp))
                 for profile,sources in declarations.items():
                     candidates.setdefault(profile,({'text':''},sources[0]))
+                for profile,records in assertions.items():
+                    candidates.setdefault(profile,({'text':'','url':records[0]['proof']['source_href']},records[0]['response']))
                 checked=0
                 for profile,(link,rsp) in list(candidates.items())[:20]:
                     proof=None;supports=[rsp]
-                    if profile in declarations:
+                    ownership_evidence=None
+                    if profile in contradictions:
+                        social_limitations.append({'url':profile,'state':'ambiguous','reason':contradictions[profile]})
+                    elif profile in declarations:
                         proof='exact_entity_sameAs_declaration';supports+=declarations[profile]
+                    elif profile in assertions:
+                        proof='explicit_company_declaration_and_entity_identifier'
+                        ownership_evidence=[record['proof'] for record in assertions[profile]][:3]
+                        supports += [record['response'] for record in assertions[profile]]
                     elif checked<2 and fetcher.requests<fetcher.limit-1:
                         checked+=1
-                        destination=fetcher.get(profile,site=True,raw=True)
+                        destination=fetcher.get(link.get('url') or profile,site=True,raw=True)
                         supports.append(destination)
                         if destination['status']=='available' and canonical_profile(destination['url'])==profile:
                             proof=profile_identity(Page(destination.get('text',''),destination['url']),data,response['url'])
@@ -925,12 +936,14 @@ def research(row, fetcher, previous=None, search=None):
                         social_limitations.append({'url':profile,'state':'ambiguous',
                             'reason':'bounded destination checks exhausted; ownership unverified'})
                     if proof:
-                        social.append({'url':profile,'text':link['text'].strip(),'attribution':proof})
+                        item={'url':profile,'text':link['text'].strip(),'attribution':proof}
+                        if ownership_evidence:item['ownership_evidence']=ownership_evidence
+                        social.append(item)
                     social_sources+=supports
                 add('website.social_links',social or None,anchor_response,
                     state='ambiguous' if not social and social_limitations else None,
-                    pointer='exact-entity sameAs declaration or public destination identity; unverified footer links withheld')
-                claims[-1]['qualifiers']={'profile_ownership':'entity_attributed',
+                    pointer='exact-entity sameAs, scoped company social declaration with full entity identifier, or public destination identity; isolated footer links withheld')
+                claims[-1]['qualifiers']={'profile_ownership':'company_declared_or_destination_corroborated' if social else 'unresolved',
                     'coverage':'partial' if social_limitations and social else 'unresolved' if social_limitations else 'checked',
                     'candidate_limitations':social_limitations}
                 for rsp in social_sources:

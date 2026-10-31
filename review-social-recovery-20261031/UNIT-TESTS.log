@@ -1,0 +1,27 @@
+usage: agent.py [-h] --input INPUT --output OUTPUT [--cache CACHE]
+                [--previous PREVIOUS] [--replay | --fresh] [--workers WORKERS]
+                [--search {none,tavily,tavily-free}]
+                [--search-free-credit-limit SEARCH_FREE_CREDIT_LIMIT]
+                [--search-credit-limit SEARCH_CREDIT_LIMIT]
+                [--search-strategy {legacy,name_focus,adaptive}]
+                [--registry-snapshot REGISTRY_SNAPSHOT]
+agent.py: error: --search tavily-free requires --search-free-credit-limit with a root-confirmed allowance
+----------------------------------------------------------------------
+Ran 181 tests in 2.910s
+
+OK
+{
+  "inputs": 0,
+  "outputs": 0,
+  "failed": 0,
+  "requests": 0,
+  "runtime_seconds": 0.0,
+  "third_party_cost_usd": 0,
+  "search_request_attempts": 0,
+  "search_basic_credit_upper_bound": 0,
+  "coverage": {},
+  "source_statuses": {},
+  "official_score": null,
+  "replay": true,
+  "registry_snapshot_sha256": null
+}

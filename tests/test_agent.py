@@ -165,9 +165,10 @@ class R5Precision(unittest.TestCase):
             '<section class="partners"><a href="https://linkedin.com/company/partner">Partner</a></section>'
             '</footer>'})
         social=self.by_field(row,'website.social_links')
-        self.assertIsNone(social['value'])
-        self.assertEqual(social['availability'],'ambiguous')
-        self.assertEqual(len(social['qualifiers']['candidate_limitations']),1)
+        self.assertEqual([item['url'] for item in social['value']],['https://facebook.com/example'])
+        self.assertEqual(social['value'][0]['attribution'],'explicit_company_declaration_and_entity_identifier')
+        self.assertIn('follow_statement',social['value'][0]['ownership_evidence'][0]['method'])
+        self.assertEqual(len(social['qualifiers']['candidate_limitations']),0)
         self.assertEqual(self.by_field(row,'website.verified_url')['availability'],'available')
 
     def test_menu_product_updated_candidates_do_not_remove_real_news(self):
@@ -319,7 +320,7 @@ class R5OperatorIdentity(unittest.TestCase):
         self.assertEqual(identity['identity_support']['state'],'target')
         self.assertEqual(website_identity(self.ORG,Page(page,self.HOME)),'exact')
         self.assertEqual(self.by_field(row,'website.activity')['availability'],'ambiguous')
-        self.assertEqual(self.by_field(row,'website.social_links')['availability'],'ambiguous')
+        self.assertEqual(self.by_field(row,'website.social_links')['availability'],'available')
 
     def test_different_legal_name_without_id_is_unresolved_not_certain_other_company(self):
         page=self.operator_page({'legalName':'Parent Company AS'},

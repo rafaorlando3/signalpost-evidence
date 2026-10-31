@@ -1,0 +1,45 @@
+{
+  "claim_counts_include_duplicate_entries": true,
+  "claim_status_counts": {
+    "ambiguous": 120,
+    "available": 1616,
+    "blocked": 114,
+    "failed": 6,
+    "not_applicable": 0,
+    "not_available": 444
+  },
+  "duplicate_entries": 0,
+  "format": "legacy-evidence-envelope/0.7",
+  "guard": {
+    "collector_exit": 0,
+    "note": "Interrupted-company request counts are conservative upper bounds, not observed usage.",
+    "preserved_outputs": 100,
+    "runtime_seconds": 277.993,
+    "synthesized_failures": 0,
+    "timeout_seconds": 1600.0,
+    "wall_clock_timeout": false
+  },
+  "inputs": 100,
+  "mode": "live",
+  "note": "Run completion is not evidence availability or factual accuracy.",
+  "official_score": null,
+  "output": "/Users/rafaelorlandomendes/.codex/workspaces/signalpost-review-20261031/review-social-recovery-20261031/baseline-live.jsonl",
+  "output_sha256": "72ba784255d11fb4fa6b8f4e5b4de7771a0437ed02947f8604b14a4279c78377",
+  "outputs": 100,
+  "python_version": "3.12.14",
+  "rejected_collector_envelopes": 0,
+  "request_budget_per_unique_company": 20,
+  "request_budget_total": 2000,
+  "requests": 760,
+  "requests_include_upper_bounds": false,
+  "run_terminal_status_counts": {
+    "completed": 100
+  },
+  "schema": "signalpost-list-cli/2",
+  "search": "none",
+  "summary": "/Users/rafaelorlandomendes/.codex/workspaces/signalpost-review-20261031/review-social-recovery-20261031/baseline-live.summary.json",
+  "third_party_cost_usd": 0,
+  "timeout_seconds": 1600.0,
+  "unique_valid_companies": 100,
+  "unsuccessful_entries": 0
+}

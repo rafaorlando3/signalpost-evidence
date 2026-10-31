@@ -1,0 +1,24 @@
+Revisão independente Signalpost. Use somente fontes públicas primárias. Não envie mensagens nem faça login ou cadastro. Não copie código de concorrentes.
+
+Para cada linha abaixo: confira se o perfil social pertence à entidade jurídica indicada e aponte prova pública concreta (URL + trecho). Distingua conta da empresa, grupo, loja/subsidiária, pessoa, agência/template e indeterminado. Nome parecido ou snippets de busca não bastam. Se não der para ler, marque indeterminado. Não calcule nota oficial. Priorize procurar contraprovas.
+
+913273001 | FARNESE AS | site: https://farnese.no/ | perfil: https://facebook.com/farneseeiendomsforvandling | método local: explicit_company_declaration_and_entity_identifier
+913273001 | FARNESE AS | site: https://farnese.no/ | perfil: https://instagram.com/farnese_eiendomsforvandling | método local: explicit_company_declaration_and_entity_identifier
+984077823 | COUNTRYARTISTS INTERNATIONAL AS | site: https://www.countryartists.no | perfil: https://facebook.com/CountryArtists-International-as-168291853246448 | método local: explicit_company_declaration_and_entity_identifier
+952430475 | BIOKJEMI NORGE AS | site: https://www.biokjemi.no | perfil: https://linkedin.com/company/biokjemi-norge | método local: explicit_company_declaration_and_entity_identifier
+952430475 | BIOKJEMI NORGE AS | site: https://www.biokjemi.no | perfil: https://linkedin.com/company/51901618 | método local: exact_entity_sameAs_declaration
+987224037 | LILLELAM AS | site: https://lillelam.no/ | perfil: https://facebook.com/Lillelam.no | método local: explicit_company_declaration_and_entity_identifier
+987224037 | LILLELAM AS | site: https://lillelam.no/ | perfil: https://instagram.com/lillelam | método local: explicit_company_declaration_and_entity_identifier
+987224037 | LILLELAM AS | site: https://lillelam.no/ | perfil: https://linkedin.com/company/lillelam | método local: explicit_company_declaration_and_entity_identifier
+919897988 | AUDHILD VIKEN AS | site: https://www.audhildviken.no | perfil: https://instagram.com/audhildviken | método local: explicit_company_declaration_and_entity_identifier
+871235422 | ELEKTRO PARTNER AS | site: https://elektropartner.no | perfil: https://instagram.com/elektro_partner_as | método local: explicit_company_declaration_and_entity_identifier
+821200172 | TOPPTURING AS | site: https://www.toppturing.no | perfil: https://facebook.com/toppturing | método local: explicit_company_declaration_and_entity_identifier
+821200172 | TOPPTURING AS | site: https://www.toppturing.no | perfil: https://instagram.com/toppturing | método local: explicit_company_declaration_and_entity_identifier
+821200172 | TOPPTURING AS | site: https://www.toppturing.no | perfil: https://tiktok.com/@toppturing | método local: explicit_company_declaration_and_entity_identifier
+917475571 | AS ØSTLANDETS BLAD | site: https://www.oblad.no | perfil: https://instagram.com/ostlandetsblad | método local: explicit_company_declaration_and_entity_identifier
+917475571 | AS ØSTLANDETS BLAD | site: https://www.oblad.no | perfil: https://facebook.com/ostlandetsblad | método local: explicit_company_declaration_and_entity_identifier
+917475571 | AS ØSTLANDETS BLAD | site: https://www.oblad.no | perfil: https://facebook.com/pages/%C3%98stlandets-Blad/191412049053 | método local: explicit_company_declaration_and_entity_identifier
+917475571 | AS ØSTLANDETS BLAD | site: https://www.oblad.no | perfil: https://twitter.com/ostlandetsblad | método local: explicit_company_declaration_and_entity_identifier
+928664406 | AS HAMATEC | site: https://www.hamatec.no | perfil: https://facebook.com/ashamatec | método local: explicit_company_declaration_and_entity_identifier
+
+Entregar tabela com entidade, perfil, conclusão, fonte e trecho literal. Não presumir que duas URLs na mesma plataforma são contas distintas.

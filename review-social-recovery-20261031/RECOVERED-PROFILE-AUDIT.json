@@ -1,0 +1,697 @@
+{
+  "companies": 9,
+  "urls": 18,
+  "items": [
+    {
+      "org": "913273001",
+      "name": "FARNESE AS",
+      "verified_site": "https://farnese.no/",
+      "profile": "https://facebook.com/farneseeiendomsforvandling",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Farnese Eiendomsforvandling",
+          "context_excerpt": "40 48 90 90 post@farnese.no 913273001MVA Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "FARNESE AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "farneseeiendomsforvandling",
+          "source_href": "https://www.facebook.com/farneseeiendomsforvandling/",
+          "source_url": "https://farnese.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Farnese Eiendomsforvandling",
+          "context_excerpt": "40 48 90 90 post@farnese.no 913273001MVA Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "FARNESE AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "farneseeiendomsforvandling",
+          "source_href": "https://www.facebook.com/farneseeiendomsforvandling/",
+          "source_url": "https://farnese.no/kontakt/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "0f1c62bf7c5d7218f6efab62",
+        "0763feb6e0b01bfbae5f524d"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "913273001",
+      "name": "FARNESE AS",
+      "verified_site": "https://farnese.no/",
+      "profile": "https://instagram.com/farnese_eiendomsforvandling",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Farnese Eiendomsforvandling",
+          "context_excerpt": "40 48 90 90 post@farnese.no 913273001MVA Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "FARNESE AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "farneseeiendomsforvandling",
+          "source_href": "https://www.instagram.com/farnese_eiendomsforvandling/",
+          "source_url": "https://farnese.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Farnese Eiendomsforvandling",
+          "context_excerpt": "40 48 90 90 post@farnese.no 913273001MVA Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "FARNESE AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "farneseeiendomsforvandling",
+          "source_href": "https://www.instagram.com/farnese_eiendomsforvandling/",
+          "source_url": "https://farnese.no/kontakt/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "0f1c62bf7c5d7218f6efab62",
+        "0763feb6e0b01bfbae5f524d"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "984077823",
+      "name": "COUNTRYARTISTS INTERNATIONAL AS",
+      "verified_site": "https://www.countryartists.no",
+      "profile": "https://facebook.com/CountryArtists-International-as-168291853246448",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Countryartists International as",
+          "context_excerpt": "tn_ggs sosial linje ",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "COUNTRYARTISTS INTERNATIONAL AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "countryartistsinternationalas",
+          "source_href": "https://www.facebook.com/CountryArtists-International-as-168291853246448/",
+          "source_url": "https://www.countryartists.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "1b2d8a21e8ed5dd78d8870d3"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "952430475",
+      "name": "BIOKJEMI NORGE AS",
+      "verified_site": "https://www.biokjemi.no",
+      "profile": "https://linkedin.com/company/biokjemi-norge",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "BIOKJEMI NORGE AS",
+          "context_excerpt": "et_pb_social_media_follow_network_0 et_pb_social_icon et_pb_social_network_link et social linkedin Følg",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "BIOKJEMI NORGE AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "biokjeminorge",
+          "source_href": "https://www.linkedin.com/company/biokjemi-norge/",
+          "source_url": "https://www.biokjemi.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "10889f26e522a0a4a23180e1",
+        "8a4cb0eb08d16541da89be10",
+        "9c497acd7aa252f8752698be",
+        "60898e8b03b9cf772417243d",
+        "07055a80d5743e023e34ef74",
+        "190b4976300d85a75a3abe93",
+        "63c2d98dc14200ef4c2b3569",
+        "0f370f40dc123af703770cd2",
+        "ebaa8dcb20a0b2d18b53193d"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "952430475",
+      "name": "BIOKJEMI NORGE AS",
+      "verified_site": "https://www.biokjemi.no",
+      "profile": "https://linkedin.com/company/51901618",
+      "method": "exact_entity_sameAs_declaration",
+      "ownership_evidence": [],
+      "evidence_ids": [
+        "10889f26e522a0a4a23180e1",
+        "8a4cb0eb08d16541da89be10",
+        "9c497acd7aa252f8752698be",
+        "60898e8b03b9cf772417243d",
+        "07055a80d5743e023e34ef74",
+        "190b4976300d85a75a3abe93",
+        "63c2d98dc14200ef4c2b3569",
+        "0f370f40dc123af703770cd2",
+        "ebaa8dcb20a0b2d18b53193d"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "987224037",
+      "name": "LILLELAM AS",
+      "verified_site": "https://lillelam.no/",
+      "profile": "https://facebook.com/Lillelam.no",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "lillelam.no",
+          "context_excerpt": "Følg oss på sosiale medier Tag gjerne bildene dine med #lillelam. Vi elsker å se bilder fra kundene våre!",
+          "identity_basis": "exact_registered_entity_domain",
+          "legal_name": "LILLELAM AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "lillelamno",
+          "source_href": "https://www.facebook.com/Lillelam.no/",
+          "source_url": "https://lillelam.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "1226d5dfb8e4ab0a6b1f8213",
+        "d2ebe553d5c078cd0cebd0e7"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "987224037",
+      "name": "LILLELAM AS",
+      "verified_site": "https://lillelam.no/",
+      "profile": "https://instagram.com/lillelam",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Lillelam",
+          "context_excerpt": "Følg oss på sosiale medier Tag gjerne bildene dine med #lillelam. Vi elsker å se bilder fra kundene våre!",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "LILLELAM AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "lillelam",
+          "source_href": "https://www.instagram.com/lillelam/",
+          "source_url": "https://lillelam.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "1226d5dfb8e4ab0a6b1f8213",
+        "d2ebe553d5c078cd0cebd0e7"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "987224037",
+      "name": "LILLELAM AS",
+      "verified_site": "https://lillelam.no/",
+      "profile": "https://linkedin.com/company/lillelam",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Lillelam",
+          "context_excerpt": "Følg oss på sosiale medier Tag gjerne bildene dine med #lillelam. Vi elsker å se bilder fra kundene våre!",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "LILLELAM AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "lillelam",
+          "source_href": "https://no.linkedin.com/company/lillelam",
+          "source_url": "https://lillelam.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "1226d5dfb8e4ab0a6b1f8213",
+        "d2ebe553d5c078cd0cebd0e7"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "919897988",
+      "name": "AUDHILD VIKEN AS",
+      "verified_site": "https://www.audhildviken.no",
+      "profile": "https://instagram.com/audhildviken",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Audhild Viken",
+          "context_excerpt": "Menu Follow Us",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AUDHILD VIKEN AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "audhildviken",
+          "source_href": "https://www.instagram.com/audhildviken",
+          "source_url": "https://www.audhildviken.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Audhild Viken",
+          "context_excerpt": "Menu Follow Us",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AUDHILD VIKEN AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "audhildviken",
+          "source_href": "https://www.instagram.com/audhildviken",
+          "source_url": "https://www.audhildviken.no/about-us",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Audhild Viken",
+          "context_excerpt": "Menu Follow Us",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AUDHILD VIKEN AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "audhildviken",
+          "source_href": "https://www.instagram.com/audhildviken",
+          "source_url": "https://www.audhildviken.no/contact-us",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "e478d841a6050c277ef65588",
+        "a67df010d6ccbe5020225e9e",
+        "a30c2e898aab37a852802393"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "871235422",
+      "name": "ELEKTRO PARTNER AS",
+      "verified_site": "https://elektropartner.no",
+      "profile": "https://instagram.com/elektro_partner_as",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "ELEKTRO PARTNER AS",
+          "context_excerpt": "social links ",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "ELEKTRO PARTNER AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "elektropartneras",
+          "source_href": "https://www.instagram.com/elektro_partner_as/",
+          "source_url": "https://elektropartner.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "ELEKTRO PARTNER AS",
+          "context_excerpt": "social links ",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "ELEKTRO PARTNER AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "elektropartneras",
+          "source_href": "https://www.instagram.com/elektro_partner_as/",
+          "source_url": "https://elektropartner.no/om-oss",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "ELEKTRO PARTNER AS",
+          "context_excerpt": "social links ",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "ELEKTRO PARTNER AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "elektropartneras",
+          "source_href": "https://www.instagram.com/elektro_partner_as/",
+          "source_url": "https://elektropartner.no/en/about",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "178e459c6b4ca9b6629087f4",
+        "7fd67671d594fb4a6120870f",
+        "d1e898a86dfab0b204b88ed2",
+        "403cf2581eb2af2d1833009b",
+        "388aff3c959ab6987032957a"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "821200172",
+      "name": "TOPPTURING AS",
+      "verified_site": "https://www.toppturing.no",
+      "profile": "https://facebook.com/toppturing",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.facebook.com/toppturing",
+          "source_url": "https://www.toppturing.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.facebook.com/toppturing",
+          "source_url": "https://www.toppturing.no/kontakt/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.facebook.com/toppturing",
+          "source_url": "https://www.toppturing.no/betingelser-vilkar/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "7ff2966b17ce196f19eb8c7b",
+        "3d8bb87460ee47d22b395e68",
+        "3a545c35cb82407e38d60a2a",
+        "08389e035e9197cb1f6719b6",
+        "737ebd9a49e6c55b609505ab",
+        "78f12eb00bb057364f33a96f"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "821200172",
+      "name": "TOPPTURING AS",
+      "verified_site": "https://www.toppturing.no",
+      "profile": "https://instagram.com/toppturing",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.instagram.com/toppturing/",
+          "source_url": "https://www.toppturing.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.instagram.com/toppturing/",
+          "source_url": "https://www.toppturing.no/kontakt/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.instagram.com/toppturing/",
+          "source_url": "https://www.toppturing.no/betingelser-vilkar/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "7ff2966b17ce196f19eb8c7b",
+        "3d8bb87460ee47d22b395e68",
+        "3a545c35cb82407e38d60a2a",
+        "08389e035e9197cb1f6719b6",
+        "737ebd9a49e6c55b609505ab",
+        "78f12eb00bb057364f33a96f"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "821200172",
+      "name": "TOPPTURING AS",
+      "verified_site": "https://www.toppturing.no",
+      "profile": "https://tiktok.com/@toppturing",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.tiktok.com/@toppturing",
+          "source_url": "https://www.toppturing.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.tiktok.com/@toppturing",
+          "source_url": "https://www.toppturing.no/kontakt/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Toppturing",
+          "context_excerpt": "si c",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "TOPPTURING AS",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "toppturing",
+          "source_href": "https://www.tiktok.com/@toppturing",
+          "source_url": "https://www.toppturing.no/betingelser-vilkar/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "7ff2966b17ce196f19eb8c7b",
+        "3d8bb87460ee47d22b395e68",
+        "3a545c35cb82407e38d60a2a",
+        "08389e035e9197cb1f6719b6",
+        "737ebd9a49e6c55b609505ab",
+        "78f12eb00bb057364f33a96f"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "917475571",
+      "name": "AS ØSTLANDETS BLAD",
+      "verified_site": "https://www.oblad.no",
+      "profile": "https://instagram.com/ostlandetsblad",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Direktesport Dødsannonser Annonsering Arrangementer i Follo ØB på Instagram ØB på Facebook",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://www.instagram.com/ostlandetsblad/",
+          "source_url": "https://www.oblad.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Del med oss Send hilsen Send oss ord og bilder fra arrangementer eller annet stort og smått Skriv ditt debattinnlegg her Følg oss",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "http://instagram.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Facebook Finn ansatte Folloliv Historier Instagram Karriere i Amedia",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "http://instagram.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "7ce9728ec37e26673bd89493",
+        "e60c9bedd16d948069cf0eb4",
+        "6981ea913e10be2417552c1c"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "917475571",
+      "name": "AS ØSTLANDETS BLAD",
+      "verified_site": "https://www.oblad.no",
+      "profile": "https://facebook.com/ostlandetsblad",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Direktesport Dødsannonser Annonsering Arrangementer i Follo ØB på Instagram ØB på Facebook",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://www.facebook.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Direktesport Dødsannonser Annonsering Arrangementer i Follo ØB på Instagram ØB på Facebook",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://www.facebook.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no/vis/info/kontakt-kundesenteret",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Direktesport Dødsannonser Annonsering Arrangementer i Follo ØB på Instagram ØB på Facebook",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://www.facebook.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no/vis/annonseinnstillinger",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "7ce9728ec37e26673bd89493",
+        "e60c9bedd16d948069cf0eb4",
+        "6981ea913e10be2417552c1c"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "917475571",
+      "name": "AS ØSTLANDETS BLAD",
+      "verified_site": "https://www.oblad.no",
+      "profile": "https://facebook.com/pages/%C3%98stlandets-Blad/191412049053",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Del med oss Send hilsen Send oss ord og bilder fra arrangementer eller annet stort og smått Skriv ditt debattinnlegg her Følg oss",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://www.facebook.com/pages/%C3%98stlandets-Blad/191412049053",
+          "source_url": "https://www.oblad.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Facebook Finn ansatte Folloliv Historier Instagram Karriere i Amedia",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "corporate_navigation_matching_profiles_on_multiple_networks",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://www.facebook.com/pages/%C3%98stlandets-Blad/191412049053",
+          "source_url": "https://www.oblad.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Del med oss Send hilsen Send oss ord og bilder fra arrangementer eller annet stort og smått Skriv ditt debattinnlegg her Følg oss",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://www.facebook.com/pages/%C3%98stlandets-Blad/191412049053",
+          "source_url": "https://www.oblad.no/vis/info/kontakt-kundesenteret",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "7ce9728ec37e26673bd89493",
+        "e60c9bedd16d948069cf0eb4",
+        "6981ea913e10be2417552c1c"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "917475571",
+      "name": "AS ØSTLANDETS BLAD",
+      "verified_site": "https://www.oblad.no",
+      "profile": "https://twitter.com/ostlandetsblad",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Del med oss Send hilsen Send oss ord og bilder fra arrangementer eller annet stort og smått Skriv ditt debattinnlegg her Følg oss",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://twitter.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Del med oss Send hilsen Send oss ord og bilder fra arrangementer eller annet stort og smått Skriv ditt debattinnlegg her Følg oss",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://twitter.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no/vis/info/kontakt-kundesenteret",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Østlandets Blad",
+          "context_excerpt": "Del med oss Send hilsen Send oss ord og bilder fra arrangementer eller annet stort og smått Skriv ditt debattinnlegg her Følg oss",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS ØSTLANDETS BLAD",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "ostlandetsblad",
+          "source_href": "https://twitter.com/ostlandetsblad",
+          "source_url": "https://www.oblad.no/vis/annonseinnstillinger",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "7ce9728ec37e26673bd89493",
+        "e60c9bedd16d948069cf0eb4",
+        "6981ea913e10be2417552c1c"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    },
+    {
+      "org": "928664406",
+      "name": "AS HAMATEC",
+      "verified_site": "https://www.hamatec.no",
+      "profile": "https://facebook.com/ashamatec",
+      "method": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "AS Hamatec",
+          "context_excerpt": "Kabelholder På denne siden kan du se hvordan du kan bruke kabelholderen du har fått samt få et innblikk i hva vi kan levere av standard- og spesialprodukter. Ta gjerne en kikk på ellers hjemmesiden vår også for å bli bedre kjent med oss. Ps! Husk å følge oss på Facebook !",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "AS HAMATEC",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "ashamatec",
+          "source_href": "https://www.facebook.com/ashamatec/",
+          "source_url": "https://www.hamatec.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "evidence_ids": [
+        "f3b78c16b06dcdc3bf88cfee",
+        "a8bced47fe93f92bf4b9f065"
+      ],
+      "review_scope": "Primary website declaration and exact entity matching reviewed locally. No independent platform ownership/authentication claim."
+    }
+  ]
+}

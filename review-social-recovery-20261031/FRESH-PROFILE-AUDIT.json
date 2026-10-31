@@ -1,0 +1,518 @@
+{
+  "companies": 7,
+  "urls": 14,
+  "items": [
+    {
+      "org": "912399095",
+      "name": "BAKER HANSEN AS",
+      "site": "https://www.bakerhansen.no",
+      "profile": "https://facebook.com/pages/Baker-Hansen/129580233721260",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Baker Hansen",
+          "context_excerpt": "social wrapper hide for small only hide for medium only Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "BAKER HANSEN AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "bakerhansen",
+          "source_href": "https://www.facebook.com/pages/Baker-Hansen/129580233721260",
+          "source_url": "https://www.bakerhansen.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Baker Hansen",
+          "context_excerpt": "social wrapper hide for small only hide for medium only Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "BAKER HANSEN AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "bakerhansen",
+          "source_href": "https://www.facebook.com/pages/Baker-Hansen/129580233721260",
+          "source_url": "https://www.bakerhansen.no/karriere/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Baker Hansen",
+          "context_excerpt": "social wrapper hide for small only hide for medium only Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "BAKER HANSEN AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "bakerhansen",
+          "source_href": "https://www.facebook.com/pages/Baker-Hansen/129580233721260",
+          "source_url": "https://www.bakerhansen.no/nyheter/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "912399095",
+      "name": "BAKER HANSEN AS",
+      "site": "https://www.bakerhansen.no",
+      "profile": "https://instagram.com/bakerhansen",
+      "attribution": "exact_entity_sameAs_declaration",
+      "ownership_evidence": [],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "912399095",
+      "name": "BAKER HANSEN AS",
+      "site": "https://www.bakerhansen.no",
+      "profile": "https://facebook.com/bakerhansenbakeri",
+      "attribution": "exact_entity_sameAs_declaration",
+      "ownership_evidence": [],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "948152991",
+      "name": "TINDRA BARDU AS",
+      "site": "https://tindrabardu.no/",
+      "profile": "https://facebook.com/tindrabardu",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "TINDRA BARDU AS",
+          "context_excerpt": "elementor element elementor element 9e0bcd6 elementor shape circle elementor grid 0 e grid align center elementor widget elementor widget social icons Facebook Instagram",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "TINDRA BARDU AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "tindrabardu",
+          "source_href": "https://www.facebook.com/tindrabardu",
+          "source_url": "https://tindrabardu.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "TINDRA BARDU AS",
+          "context_excerpt": "elementor element elementor element 9e0bcd6 elementor shape circle elementor grid 0 e grid align center elementor widget elementor widget social icons Facebook Instagram",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "TINDRA BARDU AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "tindrabardu",
+          "source_href": "https://www.facebook.com/tindrabardu",
+          "source_url": "https://tindrabardu.no/digitalt-jobbsenter/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "TINDRA BARDU AS",
+          "context_excerpt": "elementor element elementor element 9e0bcd6 elementor shape circle elementor grid 0 e grid align center elementor widget elementor widget social icons Facebook Instagram",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "TINDRA BARDU AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "tindrabardu",
+          "source_href": "https://www.facebook.com/tindrabardu",
+          "source_url": "https://tindrabardu.no/2024/10/15/kompetanseutvikling-som-gir-resultater/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "948152991",
+      "name": "TINDRA BARDU AS",
+      "site": "https://tindrabardu.no/",
+      "profile": "https://instagram.com/tindrabardu",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "TINDRA BARDU AS",
+          "context_excerpt": "elementor element elementor element 9e0bcd6 elementor shape circle elementor grid 0 e grid align center elementor widget elementor widget social icons Facebook Instagram",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "TINDRA BARDU AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "tindrabardu",
+          "source_href": "https://instagram.com/tindrabardu",
+          "source_url": "https://tindrabardu.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "TINDRA BARDU AS",
+          "context_excerpt": "elementor element elementor element 9e0bcd6 elementor shape circle elementor grid 0 e grid align center elementor widget elementor widget social icons Facebook Instagram",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "TINDRA BARDU AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "tindrabardu",
+          "source_href": "https://instagram.com/tindrabardu",
+          "source_url": "https://tindrabardu.no/digitalt-jobbsenter/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "TINDRA BARDU AS",
+          "context_excerpt": "elementor element elementor element 9e0bcd6 elementor shape circle elementor grid 0 e grid align center elementor widget elementor widget social icons Facebook Instagram",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "TINDRA BARDU AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "tindrabardu",
+          "source_href": "https://instagram.com/tindrabardu",
+          "source_url": "https://tindrabardu.no/2024/10/15/kompetanseutvikling-som-gir-resultater/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "919253185",
+      "name": "HGN ELEKTRO AS",
+      "site": "https://hgnelektro.no",
+      "profile": "https://facebook.com/hgnelektro",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "HGN Elektro",
+          "context_excerpt": "Kontakt HGN Telefon: 22 12 00 03 E-post: post@hgnelektro.no Postadresse: HGN Elektro AS Strømsveien 223 0668 Oslo Informasjon Følg oss Vår visjon er å levere elektrotjenester av kvalitet gjennom stolthet til vårt yrke.",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "HGN ELEKTRO AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "hgnelektro",
+          "source_href": "http://www.facebook.com/hgnelektro/",
+          "source_url": "https://hgnelektro.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "HGN Elektro",
+          "context_excerpt": "Kontakt HGN Telefon: 22 12 00 03 E-post: post@hgnelektro.no Postadresse: HGN Elektro AS Strømsveien 223 0668 Oslo Informasjon Følg oss Vår visjon er å levere elektrotjenester av kvalitet gjennom stolthet til vårt yrke.",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "HGN ELEKTRO AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "hgnelektro",
+          "source_href": "http://www.facebook.com/hgnelektro/",
+          "source_url": "https://hgnelektro.no/karriere/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "HGN Elektro",
+          "context_excerpt": "Kontakt HGN Telefon: 22 12 00 03 E-post: post@hgnelektro.no Postadresse: HGN Elektro AS Strømsveien 223 0668 Oslo Informasjon Følg oss Vår visjon er å levere elektrotjenester av kvalitet gjennom stolthet til vårt yrke.",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "HGN ELEKTRO AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "hgnelektro",
+          "source_href": "http://www.facebook.com/hgnelektro/",
+          "source_url": "https://hgnelektro.no/personvern/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "919253185",
+      "name": "HGN ELEKTRO AS",
+      "site": "https://hgnelektro.no",
+      "profile": "https://linkedin.com/company/hgnelektro",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "HGN Elektro",
+          "context_excerpt": "Kontakt HGN Telefon: 22 12 00 03 E-post: post@hgnelektro.no Postadresse: HGN Elektro AS Strømsveien 223 0668 Oslo Informasjon Følg oss Vår visjon er å levere elektrotjenester av kvalitet gjennom stolthet til vårt yrke.",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "HGN ELEKTRO AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "hgnelektro",
+          "source_href": "http://www.linkedin.com/company/hgnelektro/",
+          "source_url": "https://hgnelektro.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "HGN Elektro",
+          "context_excerpt": "Kontakt HGN Telefon: 22 12 00 03 E-post: post@hgnelektro.no Postadresse: HGN Elektro AS Strømsveien 223 0668 Oslo Informasjon Følg oss Vår visjon er å levere elektrotjenester av kvalitet gjennom stolthet til vårt yrke.",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "HGN ELEKTRO AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "hgnelektro",
+          "source_href": "http://www.linkedin.com/company/hgnelektro/",
+          "source_url": "https://hgnelektro.no/karriere/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "HGN Elektro",
+          "context_excerpt": "Kontakt HGN Telefon: 22 12 00 03 E-post: post@hgnelektro.no Postadresse: HGN Elektro AS Strømsveien 223 0668 Oslo Informasjon Følg oss Vår visjon er å levere elektrotjenester av kvalitet gjennom stolthet til vårt yrke.",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "HGN ELEKTRO AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "hgnelektro",
+          "source_href": "http://www.linkedin.com/company/hgnelektro/",
+          "source_url": "https://hgnelektro.no/personvern/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "885230822",
+      "name": "MONTESSORI NORGE",
+      "site": "https://montessorinorge.no/",
+      "profile": "https://facebook.com/montessorinorge",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Montessori Norge",
+          "context_excerpt": "menu sosiale medier container Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "MONTESSORI NORGE",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "montessorinorge",
+          "source_href": "https://www.facebook.com/montessorinorge",
+          "source_url": "https://montessorinorge.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Montessori Norge",
+          "context_excerpt": "menu sosiale medier container Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "MONTESSORI NORGE",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "montessorinorge",
+          "source_href": "https://www.facebook.com/montessorinorge",
+          "source_url": "https://montessorinorge.no/category/stillingsannonser/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Montessori Norge",
+          "context_excerpt": "menu sosiale medier container Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "MONTESSORI NORGE",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "montessorinorge",
+          "source_href": "https://www.facebook.com/montessorinorge",
+          "source_url": "https://montessorinorge.no/category/nyheter/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "885230822",
+      "name": "MONTESSORI NORGE",
+      "site": "https://montessorinorge.no/",
+      "profile": "https://instagram.com/montessorinorge",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Montessori Norge",
+          "context_excerpt": "menu sosiale medier container Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "MONTESSORI NORGE",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "montessorinorge",
+          "source_href": "https://www.instagram.com/montessorinorge/",
+          "source_url": "https://montessorinorge.no/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Montessori Norge",
+          "context_excerpt": "menu sosiale medier container Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "MONTESSORI NORGE",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "montessorinorge",
+          "source_href": "https://www.instagram.com/montessorinorge/",
+          "source_url": "https://montessorinorge.no/category/stillingsannonser/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Montessori Norge",
+          "context_excerpt": "menu sosiale medier container Facebook Instagram",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "MONTESSORI NORGE",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "montessorinorge",
+          "source_href": "https://www.instagram.com/montessorinorge/",
+          "source_url": "https://montessorinorge.no/category/nyheter/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "926020005",
+      "name": "ONSITEVIEWER AS",
+      "site": "https://www.onsiteviewer.com/",
+      "profile": "https://twitter.com/onsiteviewer",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "Onsiteviewer",
+          "context_excerpt": "xgj1fr LINKS CONTACT VISITING ADRESS © 2020 by OnSiteViewer. SOCIAL",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "ONSITEVIEWER AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "onsiteviewer",
+          "source_href": "https://twitter.com/onsiteviewer",
+          "source_url": "https://www.onsiteviewer.com/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Onsiteviewer",
+          "context_excerpt": "xgj1fr LINKS CONTACT VISITING ADRESS © 2020 by OnSiteViewer. SOCIAL",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "ONSITEVIEWER AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "onsiteviewer",
+          "source_href": "https://twitter.com/onsiteviewer",
+          "source_url": "https://www.onsiteviewer.com/blog-1",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "Onsiteviewer",
+          "context_excerpt": "xgj1fr LINKS CONTACT VISITING ADRESS © 2020 by OnSiteViewer. SOCIAL",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "ONSITEVIEWER AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "onsiteviewer",
+          "source_href": "https://twitter.com/onsiteviewer",
+          "source_url": "https://www.onsiteviewer.com",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "916538693",
+      "name": "PRO WELL PLAN AS",
+      "site": "https://www.prowellplan.com",
+      "profile": "https://facebook.com/prowellplan",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "PRO WELL PLAN AS",
+          "context_excerpt": "Follow us on Facebook Follow us on LinkedIn Follow us on Facebook Follow us on Facebook",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "PRO WELL PLAN AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "prowellplan",
+          "source_href": "https://www.facebook.com/prowellplan/",
+          "source_url": "https://www.prowellplan.com",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "PRO WELL PLAN AS",
+          "context_excerpt": "Follow us on Facebook Follow us on LinkedIn Follow us on Facebook Follow us on Facebook",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "PRO WELL PLAN AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "prowellplan",
+          "source_href": "https://www.facebook.com/prowellplan/",
+          "source_url": "https://www.prowellplan.com/privacy-policy",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "916538693",
+      "name": "PRO WELL PLAN AS",
+      "site": "https://www.prowellplan.com",
+      "profile": "https://linkedin.com/company/pro-well-plan",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "PRO WELL PLAN AS",
+          "context_excerpt": "Follow us on Facebook Follow us on LinkedIn Follow us on Facebook Follow us on Facebook",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "PRO WELL PLAN AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "prowellplan",
+          "source_href": "https://www.linkedin.com/company/pro-well-plan/",
+          "source_url": "https://www.prowellplan.com",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "PRO WELL PLAN AS",
+          "context_excerpt": "Follow us on Facebook Follow us on LinkedIn Follow us on Facebook Follow us on Facebook",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "PRO WELL PLAN AS",
+          "method": "explicit_follow_statement_and_exact_entity_identifier",
+          "profile_identifier": "prowellplan",
+          "source_href": "https://www.linkedin.com/company/pro-well-plan/",
+          "source_url": "https://www.prowellplan.com/privacy-policy",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "988891045",
+      "name": "BUSINESSMASTERING AS",
+      "site": "https://www.businessmastering.no",
+      "profile": "https://facebook.com/businessMastering",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "businessMastering",
+          "context_excerpt": "ast header social 1 wrap ast header social wrap ",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "BUSINESSMASTERING AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "businessmastering",
+          "source_href": "https://www.facebook.com/businessMastering/",
+          "source_url": "https://www.businessmastering.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "businessMastering",
+          "context_excerpt": "ast header social 1 wrap ast header social wrap ",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "BUSINESSMASTERING AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "businessmastering",
+          "source_href": "https://www.facebook.com/businessMastering/",
+          "source_url": "https://www.businessmastering.no/terms/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "businessMastering",
+          "context_excerpt": "ast header social 1 wrap ast header social wrap ",
+          "identity_basis": "explicit_site_trade_name",
+          "legal_name": "BUSINESSMASTERING AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "businessmastering",
+          "source_href": "https://www.facebook.com/businessMastering/",
+          "source_url": "https://www.businessmastering.no/om-oss/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    },
+    {
+      "org": "988891045",
+      "name": "BUSINESSMASTERING AS",
+      "site": "https://www.businessmastering.no",
+      "profile": "https://linkedin.com/company/businessmastering-as",
+      "attribution": "explicit_company_declaration_and_entity_identifier",
+      "ownership_evidence": [
+        {
+          "asserted_company_label": "BUSINESSMASTERING AS",
+          "context_excerpt": "ast header social 1 wrap ast header social wrap ",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "BUSINESSMASTERING AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "businessmasteringas",
+          "source_href": "https://no.linkedin.com/company/businessmastering-as",
+          "source_url": "https://www.businessmastering.no",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "BUSINESSMASTERING AS",
+          "context_excerpt": "ast header social 1 wrap ast header social wrap ",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "BUSINESSMASTERING AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "businessmasteringas",
+          "source_href": "https://no.linkedin.com/company/businessmastering-as",
+          "source_url": "https://www.businessmastering.no/terms/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        },
+        {
+          "asserted_company_label": "BUSINESSMASTERING AS",
+          "context_excerpt": "ast header social 1 wrap ast header social wrap ",
+          "identity_basis": "exact_legal_name",
+          "legal_name": "BUSINESSMASTERING AS",
+          "method": "explicit_social_control_and_exact_entity_identifier",
+          "profile_identifier": "businessmasteringas",
+          "source_href": "https://no.linkedin.com/company/businessmastering-as",
+          "source_url": "https://www.businessmastering.no/om-oss/",
+          "verification_scope": "explicit company declaration plus entity matching; destination access not independently verified"
+        }
+      ],
+      "review": "Primary website identity and scoped company declaration inspected locally. No demonstrated wrong-company profile in these retained items; not independent platform verification or a population precision estimate."
+    }
+  ]
+}
