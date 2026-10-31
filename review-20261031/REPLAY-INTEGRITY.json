@@ -1,0 +1,8 @@
+{
+  "same_claims_and_evidence": 100,
+  "preserved_previous_envelopes": 100,
+  "material_changes": 0,
+  "requests": 0,
+  "companies": 100,
+  "scope": "same completed private cache snapshot; compares claims/evidence, not run timestamps"
+}

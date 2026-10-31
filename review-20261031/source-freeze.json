@@ -1,0 +1,22 @@
+{
+  "candidate_sources": {
+    "frozen_registry.py": "222abbca1c9775a2a082a63bd210d7b8a3cfcb1efc3f44f8ffff27d9fa3f71f2",
+    "output_contract.py": "4d23fe8aa73ec7bc815de7ca63c9de6ee65daa88d27de19506c62c726bedea5f",
+    "contacts.py": "6e8d6a4c9de785f832ea8ebc891587c41ee57e15f214c862547521fa0801739c",
+    "audit.py": "1de7b6c23778f51fbb49ad03d80cfa7c5c58ad4a2c12538c3823bb04cc215455",
+    "registry_discovery.py": "173f179f5a141156f304d39bc4ab6ca3de9aa82a6ea252be67d0a8e60314f0df",
+    "site_discovery.py": "52ee50bc8d46bce31c561c8e515679c6815652ac4c4b86f1003f9e48b6ec8c1f",
+    "validate.py": "2bf28dc232ff97efe3b2a78a23230262b49cbc73d877c825b05903184b327a55",
+    "attribution.py": "5a826f00f6614996d3bc31664680a3a3dfb3057d88930e7c769d1df6bc90414a",
+    "cli.py": "5476e8433c571af263d512e4d50755b1740999ae5a27f0305476ee24e3135370",
+    "agent.py": "58db001d62d761d9343d053a515b300f20c00b26723a17fadd65a451a73cc2b7",
+    "search.py": "d09be4a434ea4249420cc724e8955b37496027aeb770e2efcdbda270505cb969",
+    "readable_report.py": "04773c82ef763780d05d34598c182538c617a03b01fbbec220f5a593d241e68a",
+    "insights.py": "24e9a5c481cc12c4cf6a66595a85cdf29ed8ea3f0cd5857e17951852c7ea80ca",
+    "evaluator.py": "5569a905b2d312ed8a70427e28c1751c16edace5546cc393c1efe4e0c12f86d7",
+    "report.py": "f449fa80b79e7548fed8b7f064e018acdced4d1341b07b172cef90db6be0e1a4"
+  },
+  "baseline": "c2e81e14f8e7ee7423083710a8244b28970d9adb",
+  "python": "3.12.14",
+  "network_collection": "independent live stages; paired comparison uses the union snapshot, not preliminary candidate claims"
+}

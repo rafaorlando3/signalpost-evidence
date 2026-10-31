@@ -90,7 +90,8 @@ class SearchTests(unittest.TestCase):
             self.assertEqual(len([c for c in result['claims'] if c['field'] == 'website.verified_url']), 1)
             self.assertEqual(claim['source_pointer'], 'explicit_org_number')
             social = next(c for c in result['claims'] if c['field'] == 'website.social_links')
-            self.assertEqual(social['value'][0]['url'], 'https://facebook.com/example')
+            self.assertIsNone(social['value'])
+            self.assertEqual(social['availability'], 'ambiguous')
             description = next(c for c in result['claims'] if c['field'] == 'website.description')
             self.assertEqual(description['value'], 'We build useful products')
 

@@ -113,7 +113,7 @@ class R5Precision(unittest.TestCase):
     ORG='810034882'
     HOME='https://example.test/'
 
-    def observe(self, pages):
+    def observe(self, pages, registry_extra=None):
         import hashlib
         with tempfile.TemporaryDirectory() as directory:
             fetcher=Fetcher(directory, replay=True)
@@ -123,7 +123,7 @@ class R5Precision(unittest.TestCase):
                           'status_code':200,'retrieved_at':'2026-09-26T00:00:00+00:00'}
                 if url==base:
                     response['json']={'organisasjonsnummer':self.ORG,'navn':'Example AS',
-                                      'hjemmeside':self.HOME,'antallAnsatte':3}
+                                      'hjemmeside':self.HOME,'antallAnsatte':3,**(registry_extra or {})}
                 elif url==base+'/roller':response['json']={'rollegrupper':[]}
                 elif '/regnskapsregisteret/' in url:response['json']=[]
                 elif '/underenheter?' in url:response['json']={'page':{'totalPages':0}}
@@ -165,8 +165,9 @@ class R5Precision(unittest.TestCase):
             '<section class="partners"><a href="https://linkedin.com/company/partner">Partner</a></section>'
             '</footer>'})
         social=self.by_field(row,'website.social_links')
-        self.assertEqual([item['url'] for item in social['value']],['https://facebook.com/example'])
-        self.assertEqual(social['qualifiers']['profile_ownership'],'not_independently_verified')
+        self.assertIsNone(social['value'])
+        self.assertEqual(social['availability'],'ambiguous')
+        self.assertEqual(len(social['qualifiers']['candidate_limitations']),1)
         self.assertEqual(self.by_field(row,'website.verified_url')['availability'],'available')
 
     def test_menu_product_updated_candidates_do_not_remove_real_news(self):
@@ -182,12 +183,12 @@ class R5Precision(unittest.TestCase):
                 '<h1>Updated page</h1><time class="updated" datetime="2026-09-03">Updated</time>'
                 '<script type="application/ld+json">{"@type":"NewsArticle","headline":"Updated page","dateModified":"2026-09-03"}</script>',
             self.HOME+'news/factory':
-                '<main><h1>Factory opens</h1><time itemprop="datePublished" datetime="2026-09-04">Published</time></main>',
+                '<main><h1>Factory opens</h1><p>Example AS opened its new factory today, providing new facilities for its customers and employees.</p><time itemprop="datePublished" datetime="2026-09-04">Published</time></main>',
         })
         activity=self.by_field(row,'website.activity')
         self.assertEqual(activity['availability'],'available')
         self.assertEqual(activity['value'],[{'title':'Factory opens','date':'2026-09-04',
-                                            'url':self.HOME+'news/factory'}])
+                                            'url':self.HOME+'news/factory','attribution':'target_name_in_post_content'}])
         self.assertEqual(activity['qualifiers']['coverage'],'partial')
         self.assertGreaterEqual(len(activity['qualifiers']['candidate_limitations']),3)
         self.assertEqual(self.by_field(row,'website.verified_url')['availability'],'available')
@@ -215,6 +216,7 @@ class R5Precision(unittest.TestCase):
     def test_same_page_jsonld_article_is_still_accepted_without_visible_h1(self):
         row=self.observe({self.HOME:'Org nr 810034882 <script type="application/ld+json">'
             '{"@type":"NewsArticle","headline":"Announcement","datePublished":"2026-09-01",'
+            '"articleBody":"Example AS announces the opening of its new factory to improve services for customers across Norway.",'
             '"url":"https://example.test/"}</script>'})
         self.assertEqual(self.by_field(row,'website.activity')['value'][0]['title'],'Announcement')
 
@@ -316,9 +318,8 @@ class R5OperatorIdentity(unittest.TestCase):
         self.assertEqual(identity['source_pointer'],'explicit_site_operator')
         self.assertEqual(identity['identity_support']['state'],'target')
         self.assertEqual(website_identity(self.ORG,Page(page,self.HOME)),'exact')
-        self.assertEqual(self.by_field(row,'website.activity')['value'][0]['title'],
-                         'A published company bulletin')
-        self.assertEqual(self.by_field(row,'website.social_links')['availability'],'available')
+        self.assertEqual(self.by_field(row,'website.activity')['availability'],'ambiguous')
+        self.assertEqual(self.by_field(row,'website.social_links')['availability'],'ambiguous')
 
     def test_different_legal_name_without_id_is_unresolved_not_certain_other_company(self):
         page=self.operator_page({'legalName':'Parent Company AS'},

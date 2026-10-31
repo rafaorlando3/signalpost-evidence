@@ -181,13 +181,13 @@ class Page(HTMLParser):
         self.url=url; self.parts=[]; self.links=[]; self.ld=[]; self.skip=0; self.script=None
         self.title=''; self.in_title=False; self.description=''; self.anchor=None;self.meta={}
         self.headings=[];self.heading=None;self.times=[];self.feeds=[];self.link_context=[]
-        self.content_headings=[];self.content_times=[];self.heading_is_content=False
+        self.content_headings=[];self.content_times=[];self.heading_is_content=False;self.body_parts=[];self.post_parts=[];self.main_parts=[]
         self.feed(text)
 
     def handle_starttag(self, tag, attrs):
         a=dict(attrs)
         context=' '.join((a.get(k) or '') for k in ('class','id','aria-label','title','data-sentry-component','data-sentry-source-file'))
-        third_party=(self.link_context[-1][1] if self.link_context else False) or bool(re.search(r'sponsor|partner|customer|testimonial|shar(?:e|ing)|author',context,re.I))
+        third_party=(self.link_context[-1][1] if self.link_context else False) or bool(re.search(r'sponsor|partner|customer|testimonial|shar(?:e|ing)|author|agency|webdesign|site-credit|powered-by|theme-credit',context,re.I))
         if tag not in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:
             self.link_context.append((tag,third_party))
         if tag=='img' and self.anchor and re.search(r'sponsor|partner|customer',(a.get('alt') or ''),re.I):
@@ -243,7 +243,14 @@ class Page(HTMLParser):
         if not self.skip:
             if self.heading is not None:self.heading+=value+' '
             self.parts.append(value)
+            if not any(t in {'head','title','nav','header','footer','aside'} for t,_ in self.link_context):
+                self.body_parts.append(value)
+                if any(t=='article' for t,_ in self.link_context):self.post_parts.append(value)
+                if any(t=='main' for t,_ in self.link_context):self.main_parts.append(value)
             if self.anchor: self.anchor['text'] += value
+
+    @property
+    def article_parts(self):return self.post_parts or self.main_parts or self.body_parts
 
     @property
     def text(self): return re.sub(r'\s+', ' ', ' '.join(self.parts)).strip()
@@ -425,13 +432,9 @@ def article_detail(url):
     return bool(re.search(r'/(?:news|nyheter|aktuelt|blog|presse)/[^/]+|/20\d{2}/',urlsplit(url).path,re.I))
 
 def social_profile(url):
-    p=urlsplit(url);host=(p.hostname or '').removeprefix('www.')
-    allowed={'linkedin.com','facebook.com','youtube.com','instagram.com','twitter.com','x.com','vimeo.com','tiktok.com'}
-    if host not in allowed or p.path in ('','/'):return False
-    if re.search(r'/(?:share|sharer|shareArticle|sharing|intent|plugins|widgets|login|watch|home|search)(?:[/.?]|$)',p.path,re.I):return False
-    if host in {'twitter.com','x.com'} and re.search(r'/(?:status|statuses)/',p.path,re.I):return False
-    if host=='instagram.com' and re.match(r'/(?:p|reel|reels|stories|explore)/',p.path,re.I):return False
-    return True
+    from attribution import canonical_profile
+    return canonical_profile(url) is not None
+
 
 def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, reserve_requests=0, seed_urls=()):
     """Explore distinct purposes and linked detail pages within the existing request cap."""
@@ -441,6 +444,10 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
     def ingest(page,rsp):
         nonlocal operator_blocked,known_operator
         operator=site_operator_identity(org,page,data,response['url'])
+        if page is home and operator['state']=='absent':
+            from attribution import group_site_reason
+            reason=group_site_reason(page,data)
+            if reason:operator={'state':'unresolved','reason':reason,'operators':[]}
         if operator['state'] in ('different','unresolved'):
             operator_blocked=True
             pages.append((page,{**rsp,'site_operator':operator},'operator_ambiguous'))
@@ -550,15 +557,18 @@ def activity_candidates(page, response):
         if not (types & {'NewsArticle','BlogPosting'}) and not article_detail(response['url']):
             limit('generic Article outside a dated-activity detail path')
             continue
-        if product_or_index and not obj.get('url') and not obj.get('mainEntityOfPage'):
-            limit('article nested in product or collection lacks its own page attribution')
+        if product_or_index:
+            limit('product or collection metadata does not establish a real post')
+            continue
+        if not (isinstance(obj.get('articleBody'),str) and len(obj['articleBody'].strip())>=80) and (not page.content_headings or len(' '.join(page.article_parts).strip())<80):
+            limit('structured article lacks visible post heading/body')
             continue
         candidates.append(obj)
     detail=article_detail(response['url'])
     headings=page.content_headings
     if detail and product_or_index:
         limit('product or collection page metadata is not publication evidence')
-    elif detail and len(headings)==1:
+    elif detail and len(headings)==1 and len(' '.join(page.article_parts).strip())>=80:
         if page.meta.get('article:published_time'):
             candidates.append({'@type':'NewsArticle',
                 'headline':page.meta.get('og:title') or headings[0],
@@ -627,9 +637,39 @@ def claim(field, value, response, evidence, *, period=None, state=None, pointer=
     ids=[]
     if response.get('content_sha256'):
         eid=digest((response['url']+response['content_sha256']).encode())[:24]
+        previous_spans=evidence.get(eid,{}).get('claim_spans',[])
         evidence[eid]={'id':eid, 'source_url':response['url'], 'retrieved_at':response['retrieved_at'],
             'content_sha256':response['content_sha256'], 'source_class':'official_registry' if response['url'].startswith(OFFICIAL+'/') else 'company_website' if response.get('identity_verified') else 'candidate_website',
             'retention':response.get('retention','source bytes retained in local cache')}
+        spans=list(previous_spans)
+        if not excerpt and value is not None:
+            # Retain a literal source span as well as the precise JSON/DOM
+            # pointer. Do not substitute a fabricated narrative for evidence.
+            raw=response.get('text','')
+            def leaves(item):
+                if isinstance(item,dict):
+                    for child in item.values():yield from leaves(child)
+                elif isinstance(item,list):
+                    for child in item:yield from leaves(child)
+                elif item is not None:yield item
+            values=[]
+            for literal in leaves(value):
+                values.append(literal)
+                if len(values)>=30:break
+            for literal in values:
+                if literal is None:continue
+                for token in (json.dumps(literal,ensure_ascii=False),json.dumps(literal,ensure_ascii=True),str(literal)):
+                    if not token or len(token)>1500:continue
+                    position=raw.find(token)
+                    if position>=0:
+                        excerpt=(token if response['url'].startswith(OFFICIAL+'/') else raw[max(0,position-60):position+len(token)+100])
+                        break
+                if excerpt:break
+        if excerpt and isinstance(excerpt,str):
+            span={'field':field,'text':excerpt[:1500],'source_pointer':pointer}
+            if span not in spans:spans.append(span)
+        evidence[eid]['claim_spans']=spans[:30]
+        evidence[eid]['claim_span']='\n'.join(span['text'] for span in spans[:30])
         if response.get('requested_url'):
             evidence[eid]['cache_file']=digest(response['requested_url'].encode())+'.json'
         if response.get('snapshot_file'): evidence[eid]['snapshot_file']=response['snapshot_file']
@@ -780,19 +820,6 @@ def research(row, fetcher, previous=None, search=None):
                     claims[-1]['qualifiers']={'subject_scope':'group',
                         'own_entity_description':'not_established',
                         'reason':'explicit collective wording; legal site identity does not attribute group statements to this entity'}
-                social_by_url={};social_sources=[]
-                for pg,rsp in content_pages:
-                    for link in pg.links:
-                        if social_profile(link['url']) and not link.get('third_party_context'):
-                            social_url=urlunsplit((*urlsplit(link['url'])[:4],''))
-                            social_by_url[social_url]={'url':social_url,'text':link['text'].strip()};social_sources.append(rsp)
-                social=list(social_by_url.values())
-                add('website.social_links',social or None,anchor_response,pointer='a[href]; sharing and identified third-party contexts excluded; destination ownership not separately checked')
-                claims[-1]['qualifiers']={'relationship':'links_declared_on_identity_checked_pages',
-                    'profile_ownership':'not_independently_verified'}
-                for rsp in social_sources:
-                    extra=claim('supporting',None,rsp,evidence)
-                    claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 from contacts import contact_links
                 contacts=[];contact_sources=[];seen_contacts=set()
                 for pg,rsp in content_pages:
@@ -826,11 +853,12 @@ def research(row, fetcher, previous=None, search=None):
                                 if field=='activity' and not (schema_types(obj)&{'NewsArticle','BlogPosting'}) and not article_detail(rsp['url']):
                                     continue
                                 title=obj.get('title') or obj.get('headline')
-                                date=obj.get('datePosted') or obj.get('datePublished')
+                                date=obj.get('datePublished') if field=='activity' else obj.get('datePosted')
                                 if not isinstance(title,str) or not isinstance(date,str):
                                     limitation(rsp,'candidate lacks a literal title and publication date')
                                     continue
                                 try:
+                                    dt.datetime.fromisoformat(date.replace('Z','+00:00'))
                                     if dt.date.fromisoformat(date[:10])>dt.date.fromisoformat(rsp['retrieved_at'][:10]):
                                         limitation(rsp,'candidate publication date is in the future')
                                         continue
@@ -848,7 +876,15 @@ def research(row, fetcher, previous=None, search=None):
                                     if employer and re.sub(r' (as|asa|sti)$','',normalized(employer))!=legal:
                                         limitation(rsp,'posting names another employer; own-entity attribution unresolved')
                                         continue
+                                attribution=None
+                                if field=='activity':
+                                    from attribution import article_attribution
+                                    attribution=article_attribution(obj,pg,data)
+                                    if not attribution:
+                                        limitation(rsp,'dated post does not establish the target company as its subject; footer identity is insufficient')
+                                        continue
                                 item={'title':title,'date':date,'url':rsp['url']}
+                                if attribution:item['attribution']=attribution
                                 if field=='hiring': item.update(valid_through=obj.get('validThrough'),status='published_posting; application availability not independently checked')
                                 if not any(i['url']==item['url'] and i['date'][:10]==item['date'][:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp)
@@ -859,6 +895,47 @@ def research(row, fetcher, previous=None, search=None):
                     for rsp in evidence_responses:
                         extra=claim('supporting',None,rsp,evidence)
                         claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
+                # Verify social destinations after collecting dated activity, so
+                # the small social budget cannot starve post detail discovery.
+                from attribution import canonical_profile, declared_profiles, profile_identity
+                declarations=declared_profiles(content_pages,data)
+                candidates={};social_sources=[];social_limitations=[];social=[]
+                for pg,rsp in content_pages:
+                    for link in pg.links:
+                        profile=canonical_profile(link['url'])
+                        if profile and not link.get('third_party_context'):
+                            candidates.setdefault(profile,(link,rsp))
+                for profile,sources in declarations.items():
+                    candidates.setdefault(profile,({'text':''},sources[0]))
+                checked=0
+                for profile,(link,rsp) in list(candidates.items())[:20]:
+                    proof=None;supports=[rsp]
+                    if profile in declarations:
+                        proof='exact_entity_sameAs_declaration';supports+=declarations[profile]
+                    elif checked<2 and fetcher.requests<fetcher.limit-1:
+                        checked+=1
+                        destination=fetcher.get(profile,site=True,raw=True)
+                        supports.append(destination)
+                        if destination['status']=='available' and canonical_profile(destination['url'])==profile:
+                            proof=profile_identity(Page(destination.get('text',''),destination['url']),data,response['url'])
+                        if not proof:
+                            social_limitations.append({'url':profile,'state':destination['status'],
+                                'reason':'destination ownership could not be established; a footer link alone is insufficient'})
+                    else:
+                        social_limitations.append({'url':profile,'state':'ambiguous',
+                            'reason':'bounded destination checks exhausted; ownership unverified'})
+                    if proof:
+                        social.append({'url':profile,'text':link['text'].strip(),'attribution':proof})
+                    social_sources+=supports
+                add('website.social_links',social or None,anchor_response,
+                    state='ambiguous' if not social and social_limitations else None,
+                    pointer='exact-entity sameAs declaration or public destination identity; unverified footer links withheld')
+                claims[-1]['qualifiers']={'profile_ownership':'entity_attributed',
+                    'coverage':'partial' if social_limitations and social else 'unresolved' if social_limitations else 'checked',
+                    'candidate_limitations':social_limitations}
+                for rsp in social_sources:
+                    extra=claim('supporting',None,rsp,evidence)
+                    claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 break
             else:
                 errors.append({'source':response['url'],'reason':'exact legal entity not established; no website facts published'})
@@ -899,7 +976,8 @@ def research(row, fetcher, previous=None, search=None):
     output['run']={'started_at':started,'completed_at':now(),'terminal_status':'completed','version':VERSION}
     output['operations']={'requests':fetcher.requests,'cache_hits':fetcher.hits,'runtime_ms':round((time.monotonic()-tic)*1000),'third_party_cost_usd':getattr(fetcher,'discovery',{}).get('paid_cost_usd',0)}
     if hasattr(fetcher,'discovery'): output['discovery']=fetcher.discovery
-    return output
+    from output_contract import complete_envelope
+    return complete_envelope(output)
 
 def main():
     p=argparse.ArgumentParser()

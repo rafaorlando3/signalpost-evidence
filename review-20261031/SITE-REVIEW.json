@@ -1,0 +1,424 @@
+{
+  "scope": "All 16 candidate-published sites, inspected against retained primary responses. No claim of population precision.",
+  "sites": [
+    {
+      "organisation_number": "913273001",
+      "name": "FARNESE AS",
+      "url": "https://farnese.no/",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "Tønsberg Showroom møbler eiendomsforvandlING Designstudio Kunstgalleri Kjøkken og garderobe Oppmøte etter avtale Elverhøiveien 8, 3113 Tønsberg Kontakt 40 48 90 90 post@farnese.no 913273001MVA Facebook Instagram MENY Interiør og bolig design￼ Møbelsnekker og verksted￼ Møbler, interiør og kunstgalleri￼ Møbelbutikk Home Factory møbelkatalog 2026/27 Prosjekter Interiør ",
+      "evidence_ids": [
+        "0f1c62bf7c5d7218f6efab62"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "943724350",
+      "name": "KARL B HAUGE AS",
+      "url": "https://kbhauge.no/",
+      "identity_method": "registry_domain_name_and_postal_address",
+      "identity_support": {
+        "address_kind": "forretningsadresse",
+        "literal_spans": [
+          {
+            "end": 22,
+            "start": 10,
+            "text": "Karl B Hauge"
+          },
+          {
+            "end": 362,
+            "start": 344,
+            "text": "Unnelandsvegen 258"
+          },
+          {
+            "end": 367,
+            "start": 363,
+            "text": "5268"
+          }
+        ],
+        "observed_entry_url": "https://kbhauge.no/",
+        "registered_name": "KARL B HAUGE AS",
+        "registered_website": "www.kbhauge.no",
+        "registry_postcode": "5268",
+        "registry_street": "Unnelandsvegen 258",
+        "requested_entry_url": "https://www.kbhauge.no"
+      },
+      "evidence_excerpt": null,
+      "evidence_ids": [
+        "598a09804fb02f83169ff335",
+        "d6a15b117ef329117718de28"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "984077823",
+      "name": "COUNTRYARTISTS INTERNATIONAL AS",
+      "url": "https://www.countryartists.no",
+      "identity_method": "registry_domain_name_and_postal_address",
+      "identity_support": {
+        "address_kind": "forretningsadresse",
+        "literal_spans": [
+          {
+            "end": 35,
+            "start": 7,
+            "text": "Countryartists International"
+          },
+          {
+            "end": 261,
+            "start": 244,
+            "text": "Frolandsveien 909"
+          },
+          {
+            "end": 267,
+            "start": 263,
+            "text": "4820"
+          }
+        ],
+        "observed_entry_url": "https://www.countryartists.no",
+        "registered_name": "COUNTRYARTISTS INTERNATIONAL AS",
+        "registered_website": "www.countryartists.no",
+        "registry_postcode": "4820",
+        "registry_street": "Frolandsveien 909",
+        "requested_entry_url": "https://www.countryartists.no"
+      },
+      "evidence_excerpt": null,
+      "evidence_ids": [
+        "1b2d8a21e8ed5dd78d8870d3",
+        "0a092fa6f96a5f1a1b4dcd5d"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "998087295",
+      "name": "UNCOMMONTECH AS",
+      "url": "https://uncommontech.com",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "dvisory Subsea technology development, offshore project delivery, and strategic advisory — from concept to final at-sea implementation. Learn more © 2026 UNCOMMONTECH AS — Org.nr. 998 087 295 — Privacy Policy Manage Consent To provide the best experiences, we use technologies like cookies to store and/or access device information. Consenting to these technologies will ",
+      "evidence_ids": [
+        "2e9030b8c126c84f3b92d6a5"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "952430475",
+      "name": "BIOKJEMI NORGE AS",
+      "url": "https://www.biokjemi.no",
+      "identity_method": "registry_domain_name_and_postal_address",
+      "identity_support": {
+        "address_kind": "forretningsadresse",
+        "literal_spans": [
+          {
+            "end": 472,
+            "start": 458,
+            "text": "Biokjemi Norge"
+          },
+          {
+            "end": 5867,
+            "start": 5843,
+            "text": "Øvrebø industriområde 13"
+          },
+          {
+            "end": 5873,
+            "start": 5869,
+            "text": "4715"
+          }
+        ],
+        "observed_entry_url": "https://www.biokjemi.no",
+        "registered_name": "BIOKJEMI NORGE AS",
+        "registered_website": "www.biokjemi.no",
+        "registry_postcode": "4715",
+        "registry_street": "Øvrebø Industriområde 13",
+        "requested_entry_url": "https://www.biokjemi.no"
+      },
+      "evidence_excerpt": null,
+      "evidence_ids": [
+        "10889f26e522a0a4a23180e1",
+        "c94ba2af4443784b5767de49"
+      ],
+      "social": [
+        {
+          "attribution": "exact_entity_sameAs_declaration",
+          "text": "Følg",
+          "url": "https://linkedin.com/company/51901618"
+        }
+      ],
+      "activity": [
+        {
+          "attribution": "exact_entity_publisher_and_first_person_announcement",
+          "date": "2023-03-24T10:34:53+00:00",
+          "title": "Mars 2023",
+          "url": "https://www.biokjemi.no/2023/03/24/mars-2023/"
+        }
+      ],
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "994950967",
+      "name": "ODIN PROSJEKT AS",
+      "url": "https://odinprosjekt.no/",
+      "identity_method": "registry_domain_name_and_postal_address",
+      "identity_support": {
+        "address_kind": "forretningsadresse",
+        "literal_spans": [
+          {
+            "end": 20,
+            "start": 7,
+            "text": "Odin Prosjekt"
+          },
+          {
+            "end": 978,
+            "start": 964,
+            "text": "Fabrikkgaten 6"
+          },
+          {
+            "end": 983,
+            "start": 979,
+            "text": "5059"
+          }
+        ],
+        "observed_entry_url": "https://odinprosjekt.no/",
+        "registered_name": "ODIN PROSJEKT AS",
+        "registered_website": "www.odinprosjekt.no",
+        "registry_postcode": "5059",
+        "registry_street": "Fabrikkgaten 6",
+        "requested_entry_url": "https://www.odinprosjekt.no"
+      },
+      "evidence_excerpt": null,
+      "evidence_ids": [
+        "ef72347abcd6830537348992",
+        "058b6081579ca47f93dcf63a"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "930772305",
+      "name": "BIRK BÆREKRAFT AS",
+      "url": "https://www.birk.as/",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "Åpne meny Lukk meny Vi leverer Fellesskap Prosjekt Om Birk Kontakt Birk bærekraft AS Daglig leder: Liv Birkeland liv@birk.as +47 930 56 787 Audnedalsveien 3427 4525 Konsmo Org.nr. 930 772 305 MVA 2022 © BIRK AS / Design av Gnizt Grafisk profil ↗︎",
+      "evidence_ids": [
+        "4f91ca68041d66c8edeec03c"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "987224037",
+      "name": "LILLELAM AS",
+      "url": "https://lillelam.no/",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": " avvik fra gjeldende retningslinjer og lovverk blir meldt inn og rettet. Har du spørsmål til dette kan du gjerne ta kontakt med oss: Lillelam AS Tollbugata 8A 0152 Oslo Org.Nr: NO 987 224 037 MVA Tlf nr: 22446885 post@lillelam.no Populære produkter og kategorier babyshower gave romper sommerull ullbody baby babyklær salg baby størrelser størrelsesguide barn ullbuske ba",
+      "evidence_ids": [
+        "1226d5dfb8e4ab0a6b1f8213"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "919897988",
+      "name": "AUDHILD VIKEN AS",
+      "url": "https://www.audhildviken.no",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "sor Contact us Mail: post@aviken.no Bellgården, 5003 Bergen ​ Want to work with us? Send y our open application and CV to: jobbsokere@aviken.no © 2026 by Audhild Viken AS. Org. nr 919 897 988 Terms & Conditions Privacy Policy bottom of page",
+      "evidence_ids": [
+        "e478d841a6050c277ef65588"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "871235422",
+      "name": "ELEKTRO PARTNER AS",
+      "url": "https://elektropartner.no",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "ringsbygg Sikringsskap Elbillading Kontakt Spelhaugen 20, 5147 Fyllingsdalen 55 22 03 01 41 20 79 93 post@elektropartner.as Man–Fre: 07:30–15:30 © 2026 Elektro Partner AS. Org.nr: 871 235 422. Bergen · Fyllingsdalen · Arna · Fana · Øygarden · Askøy",
+      "evidence_ids": [
+        "178e459c6b4ca9b6629087f4"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "976820614",
+      "name": "OPPSAL VAKTMESTERSENTRAL",
+      "url": "https://oppsalvaktmestersentral.no/",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "@ovs.no 22 76 28 80 Løypeveien 2, 0685 Oslo Mandag – Fredag: 07:00 – 15:00 Kontakt oss her Kontakt oss her Følg oss © Oppsal Vaktmestersentral. Alle rettigheter reservert. Org.nr: 976 820 614",
+      "evidence_ids": [
+        "e0eb772e6774735a856bd6f6"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "984272170",
+      "name": "SERGEL NORGE AS",
+      "url": "https://sergel.no",
+      "identity_method": "registry_domain_name_and_postal_address",
+      "identity_support": {
+        "address_kind": "postadresse",
+        "literal_spans": [
+          {
+            "end": 31,
+            "start": 19,
+            "text": "Sergel Norge"
+          },
+          {
+            "end": 9554,
+            "start": 9542,
+            "text": "Postboks 177"
+          },
+          {
+            "end": 9560,
+            "start": 9556,
+            "text": "3201"
+          }
+        ],
+        "observed_entry_url": "https://sergel.no",
+        "registered_name": "SERGEL NORGE AS",
+        "registered_website": "sergel.no",
+        "registry_postcode": "3201",
+        "registry_street": "Postboks 177",
+        "requested_entry_url": "https://sergel.no"
+      },
+      "evidence_excerpt": null,
+      "evidence_ids": [
+        "c625d7d756f0f710018252e4",
+        "9e3e33d7e35b000e38759e3d"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "821200172",
+      "name": "TOPPTURING AS",
+      "url": "https://www.toppturing.no",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "n av våre camper, kurs eller ta kontakt om du ønsker et skreddersydd opplegg for deg eller din bedrift! SKREDKURS GUIDING © 2018 Toppturing AS | Alle rettigheter reservert Org.nr. 821200172 | Betingelser & vilkår Informasjonskapsler Språk Norsk English Vi bruker informasjonskapsler for å sikre at nettsiden vår fungerer som det skal, og for å tilby deg best mulig bruk",
+      "evidence_ids": [
+        "7ff2966b17ce196f19eb8c7b"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "980681378",
+      "name": "REVY OG TEATERSERVICE AS",
+      "url": "https://www.revyogteater.no",
+      "identity_method": "explicit_org_number",
+      "identity_support": null,
+      "evidence_excerpt": "ter.no – Revy & Teaterservice AS sin portal for bestilling av konsert-, teater- og showbilletter med hotellovernatting i Bergen, Oslo, Stavanger og Trondheim. Organisasjonsnummer: 980681378 Generelle henvendelser: post@ r evyogteater.no Adresse: Bergen Steder Oslo Bergen Stavanger Trondheim Andre linker Om oss Firmabestillinger Gavekort Kontakt oss Ofte stilte spørsm",
+      "evidence_ids": [
+        "8148e618d891156ae640e3a9"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "917475571",
+      "name": "AS ØSTLANDETS BLAD",
+      "url": "https://www.oblad.no",
+      "identity_method": "registry_domain_name_and_postal_address",
+      "identity_support": {
+        "address_kind": "forretningsadresse",
+        "literal_spans": [
+          {
+            "end": 3665,
+            "start": 3647,
+            "text": "AS Østlandets Blad"
+          },
+          {
+            "end": 3389,
+            "start": 3375,
+            "text": "Idrettsveien 5"
+          },
+          {
+            "end": 3395,
+            "start": 3391,
+            "text": "1400"
+          }
+        ],
+        "observed_entry_url": "https://www.oblad.no",
+        "registered_name": "AS ØSTLANDETS BLAD",
+        "registered_website": "www.oblad.no",
+        "registry_postcode": "1400",
+        "registry_street": "Idrettsveien 5",
+        "requested_entry_url": "https://www.oblad.no"
+      },
+      "evidence_excerpt": null,
+      "evidence_ids": [
+        "7ce9728ec37e26673bd89493",
+        "ce1f772f953dedb90635aa4b"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    },
+    {
+      "organisation_number": "928664406",
+      "name": "AS HAMATEC",
+      "url": "https://www.hamatec.no",
+      "identity_method": "registry_domain_name_and_postal_address",
+      "identity_support": {
+        "address_kind": "forretningsadresse",
+        "literal_spans": [
+          {
+            "end": 24,
+            "start": 14,
+            "text": "AS Hamatec"
+          },
+          {
+            "end": 927,
+            "start": 913,
+            "text": "Ramstadløkka 1"
+          },
+          {
+            "end": 932,
+            "start": 928,
+            "text": "1850"
+          }
+        ],
+        "observed_entry_url": "https://www.hamatec.no",
+        "registered_name": "AS HAMATEC",
+        "registered_website": "www.hamatec.no",
+        "registry_postcode": "1850",
+        "registry_street": "Ramstadløkka 1",
+        "requested_entry_url": "https://www.hamatec.no"
+      },
+      "evidence_excerpt": null,
+      "evidence_ids": [
+        "f3b78c16b06dcdc3bf88cfee",
+        "c94191200485d987edf053f5"
+      ],
+      "social": null,
+      "activity": null,
+      "review": "Local source inspection: exact number or named registered-domain/address support; no demonstrated wrong-company website in this inspected set. Not independent or blind gold validation."
+    }
+  ]
+}

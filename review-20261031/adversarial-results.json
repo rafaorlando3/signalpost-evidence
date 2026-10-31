@@ -1,0 +1,207 @@
+{
+  "baseline": {
+    "cases": [
+      {
+        "id": "parent_site_subsidiary_footer",
+        "expected": {
+          "website.verified_url": false,
+          "website.social_links": false
+        },
+        "published": {
+          "website.verified_url": true,
+          "website.social_links": true
+        }
+      },
+      {
+        "id": "parent_declared_operator",
+        "expected": {
+          "website.verified_url": false
+        },
+        "published": {
+          "website.verified_url": false
+        }
+      },
+      {
+        "id": "agency_footer",
+        "expected": {
+          "website.social_links": false
+        },
+        "published": {
+          "website.social_links": true
+        }
+      },
+      {
+        "id": "personal_profile",
+        "expected": {
+          "website.social_links": false
+        },
+        "published": {
+          "website.social_links": true
+        }
+      },
+      {
+        "id": "menu_dated_heading",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": true
+        }
+      },
+      {
+        "id": "product_disguised_as_post",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": true
+        }
+      },
+      {
+        "id": "modified_only",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": false
+        }
+      },
+      {
+        "id": "other_company_post",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": true
+        }
+      },
+      {
+        "id": "real_target_post",
+        "expected": {
+          "website.activity": true,
+          "website.verified_url": true
+        },
+        "published": {
+          "website.activity": true,
+          "website.verified_url": true
+        }
+      },
+      {
+        "id": "own_entity_sameAs",
+        "expected": {
+          "website.social_links": true,
+          "website.verified_url": true
+        },
+        "published": {
+          "website.social_links": true,
+          "website.verified_url": true
+        }
+      }
+    ],
+    "false_publications": 7,
+    "missed_positives": 0
+  },
+  "candidate": {
+    "cases": [
+      {
+        "id": "parent_site_subsidiary_footer",
+        "expected": {
+          "website.verified_url": false,
+          "website.social_links": false
+        },
+        "published": {
+          "website.verified_url": false,
+          "website.social_links": false
+        }
+      },
+      {
+        "id": "parent_declared_operator",
+        "expected": {
+          "website.verified_url": false
+        },
+        "published": {
+          "website.verified_url": false
+        }
+      },
+      {
+        "id": "agency_footer",
+        "expected": {
+          "website.social_links": false
+        },
+        "published": {
+          "website.social_links": false
+        }
+      },
+      {
+        "id": "personal_profile",
+        "expected": {
+          "website.social_links": false
+        },
+        "published": {
+          "website.social_links": false
+        }
+      },
+      {
+        "id": "menu_dated_heading",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": false
+        }
+      },
+      {
+        "id": "product_disguised_as_post",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": false
+        }
+      },
+      {
+        "id": "modified_only",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": false
+        }
+      },
+      {
+        "id": "other_company_post",
+        "expected": {
+          "website.activity": false
+        },
+        "published": {
+          "website.activity": false
+        }
+      },
+      {
+        "id": "real_target_post",
+        "expected": {
+          "website.activity": true,
+          "website.verified_url": true
+        },
+        "published": {
+          "website.activity": true,
+          "website.verified_url": true
+        }
+      },
+      {
+        "id": "own_entity_sameAs",
+        "expected": {
+          "website.social_links": true,
+          "website.verified_url": true
+        },
+        "published": {
+          "website.social_links": true,
+          "website.verified_url": true
+        }
+      }
+    ],
+    "false_publications": 0,
+    "missed_positives": 0
+  },
+  "scope": "10 synthetic adversarial cases; regression evidence only, no real-world precision estimate or official score"
+}

@@ -1,0 +1,73 @@
+{
+  "claim_counts_include_duplicate_entries": true,
+  "claim_status_counts": {
+    "ambiguous": 32,
+    "available": 178,
+    "blocked": 14,
+    "failed": 0,
+    "not_applicable": 0,
+    "not_available": 16
+  },
+  "configured_free_credit_cap": 0,
+  "duplicate_entries": 0,
+  "format": "legacy-evidence-envelope/0.7",
+  "guard": {
+    "collector_exit": 0,
+    "note": "Interrupted-company request counts are conservative upper bounds, not observed usage.",
+    "preserved_outputs": 10,
+    "runtime_seconds": 53.859,
+    "synthesized_failures": 0,
+    "timeout_seconds": 450.0,
+    "wall_clock_timeout": false
+  },
+  "inputs": 10,
+  "mode": "live",
+  "note": "Run completion is not evidence availability or factual accuracy.",
+  "official_score": null,
+  "output": "/Users/rafaelorlandomendes/.codex/workspaces/signalpost-review-20261031/review-20261031/cold10.jsonl",
+  "output_sha256": "95dad8baa1f70102fa09612c9c650ecd3c403b1f73eb13f27af0637a0df9295e",
+  "outputs": 10,
+  "paid_fallback": false,
+  "python_version": "3.12.14",
+  "rejected_collector_envelopes": 0,
+  "request_budget_per_unique_company": 20,
+  "request_budget_total": 200,
+  "requests": 133,
+  "requests_include_upper_bounds": false,
+  "review": {
+    "count": 10,
+    "files": [
+      "00001-913273001.md",
+      "00002-943724350.md",
+      "00003-948588757.md",
+      "00004-981410378.md",
+      "00005-984077823.md",
+      "00006-999033199.md",
+      "00007-914769450.md",
+      "00008-952430475.md",
+      "00009-929532724.md",
+      "00010-992718439.md",
+      "index.md",
+      "index.html",
+      "workspace.html"
+    ],
+    "html_path": "/Users/rafaelorlandomendes/.codex/workspaces/signalpost-review-20261031/review-20261031/cold10.review/index.html",
+    "index_path": "/Users/rafaelorlandomendes/.codex/workspaces/signalpost-review-20261031/review-20261031/cold10.review/index.md",
+    "state": "completed",
+    "status": "written"
+  },
+  "run_terminal_status_counts": {
+    "completed": 10
+  },
+  "schema": "signalpost-list-cli/2",
+  "search": "none",
+  "search_attempts_complete": true,
+  "search_basic_credit_upper_bound": 0,
+  "search_request_attempts": 0,
+  "search_request_cap": 0,
+  "summary": "/Users/rafaelorlandomendes/.codex/workspaces/signalpost-review-20261031/review-20261031/cold10.summary.json",
+  "third_party_cost_usd": 0,
+  "timeout_seconds": 450.0,
+  "unique_valid_companies": 10,
+  "unsuccessful_entries": 0
+}

@@ -1,0 +1,65 @@
+{
+  "scope": "local paired test on 100 new firms, stratified 50 with/50 without a declared site; not a representative precision/recall estimate or official score",
+  "baseline_commit": "c2e81e14f8e7ee7423083710a8244b28970d9adb",
+  "baseline": {
+    "website.verified_url": {
+      "companies": 16,
+      "items": 16
+    },
+    "website.social_links": {
+      "companies": 12,
+      "items": 27
+    },
+    "website.activity": {
+      "companies": 1,
+      "items": 4
+    },
+    "website.contact_channels": {
+      "companies": 15,
+      "items": 49
+    },
+    "website.hiring": {
+      "companies": 0,
+      "items": 0
+    }
+  },
+  "candidate": {
+    "website.verified_url": {
+      "companies": 16,
+      "items": 16
+    },
+    "website.social_links": {
+      "companies": 1,
+      "items": 1
+    },
+    "website.activity": {
+      "companies": 1,
+      "items": 1
+    },
+    "website.contact_channels": {
+      "companies": 15,
+      "items": 49
+    },
+    "website.hiring": {
+      "companies": 0,
+      "items": 0
+    }
+  },
+  "terminal_envelopes": 100,
+  "input_order_preserved": true,
+  "candidate_legacy_validation": {
+    "structurally_valid": true,
+    "errors": [],
+    "companies": 100,
+    "official_score": null,
+    "note": "Does not establish factual accuracy, source completeness or competition qualification."
+  },
+  "minimal_contract_errors": 0,
+  "cache_unchanged": true,
+  "cache_files": 2217,
+  "source_freeze_matches": true,
+  "requests_paired": 0,
+  "third_party_cost_usd": 0,
+  "official_score": null,
+  "network_capture_note": "Both replay arms use identical captured URL responses; baseline captures take priority, candidate fills missing URLs. Preliminary live candidate claims are not the final scored arm."
+}

@@ -226,7 +226,7 @@ class ListCli(unittest.TestCase):
              {'collector_exit': -9, 'wall_clock_timeout': True, 'synthesized_failures': 1})):
             code, rows, _ = self.call(['--orgs', ORG, second_org])
         self.assertEqual(code, 2)
-        self.assertEqual(rows[0]['claims'], first['claims'])
+        self.assertEqual(rows[0]['claims'], cli.complete_envelope(first)['claims'])
         self.assertEqual(rows[1]['run']['terminal_status'], 'failed')
 
     def test_bad_output_count_emits_all_entries(self):

@@ -16,6 +16,7 @@ from agent import STATES, valid_org
 from evaluator import collect
 from validate import validate
 from readable_report import write_reports
+from output_contract import complete_envelope, contract_errors
 
 SCHEMA = 'signalpost-list-cli/2'
 FORMAT = 'legacy-evidence-envelope/0.7'
@@ -218,6 +219,8 @@ def run(args):
                 row = copy.deepcopy(accepted[item['org']]) if item['valid'] else failed(
                     item['org'], 'invalid organisation number: expected nine ASCII digits '
                     'with valid Norwegian checksum')
+                complete_envelope(row)
+                if contract_errors(row):raise ValueError('output contract violated')
                 state_counts = counts(row)
                 outcome = ('failed' if row['run']['terminal_status'] == 'failed' else
                            'completed_with_available_claims' if state_counts['available'] else
