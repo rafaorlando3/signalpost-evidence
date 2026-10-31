@@ -984,14 +984,14 @@ def research(row, fetcher, previous=None, search=None):
                     claims[-1]['qualifiers']={'subject_scope':'group',
                         'own_entity_description':'not_established',
                         'reason':'explicit collective wording; legal site identity does not attribute group statements to this entity'}
-                from contacts import entity_contacts
+                from contacts import entity_contacts,CONTACT_LIMIT
                 contacts=[];contact_sources=[];seen_contacts=set();contact_limits=[]
                 for pg,rsp in content_pages:
                     scoped,held=entity_contacts(pg,data,sites)
                     contact_limits.extend(held[:10])
                     for item in scoped:
                         key=(item['type'],item['value'])
-                        if key not in seen_contacts and len(contacts)<25:
+                        if key not in seen_contacts and len(contacts)<CONTACT_LIMIT:
                             contacts.append(item);seen_contacts.add(key);contact_sources.append(rsp)
                 contact_anchor=contact_sources[0] if contact_sources else anchor_response
                 add('website.contact_channels',contacts or None,contact_anchor,excerpt=(contacts[0].get('source_href') or contacts[0]['value']) if contacts else None,

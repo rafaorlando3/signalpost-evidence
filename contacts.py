@@ -2,6 +2,7 @@
 import re
 from urllib.parse import unquote, urlsplit
 
+CONTACT_LIMIT = 25
 
 def contact_links(page):
     found=[];seen=set()
@@ -24,7 +25,7 @@ def contact_links(page):
         seen.add(key)
         found.append({'type':kind,'value':value,'label':re.sub(r'\s+',' ',link['text']).strip()[:160],
                       'source_url':page.url,'source_href':link['url']})
-    return found[:10]
+    return found[:CONTACT_LIMIT]
 
 
 def _normal(value):
@@ -139,4 +140,4 @@ def entity_contacts(page,data,units=()):
         if item['type']=='phone' and len(v)==8:v='47'+v
         key=(item['type'],v)
         if key not in seen:seen.add(key);unique.append(item)
-    return unique[:20],held
+    return unique[:CONTACT_LIMIT],held
