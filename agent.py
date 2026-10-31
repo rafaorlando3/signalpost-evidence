@@ -506,14 +506,19 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         if identity=='conflict': return False
         pages.append((page,rsp,identity))
         if identity=='exact' or corroborated_site(data,page,registry_redirect_host): verified.append((page,rsp))
+        activity_index=(link_family(rsp['url'])=='activity' and not article_detail(rsp['url'])
+                        and not activity_candidates(page,rsp)[0])
         for link in page.links:
+            label=normalized(link['text'])
+            if link.get('in_navigation') and re.fullmatch(r'english|engelsk|norsk|norwegian|bokmål|nynorsk|deutsch|svenska|dansk|en|no|nb|nn',label):
+                continue
             url=urlunsplit((*urlsplit(link['url'])[:4],''));family=link_family(url)
             if family is None:
-                label=normalized(link['text'])
                 if re.search(r'\b(kontakt|contact|personvern|privacy|om oss|about us)\b',label): family='identity'
-            if (family not in ('identity',) and verified and link_family(rsp['url'])=='activity'
+            if (family not in ('identity',) and verified and activity_index
                     and not link.get('in_navigation') and not link.get('third_party_context')
                     and len(link['text'].strip())>=5 and urlsplit(url).path not in ('','/')
+                    and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)$',urlsplit(url).path,re.I)
                     and url!=rsp['url']):
                 # A real post may use a root slug. This only discovers it;
                 # publication still requires dated, scoped article evidence.
@@ -563,8 +568,11 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             legal=bool(re.search(r'personvern|privacy|legal|impressum|vilk|beting',urlsplit(url).path,re.I))
             penalty=counts[family]*4
             identity_order=0 if legal else 1 if re.search(r'kontakt|contact|kundeservice',urlsplit(url).path,re.I) else 2
+            parts=[s.casefold() for s in urlsplit(url).path.split('/') if s]
+            entry_parts=[s.casefold() for s in urlsplit(response['url']).path.split('/') if s]
+            locale=bool(parts and parts[0] in {'en','no','nb','nn','de','sv','da'} and parts[:1]!=entry_parts[:1])
             detail_order=post_leads.get(url,10_000+list(queue).index(url)) if family=='activity' else list(queue).index(url)
-            return (base+penalty, identity_order if family=='identity' and verified else 0,
+            return (base+penalty, locale if verified else False, identity_order if family=='identity' and verified else 0,
                     (0 if verified else depth),detail_order,len(url),url)
         url,family=min(queue.items(),key=rank);del queue[url];seen.add(url);counts[family]+=1
         child=fetcher.get(url,site=True,raw=True)

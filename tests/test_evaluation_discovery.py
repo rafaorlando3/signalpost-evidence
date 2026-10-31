@@ -214,6 +214,24 @@ class ArticleHeaderScope(unittest.TestCase):
         cs,_=activity_candidates(p,{'url':u});self.assertEqual(cs,[])
 
 class BoundedNewsPriority(unittest.TestCase):
+    def test_article_body_product_links_are_not_promoted_to_news_index_leads(self):
+        from agent import crawl_company
+        from test_discovery import Pages, ORG
+        home={'url':'https://example.test/','text':'Org nr '+ORG+'<a href="/news/factory">Company opens factory</a>'}
+        body='<main><h1>Company opens factory</h1><time itemprop="datePublished" datetime="2026-09-01">Published</time><p>'+('Example AS has a new factory. '*10)+'</p><div><a href="/products/pumps">Products and pumps</a></div></main>'
+        f=Pages({'https://example.test/news/factory':body})
+        crawl_company(ORG,{},home,f)
+        self.assertNotIn('https://example.test/products/pumps',f.visited)
+
+    def test_navigation_language_switch_does_not_consume_a_second_article_visit(self):
+        from agent import crawl_company
+        from test_discovery import Pages, ORG
+        home={'url':'https://example.test/','text':'Org nr '+ORG+'<nav><a href="/en/news/same-story">English</a><a href="/news">News</a></nav>'}
+        f=Pages({'https://example.test/news':'<a href="/news/new">New company announcement</a>'})
+        crawl_company(ORG,{},home,f)
+        self.assertNotIn('https://example.test/en/news/same-story',f.visited)
+        self.assertIn('https://example.test/news/new',f.visited)
+
     def test_news_index_is_used_before_redundant_sitemaps_and_preserves_legal_check(self):
         from agent import crawl_company
         from test_discovery import Pages, ORG
