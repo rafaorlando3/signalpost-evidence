@@ -1359,7 +1359,7 @@ def main():
     p.add_argument('--search-credit-limit',type=int,default=100)
     p.add_argument('--search-strategy',choices=['legacy','name_focus','adaptive'],default='legacy')
     p.add_argument('--registry-snapshot',help='Frozen registry responses in the documented local JSONL interchange format')
-    args=p.parse_args(); rows=[json.loads(x) for x in Path(args.input).read_text().splitlines() if x.strip()]
+    args=p.parse_args(); rows=[json.loads(x) for x in Path(args.input).read_text().split('\n') if x.strip()]
     registry_snapshot=None
     if args.registry_snapshot:
         from frozen_registry import FrozenRegistry
@@ -1377,7 +1377,7 @@ def main():
         if not args.replay and not search.key: p.error('TAVILY_API_KEY is required for live search; no account was created')
     elif args.search_free_credit_limit is not None:
         p.error('--search-free-credit-limit is valid only with --search tavily-free')
-    prior={r['organisation_number']:r for r in (json.loads(x) for x in Path(args.previous).read_text().splitlines())} if args.previous else {}
+    prior={r['organisation_number']:r for r in (json.loads(x) for x in Path(args.previous).read_text().split('\n') if x.strip())} if args.previous else {}
     output=Path(args.output); output.parent.mkdir(parents=True,exist_ok=True); start=time.monotonic()
     def work(row):
         fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot)

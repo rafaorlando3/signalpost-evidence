@@ -39,7 +39,7 @@ def collect(command, staged_output, rows, timeout, log, previous=None, paid_sear
             raise
     results = []
     if Path(staged_output).exists():
-        for line in Path(staged_output).read_text(errors='replace').splitlines():
+        for line in Path(staged_output).read_text(errors='replace').split('\n'):
             try:
                 row = json.loads(line)
             except ValueError:
@@ -85,8 +85,8 @@ def main():
     paths.add_argument('--input',required=True); paths.add_argument('--output',required=True)
     paths.add_argument('--previous'); paths.add_argument('--search',default='none')
     files, _ = paths.parse_known_args(flags)
-    rows = [json.loads(x) for x in Path(files.input).read_text().splitlines() if x.strip()]
-    prior = {r['organisation_number']:r for r in (json.loads(x) for x in Path(files.previous).read_text().splitlines() if x.strip())} if files.previous else {}
+    rows = [json.loads(x) for x in Path(files.input).read_text().split('\n') if x.strip()]
+    prior = {r['organisation_number']:r for r in (json.loads(x) for x in Path(files.previous).read_text().split('\n') if x.strip())} if files.previous else {}
     output = Path(files.output).resolve(); output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.signalpost-run-',dir=output.parent) as temporary:
         staged = Path(temporary)/'output.jsonl'

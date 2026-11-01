@@ -55,8 +55,8 @@ def validate(rows, expected):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('input');p.add_argument('results');args=p.parse_args()
-    expected=[str(json.loads(l)['organisation_number']) for l in Path(args.input).read_text().splitlines() if l.strip()]
-    rows=[json.loads(l) for l in Path(args.results).read_text().splitlines() if l.strip()]
+    expected=[str(json.loads(l)['organisation_number']) for l in Path(args.input).read_text().split('\n') if l.strip()]
+    rows=[json.loads(l) for l in Path(args.results).read_text().split('\n') if l.strip()]
     result=validate(rows,expected);Path(args.results).with_suffix('.validation.json').write_text(json.dumps(result,indent=2))
     print(json.dumps(result,indent=2));raise SystemExit(0 if result['structurally_valid'] else 1)
 

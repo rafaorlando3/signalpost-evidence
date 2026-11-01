@@ -70,3 +70,12 @@ class Deadline(unittest.TestCase):
                 self.assertEqual(report['synthesized_failures'],1)
 
 if __name__=='__main__':unittest.main()
+
+class UnicodeJSONL(unittest.TestCase):
+    run_child=Deadline.run_child
+    def test_unicode_separators_inside_json_strings_preserve_all_outputs(self):
+        for separator in ['\u0085','\u2028','\u2029']:
+            originals=[{'organisation_number':name,'run':{'terminal_status':'completed'},'claims':[{'value':'before'+separator+'after'}]} for name in ['one','two','three']]
+            text='\n'.join(json.dumps(row,ensure_ascii=False) for row in originals)+'\n'
+            rows,report=self.run_child('p.write_text('+repr(text)+')',[{'organisation_number':row['organisation_number']} for row in originals])
+            self.assertEqual(rows,originals);self.assertEqual(report['preserved_outputs'],3);self.assertEqual(report['synthesized_failures'],0)

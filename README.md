@@ -1,3 +1,5 @@
+JSONL readers now split only on physical LF delimiters. Unicode line/paragraph separators inside a valid JSON string remain part of that record; they cannot truncate a completed prefix and fabricate failures for subsequent companies. The same rule applies to previous snapshots, the supplied registry interchange, audits, validation and report inputs. A live NETLIGHT source exposed U+2028 in an exploratory employer cohort; three valid outputs were previously discarded by the wrapper. This is an execution/transport repair, separate from factual website/job discovery gains.
+
 ## Bounded discovery and rolling vacancies (1 November, coverage3)
 
 Company-page exploration now rejects non-document assets (including compound image extensions and query-bearing URLs) before labels or sitemaps can enqueue them. Contact-form confirmation and action endpoints are not content leads. This saves the existing20-request budget without changing company identity rules.

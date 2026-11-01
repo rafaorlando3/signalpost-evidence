@@ -53,7 +53,7 @@ def build(rows):
 
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument('input'); parser.add_argument('output'); args = parser.parse_args()
-    rows = [json.loads(line) for line in Path(args.input).read_text().splitlines() if line.strip()]
+    rows = [json.loads(line) for line in Path(args.input).read_text().split('\n') if line.strip()]
     Path(args.output).write_text(build(rows))
 
 

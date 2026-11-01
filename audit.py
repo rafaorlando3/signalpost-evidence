@@ -98,7 +98,7 @@ def audit(rows, cache):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('results');p.add_argument('--cache',default='cache');args=p.parse_args()
-    rows=[json.loads(l) for l in Path(args.results).read_text().splitlines() if l.strip()]
+    rows=[json.loads(l) for l in Path(args.results).read_text().split('\n') if l.strip()]
     result=audit(rows,args.cache)
     Path(args.results).with_suffix('.audit.json').write_text(json.dumps(result,indent=2))
     print(json.dumps({k:v for k,v in result.items() if k!='external_identity_review'},indent=2))

@@ -18,7 +18,7 @@ class FrozenRegistry:
     def __init__(self,path):
         self.responses={}
         raw=Path(path).read_bytes();self.artifact_sha256=hashlib.sha256(raw).hexdigest()
-        for line in raw.decode('utf-8').splitlines():
+        for line in raw.decode('utf-8').split('\n'):
             if not line.strip():continue
             record=json.loads(line)
             url=record['requested_url'];text=record['text']

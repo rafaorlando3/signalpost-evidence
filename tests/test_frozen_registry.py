@@ -39,3 +39,16 @@ class FrozenSnapshots(unittest.TestCase):
                 with self.assertRaises(ValueError):FrozenRegistry(path)
 
 if __name__=='__main__':unittest.main()
+
+class UnicodeRegistryJSONL(unittest.TestCase):
+    def test_literal_unicode_separator_is_data_not_an_interchange_delimiter(self):
+        import hashlib
+        from frozen_registry import FrozenRegistry
+        with tempfile.TemporaryDirectory() as folder:
+            url='https://data.brreg.no/enhetsregisteret/api/enheter/810034882'
+            data={'organisasjonsnummer':'810034882','navn':'Before\u2028After'}
+            data['navn']=data['navn'].replace('\\u2028','\u2028')
+            text=json.dumps(data,ensure_ascii=False)
+            record={'requested_url':url,'url':url,'retrieved_at':'2026-11-01T00:00:00Z','status':'available','status_code':200,'content_sha256':hashlib.sha256(text.encode()).hexdigest(),'text':text,'json':data}
+            path=Path(folder)/'registry.jsonl';path.write_text(json.dumps(record,ensure_ascii=False)+'\n')
+            self.assertEqual(FrozenRegistry(path).lookup(url)['json'],data)
