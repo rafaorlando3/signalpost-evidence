@@ -1068,10 +1068,6 @@ def research(row, fetcher, previous=None, search=None):
                 root=parsed.hostname[4:]+(':'+str(parsed.port) if parsed.port else '')
                 alternate=urlunsplit((parsed.scheme,root,parsed.path,parsed.query,''))
                 yield alternate,'canonical_host_candidate',remaining,[]
-        # If the official website leads did not establish a site, a checked
-        # primary ad can nominate its employer homepage before domain guessing.
-        for index,homepage in enumerate(public_jobs()['website_leads'][:2]):
-            yield homepage,'public_ad_employer_homepage',1-index,[]
         if search and data.get('navn'):
             if hasattr(search,'iter_candidates'):
                 for url,remaining,hints in search.iter_candidates(org,data['navn'],fetcher):yield url,'search',remaining,hints
@@ -1084,6 +1080,11 @@ def research(row, fetcher, previous=None, search=None):
         for index,url in enumerate(derived):yield url,'name_domain_heuristic',len(derived)-index-1,[]
         for index,url in enumerate(industry_city_candidates(data)):
             if host_key(url) not in existing and url not in derived:yield url,'industry_city_heuristic',1-index,[]
+        # Preserve the established website-discovery request budget. Query
+        # boards after those leads fail, so redirects and legal identity pages
+        # are not starved by an unrelated recruiting search.
+        for index,homepage in enumerate(public_jobs()['website_leads'][:2]):
+            yield homepage,'public_ad_employer_homepage',1-index,[]
     for url,origin,remaining_leads,hints in candidates():
         started_requests=fetcher.requests
         response=fetcher.get(url,site=True,raw=True); webstate=response

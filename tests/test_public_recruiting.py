@@ -69,6 +69,19 @@ class NAVPrimary(unittest.TestCase):
   self.assertFalse(parse(response=self.source(application='not an object')))
 
 class PublicDiscoveryPipeline(unittest.TestCase):
+ def test_existing_website_leads_keep_priority_over_public_search_budget(self):
+  with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
+   Pipeline().fixture(d);save(d,BASE,DATA)
+   own='https://exampleplant.no/'
+   for url,text in [(own+'robots.txt','User-agent: *\nAllow: /'),(own,'<title>Example Plant</title><p>Manufacturing and repair services for industrial customers.</p><footer>Example Plant AS Org.nr. '+ORG+'</footer>')]:
+    (Path(d)/(digest(url.encode())+'.json')).write_text(encode(rsp(url,text)))
+   f=Fetcher(d,replay=True);original=f.get;visited=[]
+   def observed(url,**kwargs):visited.append(url);return original(url,**kwargs)
+   f.get=observed
+   row=research({'organisation_number':ORG},f);claims={c['field']:c for c in row['claims']}
+   self.assertEqual(claims['website.verified_url']['value'],own)
+   query=next(i for i,u in enumerate(visited) if u.startswith('https://www.finn.no/job/search?'))
+   self.assertLess(visited.index(own),query)
  def test_no_hint_homepage_and_job_discovered_audited_and_tamper_rejected(self):
   with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
    Pipeline().fixture(d);save(d,BASE,DATA)
