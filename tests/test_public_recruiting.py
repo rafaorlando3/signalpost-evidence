@@ -95,3 +95,19 @@ class PublicDiscoveryPipeline(unittest.TestCase):
    self.assertTrue(audit([row],d)['passed'])
    changed=copy.deepcopy(row);next(x for x in changed['claims'] if x['field']=='website.hiring')['value'][0]['employer_binding']['published_organisation_number']='974761076'
    self.assertFalse(audit([changed],d)['passed'])
+
+class LegalSuffixFallback(unittest.TestCase):
+ def test_last_resort_suffix_domain_still_needs_first_party_legal_identity(self):
+  from registry_discovery import legal_form_domain_candidates
+  data={**DATA,'navn':'Example AS'}
+  self.assertEqual(legal_form_domain_candidates(data),['https://exampleas.no/'])
+  self.assertFalse(legal_form_domain_candidates({**data,'navn':'Example Parent AS'}))
+  self.assertFalse(legal_form_domain_candidates({**data,'navn':'Holding AS'}))
+  for number,expected in [(ORG,'available'),('974761076',None)]:
+   with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
+    Pipeline().fixture(d);save(d,BASE,data);own='https://exampleas.no/'
+    for url,text in [(own+'robots.txt','User-agent: *\nAllow: /'),(own,'<title>Example</title><p>Manufacturing and repair services for industrial customers.</p><footer>Example AS Org.nr. '+number+'</footer>')]:
+     (Path(d)/(digest(url.encode())+'.json')).write_text(encode(rsp(url,text)))
+    c={x['field']:x for x in research({'organisation_number':ORG},Fetcher(d,replay=True))['claims']}
+    if expected:self.assertEqual(c['website.verified_url']['value'],own)
+    else:self.assertNotEqual(c['website.verified_url']['availability'],'available')

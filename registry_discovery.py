@@ -86,3 +86,17 @@ def industry_city_candidates(data):
     city=re.sub(r'[^a-z0-9]+','-',city).strip('-')
     if not 2<=len(city)<=45:return []
     return ['https://'+service+'-'+city+'.no/','https://'+service+city.replace('-','')+'.no/']
+
+
+def legal_form_domain_candidates(data):
+    """One last-resort lead for a single-word AS trade name, never identity.
+
+    Some businesses retain the legal suffix in a domain. Try this only after
+    existing website paths and checked public-ad leads, preserving their budget.
+    """
+    import re,unicodedata
+    name=str(data.get('navn') or '').casefold().translate(str.maketrans({'ø':'o','æ':'ae','å':'a'}))
+    name=''.join(c for c in unicodedata.normalize('NFKD',name) if not unicodedata.combining(c))
+    match=re.fullmatch(r'\s*([a-z][a-z0-9]{3,44})\s+as\s*',name)
+    if not match or match[1] in {'holding','holdings','invest','eiendom'}:return []
+    return ['https://'+match[1]+'as.no/']

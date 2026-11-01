@@ -1085,6 +1085,10 @@ def research(row, fetcher, previous=None, search=None):
         # are not starved by an unrelated recruiting search.
         for index,homepage in enumerate(public_jobs()['website_leads'][:2]):
             yield homepage,'public_ad_employer_homepage',1-index,[]
+        from registry_discovery import legal_form_domain_candidates
+        for homepage in legal_form_domain_candidates(data):
+            if fetcher.requests<=fetcher.limit-2:
+                yield homepage,'legal_form_domain_heuristic',0,[]
     for url,origin,remaining_leads,hints in candidates():
         started_requests=fetcher.requests
         response=fetcher.get(url,site=True,raw=True); webstate=response
