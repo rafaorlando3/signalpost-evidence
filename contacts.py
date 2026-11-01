@@ -2,7 +2,7 @@
 import re
 from urllib.parse import unquote, urlsplit
 
-CONTACT_LIMIT = 40
+CONTACT_LIMIT = 60
 
 def contact_links(page):
     found=[];seen=set()
@@ -118,8 +118,12 @@ def entity_contacts(page,data,units=()):
     if places and regional_label:
         locality=regional_label.group(1).strip()
         regional=not any(locality==place or locality.startswith(place+' ') for place in places)
+    archive=bool(re.search(r'/(?:news|nyheter|aktuelt|blogg?|updates)/page/[0-9]+',urlsplit(page.url).path,re.I))
+    own_host=(urlsplit(page.url).hostname or '').removeprefix('www.')
     for item in candidates:
         reason='regional staff page is not tied to a registered target locality' if regional else None
+        if archive and item['type']=='email' and item['value'].rsplit('@',1)[-1].casefold()!=own_host.casefold():
+            reason='news archive mentions another-domain contact; own-company contact role not established'
         observations=[]
         if not reason:
             for ancestry in literal_scopes.get(id(item),scopes.get(item['source_href'],[])):

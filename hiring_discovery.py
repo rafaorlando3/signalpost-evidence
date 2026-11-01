@@ -26,6 +26,49 @@ def application_links(page):
     return list(dict.fromkeys(out))
 
 
+def direct_recruiting_post(page,response,data):
+    """Specific first-party role with a named employer introduction and deadline."""
+    from attribution import normal,legal_stem
+    from publication import publication_block
+    if not response.get('identity_verified') or response.get('delegated_from_verified_careers'):return []
+    heads=page.semantic_headings or page.main_headings or page.content_headings
+    if not page.post_container or len(heads)!=1:return []
+    title=heads[0]
+    if not re.match(r'^(?:vi søker|we are hiring|we seek)\b',title,re.I):return []
+    body=re.sub(r'\s+',' ',' '.join(page.article_parts)).strip()
+    if re.search(r'åpen\s+søknad|spontan|open application|fristen er utløpt|stillingen er besatt|position (?:is )?(?:filled|closed)',body,re.I):return []
+    intro=normal(body)
+    heading=normal(title)
+    if intro.startswith(heading):intro=intro[len(heading):].strip()
+    stem=legal_stem(data.get('navn',''))
+    match_intro=re.match(r'^'+re.escape(stem)+r'(?: (?P<form>as|asa|sa))? (?:utvikler|er|søker|tilbyr|driver|is|develops|provides)\b',intro)
+    if len(stem)<5 or not match_intro:return []
+    if match_intro['form'] and match_intro['form']!=normal(data.get('navn','')).split()[-1]:return []
+    match=re.search(r'Søknadsfrist\s*:\s*(\d{1,2})[./](\d{1,2})[./](\d{4})(?!\d)',body,re.I)
+    if not match:return []
+    try:
+        deadline=dt.date(int(match[3]),int(match[2]),int(match[1]))
+        if deadline<dt.date.fromisoformat(response['retrieved_at'][:10]):return []
+    except ValueError:return []
+    host=(urlsplit(page.url).hostname or '').removeprefix('www.')
+    email=None
+    for link in page.links:
+        if link.get('third_party_context'):continue
+        raw=link.get('url','')
+        if not raw.lower().startswith('mailto:'):continue
+        address=raw[7:]
+        if re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"+re.escape(host),address,re.I):email=address;break
+    if not email:return []
+    published=publication_block(page)
+    if not published:return []
+    return [{'@type':'JobPosting','title':title,'datePosted':published['date'],
+        'hiringOrganization':{'name':data.get('navn','')},'validThrough':deadline.isoformat(),
+        '_literal_first_party':True,'_application_url':page.url,'_application_contact':email,
+        '_publication_date_basis':published,
+        '_employer_basis':'target legal-name stem in the first-party employer introduction; verified site identity and same-domain application email',
+        '_deadline_basis':'explicit Søknadsfrist in the recruiting post'}]
+
+
 def literal_hiring_candidates(page, response, data, hiring_pages):
     """Undated named first-party vacancy + matching linked public ATS deadline.
 
@@ -34,6 +77,8 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
     an employer hidden inside an HTML comment on the ATS.
     """
     from agent import normalized
+    direct=direct_recruiting_post(page,response,data)
+    if direct:return direct
     if not response.get('identity_verified') or response.get('delegated_from_verified_careers'):return []
     operator=response.get('site_operator',{})
     if operator.get('state')!='target':return []

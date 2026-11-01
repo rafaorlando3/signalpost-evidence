@@ -100,3 +100,13 @@ class SemanticContactContainers(unittest.TestCase):
         html='<article><div class="entryFooter"><p>author@other.no</p></div></article>'
         items,_=entity_contacts(Page(html,'https://example.no/news/post'),{'navn':'Example AS'})
         self.assertEqual(items,[])
+
+class ArchiveContacts(unittest.TestCase):
+    def test_archive_mentions_do_not_turn_other_businesses_into_company_contacts(self):
+        from agent import Page
+        from contacts import entity_contacts
+        page=Page('<a href="mailto:staff@example.test">Staff</a><p>Office tenant <a href="mailto:tenant@other.test">Tenant</a></p>','https://example.test/news/page/2/')
+        accepted,held=entity_contacts(page,{'navn':'Example AS'},[])
+        self.assertIn('staff@example.test',[c['value'] for c in accepted])
+        self.assertNotIn('tenant@other.test',[c['value'] for c in accepted])
+        self.assertTrue(any('archive' in c['reason'] for c in held))

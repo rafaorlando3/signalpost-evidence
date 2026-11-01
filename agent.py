@@ -195,7 +195,7 @@ class Page(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.url=url; self.raw_html=text; self.parts=[]; self.links=[]; self.ld=[]; self.skip=0; self.script=None
         self.title=''; self.in_title=False; self.description=''; self.anchor=None;self.meta={};self.post_container=False
-        self.headings=[];self.heading=None;self.times=[];self.feeds=[];self.link_context=[]
+        self.headings=[];self.heading=None;self.times=[];self.feeds=[];self.link_context=[];self.editorial_scopes=[];self.comment_scopes=[]
         self.content_headings=[];self.content_times=[];self.main_headings=[];self.main_times=[];self.semantic_headings=[];self.heading_is_semantic=False;self.heading_is_main=False;self.heading_is_content=False;self.body_parts=[];self.post_parts=[];self.main_parts=[]
         self.footer_parts=[];self.paragraphs=[];self.paragraph=None;self.paragraph_is_content=False
         self.feed(text)
@@ -204,10 +204,11 @@ class Page(HTMLParser):
         # A post's own <article><header> is content. Site navigation headers
         # remain chrome; merely nesting an article inside a global header does
         # not turn that global header into a publication source.
+        if self.comment_scopes:return False
         tags=[t for t,_ in self.link_context]
         if any(t in {'head','title','nav','footer','aside','form','dialog'} for t in tags):return False
         for index,tag in enumerate(tags):
-            if tag=='header' and 'article' not in tags[:index]:return False
+            if tag=='header' and 'article' not in tags[:index] and not any(depth<index for depth in self.editorial_scopes):return False
         return True
 
     def handle_starttag(self, tag, attrs):
@@ -215,9 +216,21 @@ class Page(HTMLParser):
         context=' '.join((a.get(k) or '') for k in ('class','id','aria-label','title','data-sentry-component','data-sentry-source-file'))
         post_context=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',a.get('class') or '').replace('_',' ')
         if tag=='article' and re.search(r'(?:^|\s)type-post(?:\s|$)|\bsingle[ -]+post\b',post_context,re.I):self.post_container=True
+        # WordPress and Squarespace mark an individual editorial view on body,
+        # even when its content uses div/main instead of article.type-post.
+        # A blog listing, static page or homepage is not a detail view.
+        if tag=='body' and urlsplit(self.url).path.rstrip('/'):
+            classes=set(post_context.casefold().split())
+            if 'single-post' in classes or {'view-item','collection-type-blog'}<=classes:
+                self.post_container=True
+        if tag=='main' and 'posts-entry' in post_context.split() and article_detail(self.url):self.post_container=True
         third_party=(self.link_context[-1][1] if self.link_context else False) or bool(re.search(r'sponsor|partner|customer|testimonial|shar(?:e|ing)|author|agency|webdesign|site-credit|powered-by|theme-credit',context,re.I))
         if tag not in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:
             self.link_context.append((tag,third_party))
+        if tag in {'article','div','section','ol','ul','li'} and any(re.fullmatch(r'(?:comments?(?:[-_][\w]+)?|wp-block-post-comments(?:[-_][\w]+)?)',token,re.I) for token in ((a.get('class') or '')+' '+(a.get('id') or '')).split()):
+            self.comment_scopes.append(len(self.link_context)-1)
+        if self.post_container and tag in {'main','div','section'} and self.content_scope() and re.search(r'(?:^|\s)(?:entry-content|post-content|wp-block-post-content|posts-entry)(?:\s|$)',a.get('class') or '',re.I):
+            self.editorial_scopes.append(len(self.link_context)-1)
         if tag=='img' and self.anchor and re.search(r'sponsor|partner|customer',(a.get('alt') or ''),re.I):
             self.anchor['third_party_context']=True
         if tag in ('script','style','noscript'):
@@ -244,6 +257,9 @@ class Page(HTMLParser):
         if tag=='meta' and (a.get('name') or '').lower()=='description': self.description=a.get('content') or ''
         if tag=='meta' and (a.get('property') or a.get('name')):
             self.meta[(a.get('property') or a.get('name')).lower()]=a.get('content') or ''
+        if tag=='div' and 'fb-page' in (a.get('class') or '').split() and a.get('data-href'):
+            try:self.links.append({'url':urljoin(self.url,a['data-href']),'text':'Facebook page widget','third_party_context':third_party,'in_navigation':False,'source_kind':'fb_page_widget'})
+            except ValueError:pass
         if tag=='a' and a.get('href'):
             try:self.anchor={'url':urljoin(self.url,a['href']), 'text':'','third_party_context':third_party,
                 'in_navigation':any(t in {'nav','header','footer','aside'} for t,_ in self.link_context)
@@ -253,7 +269,10 @@ class Page(HTMLParser):
     def handle_endtag(self, tag):
         for i in range(len(self.link_context)-1,-1,-1):
             if self.link_context[i][0]==tag:
-                del self.link_context[i:];break
+                del self.link_context[i:]
+                self.editorial_scopes=[depth for depth in self.editorial_scopes if depth<len(self.link_context)]
+                self.comment_scopes=[depth for depth in self.comment_scopes if depth<len(self.link_context)]
+                break
         if tag in ('script','style','noscript'):
             if self.script is not None and tag=='script':
                 try: self.ld.append(json.loads(''.join(self.script)))
@@ -290,7 +309,7 @@ class Page(HTMLParser):
             if any(t=='footer' for t,_ in self.link_context):self.footer_parts.append(value)
             if self.content_scope():
                 self.body_parts.append(value)
-                if any(t=='article' for t,_ in self.link_context):self.post_parts.append(value)
+                if any(t=='article' for t,_ in self.link_context) or self.editorial_scopes:self.post_parts.append(value)
                 if any(t=='main' for t,_ in self.link_context):self.main_parts.append(value)
             if self.anchor: self.anchor['text'] += value
 
@@ -493,7 +512,14 @@ def link_family(url):
     if re.search(r'kontakt|contact|personvern|privacy|beting|vilk|impressum|imprint|legal|om-oss|about',path): return 'identity'
     return None
 
+def catalog_route(url):
+    return bool(re.search(r'/(?:products?|produkter|produktkategori|collections?|shop|butikk|catalog|katalog|services?|tjenester)(?:/|$)',urlsplit(url).path,re.I))
+
+def activity_taxonomy(url):
+    return bool(re.search(r'/(?:post-tags|tags?|categories|category|authors?|page)/',urlsplit(url).path,re.I))
+
 def article_detail(url):
+    if activity_taxonomy(url):return False
     return bool(re.search(r'/(?:news|nyheter?|aktuelt|blogg?|presse|press|artikler|articles?|stories|insights)(?:[-_](?:og[-_])?(?:presse|press|news))?/[^/]+|/(?:[\w]+[-_])?(?:presserom|pressroom|newsroom)/[^/]+|/20\d{2}/',urlsplit(url).path,re.I))
 
 def social_profile(url):
@@ -536,6 +562,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             url=urlunsplit((*urlsplit(link['url'])[:4],''));family=link_family(url)
             if family is None:
                 if re.search(r'\b(kontakt|contact|personvern|privacy|om oss|about us)\b',label): family='identity'
+                elif re.match(r'^(?:vi søker|we are hiring|ledige stillinger|job vacancies)\b',label):family='hiring'
             if family is None and verified and page is home:
                 # A shallow branded business page may contain the contact or
                 # imprint without being labelled "about". This is only a URL
@@ -551,7 +578,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             if (family not in ('identity',) and verified and activity_index
                     and not link.get('in_navigation') and not link.get('third_party_context')
                     and len(link['text'].strip())>=5 and urlsplit(url).path not in ('','/')
-                    and (family is not None or len([p for p in urlsplit(url).path.split('/') if p])==1)
+                    and not activity_taxonomy(url) and not catalog_route(url)
                     and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)$',urlsplit(url).path,re.I)
                     and url!=rsp['url']):
                 # A real post may use a root slug. This only discovers it;
@@ -593,7 +620,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         # Public application landing pages can contain the only literal deadline.
         # Leave room for their robots request, three GETs and one redirect once a role links one.
         return 5 if verified and any(application_links(pg) for pg,_,_ in pages) else (0 if verified else reserve_requests)
-    while attempted_pages<14 and fetcher.requests<fetcher.limit-crawl_reserve():
+    while attempted_pages<18 and fetcher.requests<fetcher.limit-crawl_reserve():
         # An already fetched news index provides stronger discovery leads than
         # another map request. XML remains a fallback when those leads run out.
         pending_posts=any(u not in seen and u in queue for u in post_leads)
@@ -609,18 +636,23 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             # Up to three observed named role links precede redundant career indexes.
             role_count=sum(link_family(r['url'])=='hiring' and len([p for p in urlsplit(r['url']).path.split('/') if p])>=2 for _,r,_ in pages)
             if verified and (has_application or portal_child) and family=='hiring' and depth>=2 and role_count<3:base-=20
+            pagination=bool(re.search(r'/page/[2-9][0-9]*/?$',urlsplit(url).path,re.I))
+            detail_seen=sum(bool(article_detail(r['url']) or pg.post_container) for pg,r,_ in pages)
+            pagination_seen=any(re.search(r'/page/[2-9][0-9]*/?$',urlsplit(r['url']).path,re.I) for _,r,_ in pages)
+            if verified and pagination and detail_seen>=2 and not pagination_seen and not has_application:base-=40
             if verified and has_application and role_count>=3 and family=='identity' and re.search(r'kontakt|contact',urlsplit(url).path,re.I):base-=20
             # Inspect legal ownership before repeatedly exploring auxiliary
             # identity pages; still leave a balanced path to jobs and articles.
             legal=bool(re.search(r'personvern|privacy|legal|impressum|imprint|vilk|beting',urlsplit(url).path,re.I))
             penalty=counts[family]*4
             identity_order=0 if legal else 1 if re.search(r'kontakt|contact|kundeservice',urlsplit(url).path,re.I) else 2
+            if re.search(r'/(?:map(?:[-_][0-9]+)?|kart)(?:/|$)',urlsplit(url).path,re.I):identity_order=3
             parts=[s.casefold() for s in urlsplit(url).path.split('/') if s]
             entry_parts=[s.casefold() for s in urlsplit(response['url']).path.split('/') if s]
             locale=bool(parts and parts[0] in {'en','no','nb','nn','de','sv','da'} and parts[:1]!=entry_parts[:1])
             detail_order=post_leads.get(url,10_000+list(queue).index(url)) if family=='activity' else list(queue).index(url)
             alias=(not verified or has_application) and any(urlsplit(u).path.rstrip('/')==urlsplit(url).path.rstrip('/') and urlsplit(u).query==urlsplit(url).query for u in seen)
-            return (alias,base+penalty, locale if verified else False, identity_order if family=='identity' and (verified or portal_child) else 0,
+            return (alias,base+penalty+(30 if family=='activity' and activity_taxonomy(url) else 0), locale if verified else False, identity_order if family=='identity' and (verified or portal_child) else 0,
                     (0 if verified else depth),detail_order,len(url),url)
         url,family=min(queue.items(),key=rank);del queue[url];seen.add(url);counts[family]+=1;attempted_pages+=1
         child=fetcher.get(url,site=True,raw=True)
@@ -659,7 +691,20 @@ def activity_candidates(page, response):
             q=urlsplit(response['url'])
             return (p.scheme,p.netloc,p.path.rstrip('/'),p.query)==(q.scheme,q.netloc,q.path.rstrip('/'),q.query)
         except ValueError:return False
-    product_or_index=False
+    path=urlsplit(response['url']).path
+    product_or_index=activity_taxonomy(response['url']) or bool(not article_detail(response['url']) and re.search(
+        r'/(?:products?|produkter|produktkategori|collections?|shop|butikk|catalog|katalog|services?|tjenester)(?:/|$)',path,re.I))
+    headings=page.semantic_headings or page.main_headings or page.content_headings
+    if len(headings)==1:
+        title=headings[0].strip()
+        test_title=re.fullmatch(r'test[ -]?(?:post|page|article|innlegg)(?:[ -]?(?:mobile|mobil))?[.! ]*',title,re.I)
+        default_title=re.fullmatch(r'(?:hello world|hei[, ]+verden|lorem ipsum)[.! ]*',title,re.I)
+        default_body=re.search(r'welcome to wordpress|velkommen til wordpress|this is your first post|dette er ditt første innlegg|lorem ipsum dolor sit amet',' '.join(page.article_parts),re.I)
+        if test_title or (default_title and default_body):
+            return [],['placeholder/test post is not a publishable company activity']
+    from publication import publication_block
+    literal=publication_block(page)
+    editorial_view=page.post_container or bool(literal and page.meta.get('og:type')=='article' and page.meta.get('og:url') and same_page(page.meta.get('og:url')) and urlsplit(response['url']).path.rstrip('/') and len(headings)==1)
     for root in page.ld:
         roots=list(root) if isinstance(root,list) else [root]
         if isinstance(root,dict) and isinstance(root.get('@graph'),list):
@@ -674,10 +719,11 @@ def activity_candidates(page, response):
     for obj in objects(page.ld):
         types=schema_types(obj)
         if not types & {'NewsArticle','Article','BlogPosting'}:continue
+        obj={key:value for key,value in obj.items() if not key.startswith('_')}
         if not same_page(obj.get('url')) or not same_page(obj.get('mainEntityOfPage')):
             limit('article describes another URL; fetch its own page before attribution')
             continue
-        if not (types & {'NewsArticle','BlogPosting'}) and not article_detail(response['url']) and not page.post_container:
+        if not (types & {'NewsArticle','BlogPosting'}) and not article_detail(response['url']) and not editorial_view:
             limit('generic Article outside a dated-activity detail path')
             continue
         if product_or_index:
@@ -686,10 +732,19 @@ def activity_candidates(page, response):
         if not (isinstance(obj.get('articleBody'),str) and len(obj['articleBody'].strip())>=80) and (not page.content_headings or len(' '.join(page.article_parts).strip())<80):
             limit('structured article lacks visible post heading/body')
             continue
+        # SEO titles frequently append the publisher brand to unrelated posts.
+        # The actual single visible heading governs title and subject matching.
+        if len(headings)==1:obj={**obj,'headline':headings[0]}
+        visible_times=page.main_times or page.content_times or ([literal['date']] if literal and editorial_view else [])
+        visible_headings=page.semantic_headings or page.main_headings or page.content_headings
+        if len(visible_headings)==1 and len(set(visible_times))==1 and isinstance(obj.get('datePublished'),str) and obj['datePublished'][:10]!=visible_times[0][:10]:
+            limit('visible publication date differs from structured article; visible date retained')
+            obj={**obj,'datePublished':visible_times[0]}
         candidates.append(obj)
-    detail=article_detail(response['url']) or page.post_container
+    detail=article_detail(response['url']) or editorial_view
     headings=page.semantic_headings or page.main_headings or page.content_headings
     publication_times=page.main_times or page.content_times
+    if not publication_times and literal:publication_times=[literal['date']]
     if detail and product_or_index:
         limit('product or collection page metadata is not publication evidence')
     elif detail and len(headings)==1 and len(' '.join(page.article_parts).strip())>=80:
@@ -701,15 +756,19 @@ def activity_candidates(page, response):
             if meta and meta[:10]!=visible[:10]:
                 limit('visible publication date differs from OpenGraph; visible date retained')
             candidates.append({'@type':'NewsArticle','headline':headings[0],
-                               'datePublished':visible})
+                               'datePublished':visible,**({'_publication_date_basis':literal} if literal and not (page.main_times or page.content_times) else {})})
         elif not publication_times and page.meta.get('article:published_time'):
             candidates.append({'@type':'NewsArticle',
-                'headline':page.meta.get('og:title') or headings[0],
+                'headline':headings[0],
                 'datePublished':page.meta['article:published_time']})
         elif publication_times:
             limit('multiple content publication dates; no unique date established')
     elif detail and (page.meta.get('article:published_time') or page.times):
         limit('publication metadata lacks a single content heading; menu/header/footer is insufficient')
+    from attribution import page_publisher
+    publisher=page_publisher(page)
+    if publisher:
+        candidates=[({**obj,'publisher':publisher} if not obj.get('publisher') else obj) for obj in candidates]
     return candidates,limitations
 
 def legal_footer_identity(data,page):
@@ -1080,7 +1139,8 @@ def research(row, fetcher, previous=None, search=None):
                                     continue
                                 title=obj.get('title') or obj.get('headline')
                                 date=obj.get('datePublished') if field=='activity' else obj.get('datePosted')
-                                literal_undated=field=='hiring' and any(obj is candidate for candidate in literal_candidates) and date is None
+                                literal_candidate=field=='hiring' and any(obj is candidate for candidate in literal_candidates)
+                                literal_undated=literal_candidate and date is None
                                 if not isinstance(title,str) or (not isinstance(date,str) and not literal_undated):
                                     limitation(rsp,'candidate lacks a literal title and publication date')
                                     continue
@@ -1118,15 +1178,18 @@ def research(row, fetcher, previous=None, search=None):
                                         item['url']=job_url
                                 if field=='hiring':item['hiring_organisation']=employer
                                 if attribution:item['attribution']=attribution
+                                if obj.get('_publication_date_basis'):item['publication_date_basis']=obj['_publication_date_basis']
                                 if field=='hiring': item.update(valid_through=obj.get('validThrough'),status='published_posting; application availability not independently checked')
-                                if literal_undated:
-                                    item.update(publication_date_state='not_stated',hiring_organisation_basis=obj['_employer_basis'],
-                                        deadline_basis=obj['_deadline_basis'],application_url=obj['_ats_response']['url'],
-                                        status='listed_vacancy; linked ATS deadline checked; application acceptance not tested')
-                                    evidence_responses.extend([obj['_ats_response'],anchor_response])
+                                if literal_candidate:
+                                    ats=obj.get('_ats_response')
+                                    item.update(publication_date_state='not_stated' if date is None else 'literal_publication_block',hiring_organisation_basis=obj['_employer_basis'],
+                                        deadline_basis=obj['_deadline_basis'],application_url=ats['url'] if ats else obj['_application_url'],
+                                        status='listed_vacancy; literal deadline checked; application acceptance not tested')
+                                    if obj.get('_application_contact'):item['application_contact']=obj['_application_contact']
+                                    evidence_responses.extend(([ats] if ats else [])+[anchor_response])
                                 if not any(i['url']==item['url'] and str(i['date'])[:10]==str(item['date'])[:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp);positive_responses.append(rsp)
-                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, or a single h1/time[datetime] on detail pages' if field=='activity' else 'JobPosting, or explicit legal recruiting operator + named vacancy + matching linked public ATS deadline; unknown publication date stays null'))
+                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, scoped published time or labelled CMS publication block on editorial detail pages' if field=='activity' else 'JobPosting, or explicit legal recruiting operator + named vacancy + matching linked public ATS deadline; unknown publication date stays null'))
                     if limitations:
                         claims[-1]['qualifiers']={'coverage':'partial' if items else 'unresolved',
                             'candidate_limitations':limitations}

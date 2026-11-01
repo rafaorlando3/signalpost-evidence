@@ -12,7 +12,7 @@ def normal(value):
 
 
 def legal_stem(value):
-    return re.sub(r'\s+(?:as|asa|sti|nuf)$', '', normal(value))
+    return re.sub(r'\s+(?:as|asa|sti|nuf|sa)$', '', normal(value))
 
 
 def mentions(value, name):
@@ -199,6 +199,11 @@ def article_attribution(obj, page, data):
     # then require an actual announcement in the article body. A publisher
     # alone, generic industry prose, or an explicit other subject is not enough.
     if not obj.get('about'):
+        headline=str(obj.get('headline') or obj.get('title') or '')
+        # A quotation from an explicitly named other legal entity does not
+        # become the publisher's own first-person announcement.
+        if re.search(r'\b[\wÆØÅæøå&.-]+(?:\s+[\wÆØÅæøå&.-]+){0,4}\s+(?:AS|ASA|AB|ABP|GmbH|Ltd|LLC|Inc)\b',headline):
+            return None
         publisher=obj.get('publisher')
         reference=publisher.get('@id') if isinstance(publisher,dict) else publisher
         publishers=[publisher] if isinstance(publisher,dict) else []
@@ -212,7 +217,46 @@ def article_attribution(obj, page, data):
               and isinstance(node.get('url'),str) and same_public_host(node['url'],page.url)))
             for node in publishers)
         announcement=re.search(r'\b(?:we\s+(?:(?:have\s+)?(?:opened|launched|expanded|acquired|introduced)|now\s+offer)|'
-                               r'vi\s+(?:har\s+(?:åpnet|lansert|utvidet)|tilbyr\s+(?:nå|no)|lanserer|åpner))\b',content,re.I)
+                               r'vi\s+(?:har\s+(?:åpnet|lansert|utvidet|iverksatt|inngått|ansatt|oppnådd|levert)|tilbyr\s+(?:nå|no)|lanserer|åpner|holder\s+stengt|stenger)|'
+                               r'våre\s+åpningstider|varer?(?:ne)?\s+vi\s+(?:selger|sender|leverer)|her\s+(?:hjalp|leverte|bygget)\s+vi|vi\s+(?:jobber|arbeider)\s+(?:med|videre)|'
+                               r'vi\s+er\s+blitt\s+(?:miljøfyrtårn|sertifisert))\b',content,re.I)
         if exact_publisher and announcement:
             return 'exact_entity_publisher_and_first_person_announcement'
     return None
+
+
+def page_publisher(page):
+    """Resolve only local current-WebPage -> WebSite -> publisher relations.
+
+    A bare Organization in a footer/graph is not the article's publisher.
+    No remote JSON-LD context or referenced URL is fetched.
+    """
+    nodes=list(objects(page.ld));by_id={}
+    for node in nodes:
+        if isinstance(node.get('@id'),str):by_id.setdefault(urljoin(page.url,node['@id']),[]).append(node)
+    def resolve(value):
+        if isinstance(value,dict):
+            ident=value.get('@id')
+            return [value]+(by_id.get(urljoin(page.url,ident),[]) if isinstance(ident,str) else [])
+        return by_id.get(urljoin(page.url,value),[]) if isinstance(value,str) else []
+    def current(value):
+        if not isinstance(value,str):return False
+        try:
+            p=urlsplit(urljoin(page.url,value));q=urlsplit(page.url)
+            return (p.scheme,p.netloc,p.path.rstrip('/'),p.query)==(q.scheme,q.netloc,q.path.rstrip('/'),q.query)
+        except ValueError:return False
+    publishers=[]
+    for node in nodes:
+        if 'WebPage' not in types(node) or not current(node.get('url') or node.get('@id')):continue
+        publishers.extend(resolve(node.get('publisher')))
+        parts=node.get('isPartOf',[])
+        for part in parts if isinstance(parts,list) else [parts]:
+            for site in resolve(part):
+                if 'WebSite' not in types(site):continue
+                location=site.get('url') or site.get('@id')
+                if not isinstance(location,str) or not same_public_host(location,page.url):continue
+                publishers.extend(resolve(site.get('publisher')))
+    unique=[]
+    for publisher in publishers:
+        if types(publisher)&ORGANIZATION_TYPES and publisher not in unique:unique.append(publisher)
+    return unique[0] if len(unique)==1 else None

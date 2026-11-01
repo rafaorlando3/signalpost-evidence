@@ -14,7 +14,7 @@ import datetime as dt
 from attribution import canonical_profile, normal, objects, own_organization, types, ORGANIZATION_TYPES, organization_numbers
 
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
-EXCLUDED=re.compile(r'sponsor|partner|customer|testimonial|author|agency|webdesign|site.credit|powered.by|theme.credit|shar(?:e|ing)|comment',re.I)
+EXCLUDED=re.compile(r'sponsor|partner|customer|testimonial|author|agency|webdesign|site.credit|powered.by|theme.credit|shar(?:e|ing)',re.I)
 SOCIAL=re.compile(r'\b(?:social|socials|sosial|sosiale|follow|følg)\b',re.I)
 FOLLOW=re.compile(r'\b(?:follow\s+(?:us|our)|følg(?:e)?\s+(?:oss|våre)|følg\s+gjerne\s+.{0,35}\bvåre|suivez.nous)\b',re.I)
 POSSESSIVE_PROFILE=re.compile(r'\b(?:vår(?:e)?\s+(?:facebook|instagram|linkedin|youtube|tiktok)\s+(?:side|profil|konto|kanal)|our\s+(?:facebook|instagram|linkedin|youtube|tiktok)\s+(?:page|profile|account|channel))\b',re.I)
@@ -78,7 +78,7 @@ def company_labels(data,page):
         try:
             host=(urlsplit(registered if '://' in registered else 'https://'+registered).hostname or '').removeprefix('www.')
             current=(urlsplit(page.url).hostname or '').removeprefix('www.')
-            if host==current and identifier(host.split('.')[0])==identifier(legal):
+            if host==current:
                 labels[identifier(host)]=('exact_registered_entity_domain',host)
         except ValueError:pass
     return {key:value for key,value in labels.items() if len(key)>=5}
@@ -103,7 +103,8 @@ class Controls(HTMLParser):
 
     def handle_starttag(self,tag,attrs):
         attrs=dict(attrs);context=' '.join((attrs.get(k) or '') for k in ('class','id','aria-label','title','itemprop','rel'))
-        excluded=(any(n['excluded'] for n in self.stack) or bool(EXCLUDED.search(context)))
+        comment_block=tag in {'article','div','section','ol','ul','li'} and any(re.fullmatch(r'(?:comments?(?:[-_][\w]+)?|wp-block-post-comments(?:[-_][\w]+)?)',token,re.I) for token in ((attrs.get('class') or '')+' '+(attrs.get('id') or '')).split())
+        excluded=(any(n['excluded'] for n in self.stack) or bool(EXCLUDED.search(context)) or comment_block)
         semantic_context=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',context).replace('_',' ')
         node={'tag':tag,'context':normal(semantic_context),'excluded':excluded,'text':'','links':[]}
         if tag not in VOID:self.stack.append(node)
@@ -119,6 +120,11 @@ class Controls(HTMLParser):
             if profile:
                 self.links.append(self.anchor)
                 for ancestor in self.stack[-7:]:ancestor['links'].append(self.anchor)
+        if tag=='div' and 'fb-page' in (attrs.get('class') or '').split() and attrs.get('data-href'):
+            try:destination=urljoin(self.url,attrs['data-href'])
+            except ValueError:destination=''
+            profile=canonical_profile(destination)
+            if profile:self.links.append({'profile':profile,'href':destination,'excluded':excluded,'label':'Facebook page widget','rel':[],'scopes':self.stack[-7:],'chrome':False,'widget':True})
         if tag=='img' and self.anchor:
             self.anchor['label']+=' '+(attrs.get('alt') or '')
             if EXCLUDED.search(attrs.get('alt') or ''):self.anchor['excluded']=True
@@ -180,6 +186,8 @@ def asserted_profiles(pages,data):
                 try:
                     if not historical or dt.date.fromisoformat(historical['valid_until'][:10])>dt.date.fromisoformat(response['retrieved_at'][:10]):continue
                 except (KeyError,ValueError,TypeError):continue
+            if link.get('widget') and basis=='exact_registered_entity_domain':
+                proof='explicit_page_widget_and_registered_domain_profile_identifier';excerpt='div.fb-page[data-href] '+link['href']
             if 'me' in link['rel']:
                 proof='rel_me_and_exact_entity_identifier';excerpt=link['label']
             for scope in link['scopes']:

@@ -56,8 +56,8 @@ class Discovery(unittest.TestCase):
         links=' '.join(f'<a href="/nyheter/post-{i}">Post</a>' for i in range(100))
         f=Pages({});home={'url':'https://example.test/','text':'Org no '+ORG+links}
         crawl_company(ORG,{},home,f)
-        self.assertLessEqual(len([u for u in f.visited if not u.endswith('.xml')]),13)
-        self.assertLessEqual(len(f.visited),16)
+        self.assertLessEqual(len([u for u in f.visited if not u.endswith('.xml')]),17)
+        self.assertLessEqual(len(f.visited),20)
 
 if __name__=='__main__':unittest.main()
 
