@@ -227,7 +227,15 @@ def entity_contacts(page,data,units=(),conflicts=None):
         else:out.append(item)
     # An unscoped text copy cannot bypass a scoped conflicting address. Keep
     # shared channels only when another block explicitly matches a target unit.
-    address_conflicts={contact_key(h):h for h in held if h['reason'].startswith('contact block contains a postal address')}
+    # A changed office address alone does not prove that a company's own-domain
+    # mailbox or switchboard belongs to someone else. Cross-scope propagation
+    # requires a different business domain as well as the conflicting address.
+    def different_domain(item):
+        if item['type']!='email':return False
+        domain=item['value'].rsplit('@',1)[-1].casefold().removeprefix('www.')
+        current=own_host.casefold()
+        return domain!=current and domain.split('.')[0]!=current.split('.')[0]
+    address_conflicts={contact_key(h):h for h in held if h['reason'].startswith('contact block contains a postal address') and different_domain(h)}
     filtered=[]
     for item in out:
         key=contact_key(item)

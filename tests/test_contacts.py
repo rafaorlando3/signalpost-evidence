@@ -177,3 +177,10 @@ class CrossPageContactIdentity(unittest.TestCase):
         channels,held=entity_contacts(page,data)
         self.assertEqual([c['value'] for c in channels],['47 47 11 25'])
         self.assertTrue(any(c['value']=='group@other.no' for c in held))
+
+    def test_address_change_does_not_erase_own_domain_mailbox_from_unscoped_copy(self):
+        from contacts import entity_contacts
+        data={'navn':'Example AS','forretningsadresse':{'postnummer':'9015','poststed':'TROMSØ'}}
+        page=Page('<footer><h3>Contact</h3><p>8006 Bodø</p><a href="mailto:post@example.no">Email</a><p>Example AS</p><p>post@example.no</p></footer>','https://example.no/')
+        channels,_=entity_contacts(page,data)
+        self.assertEqual([x['value'] for x in channels],['post@example.no'])
