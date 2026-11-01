@@ -60,12 +60,13 @@ class Fetcher:
     locks = collections.defaultdict(threading.Lock)
     host_last = {}
 
-    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None):
+    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True):
         self.directory = Path(directory); self.directory.mkdir(parents=True, exist_ok=True)
         self.replay, self.fresh = replay, fresh
         self.limit = limit; self.end = time.monotonic()+deadline
         self.requests = 0; self.hits = 0; self.robots = {}; self.records = []
         self.registry_snapshot=registry_snapshot
+        self.public_jobs=public_jobs
 
     def get(self, url, *, site=False, raw=False):
         if self.registry_snapshot is not None:
@@ -908,7 +909,7 @@ def claim(field, value, response, evidence, *, period=None, state=None, pointer=
         eid=digest((response['url']+response['content_sha256']).encode())[:24]
         previous_spans=evidence.get(eid,{}).get('claim_spans',[])
         evidence[eid]={'id':eid, 'source_url':response['url'], 'retrieved_at':response['retrieved_at'],
-            'content_sha256':response['content_sha256'], 'source_class':'official_registry' if response['url'].startswith(OFFICIAL+'/') else 'company_website' if response.get('identity_verified') else 'candidate_website',
+            'content_sha256':response['content_sha256'], 'source_class':'public_job_board' if response.get('public_job_board') else 'official_registry' if response['url'].startswith(OFFICIAL+'/') else 'company_website' if response.get('identity_verified') else 'candidate_website',
             'retention':response.get('retention','source bytes retained in local cache')}
         spans=list(previous_spans)
         if not excerpt and value is not None:
@@ -1029,7 +1030,15 @@ def research(row, fetcher, previous=None, search=None):
     if (pick(locations.get('json') or {},'page','totalPages') or 0)>1:
         errors.append({'source':locations['url'],'reason':'locations truncated at first 100; incomplete coverage'})
     from registry_discovery import registry_candidates,host_key
-    leads=registry_candidates(org,data,pick(locations.get('json') or {},'_embedded','underenheter') or [])
+    units=pick(locations.get('json') or {},'_embedded','underenheter') or []
+    leads=registry_candidates(org,data,units)
+    public_jobs_result=None
+    def public_jobs():
+        nonlocal public_jobs_result
+        if public_jobs_result is None:
+            from public_recruiting import discover
+            public_jobs_result=(discover(data,units,fetcher) if getattr(fetcher,'public_jobs',True) else {'records':[],'website_leads':[],'checks':[],'sources':[],'detail_attempts':0})
+        return public_jobs_result
     webstate={'url':'','status':'not_available','retrieved_at':now()}
     attempts=[];operator_limits=[]
     def candidates():
@@ -1059,6 +1068,10 @@ def research(row, fetcher, previous=None, search=None):
                 root=parsed.hostname[4:]+(':'+str(parsed.port) if parsed.port else '')
                 alternate=urlunsplit((parsed.scheme,root,parsed.path,parsed.query,''))
                 yield alternate,'canonical_host_candidate',remaining,[]
+        # If the official website leads did not establish a site, a checked
+        # primary ad can nominate its employer homepage before domain guessing.
+        for index,homepage in enumerate(public_jobs()['website_leads'][:2]):
+            yield homepage,'public_ad_employer_homepage',1-index,[]
         if search and data.get('navn'):
             if hasattr(search,'iter_candidates'):
                 for url,remaining,hints in search.iter_candidates(org,data['navn'],fetcher):yield url,'search',remaining,hints
@@ -1312,6 +1325,33 @@ def research(row, fetcher, previous=None, search=None):
                 break
             else:
                 errors.append({'source':response['url'],'reason':'exact legal entity not established; no website facts published'})
+    current_hiring=next((c for c in claims if c['field']=='website.hiring'),None)
+    if public_jobs_result is None and (not current_hiring or current_hiring.get('availability')!='available') and fetcher.requests<fetcher.limit-2:
+        public_jobs()
+    if public_jobs_result:
+        records=public_jobs_result['records']
+        if records:
+            from public_recruiting import job_key
+            old_items=(current_hiring.get('value') or []) if current_hiring and current_hiring.get('availability')=='available' else []
+            items=list(old_items);known_keys={job_key(i) for i in items}
+            for record in records:
+                key=job_key(record['item'])
+                if key not in known_keys:items.append(record['item']);known_keys.add(key)
+            added=claim('website.hiring',items,records[0]['response'],evidence,
+                pointer='public board search URL leads; current detail plus explicit corporate number and exact employer; independent of website verification',excerpt=records[0]['item']['title'])
+            if current_hiring:
+                ids=current_hiring.get('evidence_ids',[]);qualifiers=current_hiring.get('qualifiers',{})
+                current_hiring.update(added);current_hiring['evidence_ids']=list(dict.fromkeys(ids+added['evidence_ids']))
+            else:
+                current_hiring=added;claims.append(current_hiring);qualifiers={}
+            current_hiring['qualifiers']={**qualifiers,'public_board_attribution':'published corporate number matches target or registered child; exact named employer',
+                'website_identity_independent':True,'coverage':'bounded public ad search; not all possible vacancies'}
+            for rsp in [*[r['response'] for r in records],entity,locations]:
+                extra=claim('job_identity_support',None,rsp,evidence,pointer='retained primary ad or official parent/child identity response')
+                current_hiring['evidence_ids']=list(dict.fromkeys(current_hiring['evidence_ids']+extra['evidence_ids']))
+        output['public_recruitment_discovery']={'checks':public_jobs_result['checks'],'detail_attempts':public_jobs_result['detail_attempts'],
+            'verified_ads':len(records),'website_leads':public_jobs_result['website_leads'],
+            'source_mode':'anonymous public FINN/NAV pages, robots/TLS/IP checks on; URLs are leads only; same20-request cap'}
     for field in ('website.verified_url','website.description','website.social_links','website.hiring','website.activity','website.contact_channels'):
         if not any(c['field']==field for c in claims):
             if operator_limits:
@@ -1358,6 +1398,7 @@ def main():
     p.add_argument('--cache',default='cache'); p.add_argument('--previous')
     mode=p.add_mutually_exclusive_group();mode.add_argument('--replay',action='store_true');mode.add_argument('--fresh',action='store_true')
     p.add_argument('--workers',type=int,default=4)
+    p.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; same shared request cap')
     p.add_argument('--search',choices=['none','tavily','tavily-free'],default='none')
     p.add_argument('--search-free-credit-limit',type=int,help='root-confirmed remaining free basic credits; requires account/PayGo verification')
     p.add_argument('--search-credit-limit',type=int,default=100)
@@ -1384,7 +1425,7 @@ def main():
     prior={r['organisation_number']:r for r in (json.loads(x) for x in Path(args.previous).read_text().split('\n') if x.strip())} if args.previous else {}
     output=Path(args.output); output.parent.mkdir(parents=True,exist_ok=True); start=time.monotonic()
     def work(row):
-        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot)
+        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot,public_jobs=args.public_jobs!='off')
         try: return research(row,fetcher,prior.get(str(row.get('organisation_number',''))),search)
         except Exception as error:
             return {'organisation_number':str(row.get('organisation_number','')),'run':{'terminal_status':'failed','completed_at':now()},

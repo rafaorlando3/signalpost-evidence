@@ -103,7 +103,7 @@ def execute(items, args, folder, previous):
     command = [
         sys.executable, '-B', str(Path(__file__).with_name('agent.py')),
         '--input', str(source), '--output', str(staged), '--cache', str(args.cache),
-        '--workers', str(args.workers), '--search', args.search,
+        '--workers', str(args.workers), '--search', args.search, '--public-jobs',args.public_jobs,
         '--replay' if args.replay else '--fresh',
     ]
     if args.search == 'tavily-free':
@@ -311,6 +311,7 @@ def main(argv=None):
     parser.add_argument('--summary', type=Path, help='new summary JSON (default: OUTPUT.summary.json)')
     parser.add_argument('--cache', type=Path, required=True, help='retained source cache/snapshots')
     parser.add_argument('--timeout-seconds', type=float, default=2400)
+    parser.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; shared20-request budget')
     parser.add_argument('--workers', type=int, default=4)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--replay', action='store_true', help='cache only; never make HTTP requests')

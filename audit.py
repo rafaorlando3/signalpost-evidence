@@ -83,6 +83,17 @@ def audit(rows, cache):
                 from hiring_discovery import continuous_first_party_vacancy
                 registry=next((s.get('json') for s in sources.values() if isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
                 for item in c['value']:
+                    if item.get('discovery')=='public_board_search':
+                        from public_recruiting import parse_postings
+                        units=next((s.get('json',{}).get('_embedded',{}).get('underenheter',[]) for s in sources.values() if 'underenheter?overordnetEnhet='+row['organisation_number'] in s.get('url','')),[])
+                        reconstructed=[]
+                        for eid,s in sources.items():
+                            if eid in c['evidence_ids'] and s.get('url')==item.get('url') and 'text' in s:
+                                reconstructed+=parse_postings(Page(s['text'],s['url']),s,registry or {},units)
+                        if not any(r['item']==item for r in reconstructed):
+                            errors.append([row['organisation_number'],'public job posting not reproduced from corporate-number binding and retained primary detail'])
+                        else:counts['public_job_board_postings_checked']+=1
+                        continue
                     if not item.get('status','').startswith('published first-party vacancy invitation'):continue
                     matching=[]
                     for eid,s in sources.items():
