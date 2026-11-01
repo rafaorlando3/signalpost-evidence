@@ -433,6 +433,20 @@ def site_operator_identity(org, page, data=None, site_url=None):
     if 'target' in states:
         return {'state':'target','reason':'current WebSite explicitly declares the requested organisation as operator',
                 'operators':proofs}
+    # Literal legal-page owner declarations are also role-specific. A VAT
+    # number elsewhere in a page (customer, sponsor or product) is insufficient.
+    if re.search(r'/(?:imprint|impressum|legal)(?:/|$)',urlsplit(page.url).path,re.I):
+        body=re.sub(r'\s+',' ',' '.join(page.main_parts or page.body_parts))
+        match=re.search(r'(?:Eieren av dette nettstedet er|The owner of this website is)\s*:\s*(.{1,350}?)\s+MVA\s*ID\s*:\s*(?:NO\s*)?(\d{3}[.\s]?\d{3}[.\s]?\d{3})(?!\d)',body,re.I)
+        if match:
+            owner_number=re.sub(r'\D','',match[2])
+            if valid_org(owner_number):
+                own_name=normalized(match[1]);expected=normalized(data.get('navn',''))
+                state=('different' if owner_number!=org else 'target' if expected and
+                       (own_name==expected or own_name.startswith(expected+' ')) else 'unresolved')
+                return {'state':state,'reason':'literal legal-page website-owner declaration',
+                    'operators':[{'relationship':'literal_site_owner','organisation_numbers':[owner_number],
+                        'source_url':page.url,'evidence_excerpt':match[0]}]}
     return {'state':'absent','reason':'no conflicting or exact operator assertion for this WebSite','operators':[]}
 
 def website_identity(org, page, data=None, *, site_url=None):
@@ -476,7 +490,7 @@ def link_family(url):
     # Whole path words: 'bestillinger' means orders, not 'stillinger' (jobs).
     if re.search(r'(?:^|[/_-])(?:karriere|careers?|jobb(?:er|e)?|jobs?|stillinger?|vacanc(?:y|ies))(?:$|[/_-])',path): return 'hiring'
     if re.search(r'(?:^|[/_-])(?:news|nyheter?|aktuelt|blogg?|presse|press|presserom|pressroom|newsroom|artikler|articles?|stories|insights)(?:$|[/_-])|/20\d{2}/',path): return 'activity'
-    if re.search(r'kontakt|contact|personvern|privacy|beting|vilk|impressum|legal|om-oss|about',path): return 'identity'
+    if re.search(r'kontakt|contact|personvern|privacy|beting|vilk|impressum|imprint|legal|om-oss|about',path): return 'identity'
     return None
 
 def article_detail(url):
@@ -487,11 +501,11 @@ def social_profile(url):
     return canonical_profile(url) is not None
 
 
-def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, reserve_requests=0, seed_urls=()):
+def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, reserve_requests=0, seed_urls=(), portal_child=False):
     """Explore distinct purposes and linked detail pages within the existing request cap."""
     home=Page(response.get('text',''),response['url']); host=urlsplit(response['url']).hostname
     pages=[];verified=[];seen={urlunsplit((*urlsplit(response['url'])[:4],''))};queue={};counts=collections.Counter();discovered=False
-    post_leads={}
+    post_leads={};attempted_pages=1
     operator_blocked=False;known_operator=None
     def ingest(page,rsp):
         nonlocal operator_blocked,known_operator
@@ -574,31 +588,44 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
                         and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)(?:$|[?#])',candidate,re.I)):
                     family='activity'
                 if family and candidate not in seen:queue.setdefault(candidate,family)
-    while len(seen)<12 and fetcher.requests<fetcher.limit-(0 if verified else reserve_requests):
+    from hiring_discovery import application_links
+    def crawl_reserve():
+        # Public application landing pages can contain the only literal deadline.
+        # Leave room for their robots request, three GETs and one redirect once a role links one.
+        return 5 if verified and any(application_links(pg) for pg,_,_ in pages) else (0 if verified else reserve_requests)
+    while attempted_pages<14 and fetcher.requests<fetcher.limit-crawl_reserve():
         # An already fetched news index provides stronger discovery leads than
         # another map request. XML remains a fallback when those leads run out.
         pending_posts=any(u not in seen and u in queue for u in post_leads)
-        if not discovered and (not queue or (verified and len(seen)>=4 and not pending_posts)):
+        pending_roles=any(f=='hiring' and not any(urlsplit(v).path.rstrip('/')==urlsplit(u).path.rstrip('/') and urlsplit(v).query==urlsplit(u).query for v in seen) for u,f in queue.items())
+        has_application=any(application_links(pg) for pg,_,_ in pages)
+        if not discovered and (not queue or (verified and len(seen)>=4 and not pending_posts)) and not (pending_roles and (has_application or portal_child)):
             discovered=True;discover()
         if not queue:break
         def rank(item):
             url,family=item
             base=({'hiring':0,'activity':1,'identity':5} if verified else {'identity':0,'hiring':5,'activity':6})[family]
             depth=len([s for s in urlsplit(url).path.split('/') if s])
+            # Up to three observed named role links precede redundant career indexes.
+            role_count=sum(link_family(r['url'])=='hiring' and len([p for p in urlsplit(r['url']).path.split('/') if p])>=2 for _,r,_ in pages)
+            if verified and (has_application or portal_child) and family=='hiring' and depth>=2 and role_count<3:base-=20
+            if verified and has_application and role_count>=3 and family=='identity' and re.search(r'kontakt|contact',urlsplit(url).path,re.I):base-=20
             # Inspect legal ownership before repeatedly exploring auxiliary
             # identity pages; still leave a balanced path to jobs and articles.
-            legal=bool(re.search(r'personvern|privacy|legal|impressum|vilk|beting',urlsplit(url).path,re.I))
+            legal=bool(re.search(r'personvern|privacy|legal|impressum|imprint|vilk|beting',urlsplit(url).path,re.I))
             penalty=counts[family]*4
             identity_order=0 if legal else 1 if re.search(r'kontakt|contact|kundeservice',urlsplit(url).path,re.I) else 2
             parts=[s.casefold() for s in urlsplit(url).path.split('/') if s]
             entry_parts=[s.casefold() for s in urlsplit(response['url']).path.split('/') if s]
             locale=bool(parts and parts[0] in {'en','no','nb','nn','de','sv','da'} and parts[:1]!=entry_parts[:1])
             detail_order=post_leads.get(url,10_000+list(queue).index(url)) if family=='activity' else list(queue).index(url)
-            return (base+penalty, locale if verified else False, identity_order if family=='identity' and verified else 0,
+            alias=(not verified or has_application) and any(urlsplit(u).path.rstrip('/')==urlsplit(url).path.rstrip('/') and urlsplit(u).query==urlsplit(url).query for u in seen)
+            return (alias,base+penalty, locale if verified else False, identity_order if family=='identity' and (verified or portal_child) else 0,
                     (0 if verified else depth),detail_order,len(url),url)
-        url,family=min(queue.items(),key=rank);del queue[url];seen.add(url);counts[family]+=1
+        url,family=min(queue.items(),key=rank);del queue[url];seen.add(url);counts[family]+=1;attempted_pages+=1
         child=fetcher.get(url,site=True,raw=True)
         if child['status']!='available' or urlsplit(child['url']).hostname!=host: continue
+        seen.add(child['url']);queue.pop(child['url'],None)
         ingest(Page(child.get('text',''),child['url']),child)
         if operator_blocked:break
     return ([] if operator_blocked else verified),pages
@@ -921,6 +948,22 @@ def research(row, fetcher, previous=None, search=None):
             lead_url=lead['url'];parsed=urlsplit(lead_url)
             remaining=len(leads)-index-1+bool(search)+2
             yield lead_url,lead['origin'],remaining,[]
+            # A registry portal may link the entity's own branded child domain.
+            # Follow only observed links matching generic legal-name domain leads;
+            # the child still needs independent legal identity verification.
+            if lead['origin']=='entity_website' and webstate.get('status')=='available':
+                from registry_discovery import name_domain_candidates,web_url
+                child_hosts={host_key(u) for u in name_domain_candidates(data)}
+                linked=[]
+                for link in Page(webstate.get('text',''),webstate['url']).links:
+                    child=web_url(link.get('url',''))
+                    if not child:continue
+                    pc=urlsplit(child)
+                    if (pc.scheme in ('https','http') and not pc.username and not pc.password
+                            and pc.port in (None,80,443) and host_key(child) in child_hosts
+                            and host_key(child)!=host_key(lead_url) and not link.get('third_party_context')
+                            and child not in linked):linked.append(child)
+                for child in linked[:2]:yield child,'entity_portal_link',remaining,[]
             # Ordinary canonical hostname candidate, independently identity-
             # checked. TLS validation, robots policy and public-IP checks stay on.
             if (parsed.hostname or '').startswith('www.'):
@@ -948,7 +991,7 @@ def research(row, fetcher, previous=None, search=None):
             # its domain anchor. Search, email and workplace URLs cannot do so.
             redirect_host=host_key(response['url']) if origin=='entity_website' and response.get('requested_url')==url else None
             verified,inspected=crawl_company(org,data,response,fetcher,registry_redirect_host=redirect_host,
-                                            reserve_requests=6 if remaining_leads else 0,seed_urls=hints)
+                                            reserve_requests=6 if remaining_leads else 0,seed_urls=hints,portal_child=origin=='entity_portal_link')
             attempt.update(identity='verified' if verified else 'not_established',pages_inspected=len(inspected),
                            requests=fetcher.requests-started_requests)
             blockers=[(rsp,rsp['site_operator']) for pg,rsp,identity in inspected
@@ -960,7 +1003,8 @@ def research(row, fetcher, previous=None, search=None):
                 verified=[(pg,{**rsp,'identity_verified':True}) for pg,rsp in verified]
                 anchor,anchor_response=verified[0]
                 # Same-host pages can inherit the established site identity, except conflicts.
-                content_pages=[(pg,{**rsp,'identity_verified':True}) for pg,rsp,identity in inspected
+                content_pages=[(pg,{**rsp,'identity_verified':True,
+                    'site_operator':rsp.get('site_operator',anchor_response.get('site_operator',{}))}) for pg,rsp,identity in inspected
                     if identity!='conflict' and urlsplit(rsp['url']).hostname==urlsplit(anchor_response['url']).hostname]
                 method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
                         'explicit_org_number' if website_identity(org,anchor,data)=='exact' else
@@ -1011,7 +1055,7 @@ def research(row, fetcher, previous=None, search=None):
                                 pointer='literal contact href or visible company contact block',
                                 excerpt=(item.get('source_href') or item['value']) if item else None)
                     claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
-                from hiring_discovery import delegated_hiring_pages
+                from hiring_discovery import delegated_hiring_pages, literal_hiring_candidates
                 hiring_pages=content_pages+delegated_hiring_pages(content_pages,fetcher,Page)
                 for field,types in [('hiring',{'JobPosting'}),('activity',{'NewsArticle','Article','BlogPosting'})]:
                     items=[]; evidence_responses=[];positive_responses=[];limitations=[]
@@ -1028,19 +1072,21 @@ def research(row, fetcher, previous=None, search=None):
                             candidates,reasons=activity_candidates(pg,rsp)
                             for reason in reasons:limitation(rsp,reason)
                         else:
-                            candidates=list(objects(pg.ld))
+                            literal_candidates=literal_hiring_candidates(pg,rsp,data,hiring_pages)
+                            candidates=list(objects(pg.ld))+literal_candidates
                         for obj in candidates:
                             if schema_types(obj) & types:
                                 if field=='activity' and not (schema_types(obj)&{'NewsArticle','BlogPosting'}) and not article_detail(rsp['url']) and not pg.post_container:
                                     continue
                                 title=obj.get('title') or obj.get('headline')
                                 date=obj.get('datePublished') if field=='activity' else obj.get('datePosted')
-                                if not isinstance(title,str) or not isinstance(date,str):
+                                literal_undated=field=='hiring' and any(obj is candidate for candidate in literal_candidates) and date is None
+                                if not isinstance(title,str) or (not isinstance(date,str) and not literal_undated):
                                     limitation(rsp,'candidate lacks a literal title and publication date')
                                     continue
                                 try:
-                                    dt.datetime.fromisoformat(date.replace('Z','+00:00'))
-                                    if dt.date.fromisoformat(date[:10])>dt.date.fromisoformat(rsp['retrieved_at'][:10]):
+                                    if not literal_undated:dt.datetime.fromisoformat(date.replace('Z','+00:00'))
+                                    if not literal_undated and dt.date.fromisoformat(date[:10])>dt.date.fromisoformat(rsp['retrieved_at'][:10]):
                                         limitation(rsp,'candidate publication date is in the future')
                                         continue
                                 except ValueError:
@@ -1073,16 +1119,21 @@ def research(row, fetcher, previous=None, search=None):
                                 if field=='hiring':item['hiring_organisation']=employer
                                 if attribution:item['attribution']=attribution
                                 if field=='hiring': item.update(valid_through=obj.get('validThrough'),status='published_posting; application availability not independently checked')
-                                if not any(i['url']==item['url'] and i['date'][:10]==item['date'][:10] for i in items): items.append(item)
+                                if literal_undated:
+                                    item.update(publication_date_state='not_stated',hiring_organisation_basis=obj['_employer_basis'],
+                                        deadline_basis=obj['_deadline_basis'],application_url=obj['_ats_response']['url'],
+                                        status='listed_vacancy; linked ATS deadline checked; application acceptance not tested')
+                                    evidence_responses.extend([obj['_ats_response'],anchor_response])
+                                if not any(i['url']==item['url'] and str(i['date'])[:10]==str(item['date'])[:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp);positive_responses.append(rsp)
-                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, or a single h1/time[datetime] on detail pages' if field=='activity' else 'script[type=application/ld+json]; JobPosting'))
+                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, or a single h1/time[datetime] on detail pages' if field=='activity' else 'JobPosting, or explicit legal recruiting operator + named vacancy + matching linked public ATS deadline; unknown publication date stays null'))
                     if limitations:
                         claims[-1]['qualifiers']={'coverage':'partial' if items else 'unresolved',
                             'candidate_limitations':limitations}
                     for rsp in evidence_responses:
                         source_text=Page(rsp.get('text',''),rsp['url']).text
                         literal_title=next((item['title'] for item in items if item['title'] in source_text),None)
-                        extra=claim('website.'+field,None,rsp,evidence,pointer='literal post title; publication date retained in source snapshot',excerpt=literal_title)
+                        extra=claim('website.'+field,None,rsp,evidence,pointer='literal post title and source snapshot; unknown publication date is not inferred',excerpt=literal_title)
                         claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 # Verify social destinations after collecting dated activity, so
                 # the small social budget cannot starve post detail discovery.

@@ -2,7 +2,7 @@
 import re
 from urllib.parse import unquote, urlsplit
 
-CONTACT_LIMIT = 25
+CONTACT_LIMIT = 40
 
 def contact_links(page):
     found=[];seen=set()
