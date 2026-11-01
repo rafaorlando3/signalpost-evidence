@@ -12,3 +12,10 @@
 !validate.py
 !readable_report.py
 !report.py
+!publication.py
+!attribution.py
+!social_ownership.py
+!hiring_discovery.py
+!organization_types.json
+!output_contract.py
+!audit.py
