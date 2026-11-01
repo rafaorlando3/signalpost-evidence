@@ -143,6 +143,10 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
     direct=direct_recruiting_post(page,response,data)
     if direct:return direct
     continuous=continuous_first_party_vacancy(page,response,data)
+    # An undated mail invitation that explicitly points to a public job ad
+    # defers to that ad's checked state and structured publication evidence.
+    # Do not count an unchecked/stale mirror as an additional current vacancy.
+    if continuous and not continuous[0].get('validThrough') and any(not l.get('in_navigation') and linked_public_job_detail(page,l) for l in page.links):continuous=[]
     if not response.get('identity_verified') or response.get('delegated_from_verified_careers'):return []
     operator=response.get('site_operator',{})
     if operator.get('state')!='target':return continuous

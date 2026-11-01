@@ -1180,6 +1180,10 @@ def research(row, fetcher, previous=None, search=None):
                             if rsp.get('delegated_from_verified_careers') and closed_hiring_page(pg):
                                 limitation(rsp,'linked job posting is explicitly closed or expired');continue
                             literal_candidates=literal_hiring_candidates(pg,rsp,data,hiring_pages)
+                            if not literal_candidates:
+                                from hiring_discovery import continuous_first_party_vacancy,linked_public_job_detail
+                                if any(not l.get('in_navigation') and linked_public_job_detail(pg,l) for l in pg.links) and continuous_first_party_vacancy(pg,rsp,data):
+                                    limitation(rsp,'undated first-party notice defers to its explicitly linked public advertisement; verify publication and current state there')
                             candidates=list(objects(pg.ld))+literal_candidates
                         for obj in candidates:
                             if schema_types(obj) & types:
