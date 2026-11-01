@@ -209,16 +209,20 @@ def entity_contacts(page,data,units=(),conflicts=None):
         if conflict:reason=conflict['reason']
         if archive and item['type']=='email' and item['value'].rsplit('@',1)[-1].casefold()!=own_host.casefold():
             reason='news archive mentions another-domain contact; own-company contact role not established'
-        observations=[]
+        observations=[];postal_nodes=[]
         if not reason:
             for ancestry in literal_scopes.get(id(item),scopes.get(item['source_href'],[])):
                 for node in reversed(ancestry):
                     if node['tag'] in {'a','span','strong','b','i','svg','path'}:continue
                     found=set(re.findall(r'(?<!\d)([0-9]{4})[ \t]+[A-ZÆØÅ][A-Za-zÆØÅæøåéü-]+',node['text']))
                     if found:
-                        observations.append(found);break
+                        observations.append(found);postal_nodes.append(node);break
             if codes and observations and not any(v and v<=codes for v in observations):
-                reason='contact block contains a postal address outside the registered target/subunits; separate-entity ownership unresolved'
+                domain=(item['value'].rsplit('@',1)[-1].casefold() if item['type']=='email' else '')
+                same_business_domain=domain and domain.removeprefix('www.').split('.')[0]==own_host.casefold().split('.')[0]
+                own_imprint=any(n['tag']!='heading_section' and full_name and re.search(r'(?<!\w)'+re.escape(full_name)+r'(?!\w)',_normal(n['text'])) for n in postal_nodes)
+                if not (same_business_domain and own_imprint):
+                    reason='contact block contains a postal address outside the registered target/subunits; separate-entity ownership unresolved'
             elif codes and observations:located_keys.add(contact_key(item))
         if reason:
             record={'type':item['type'],'value':item['value'],'source_url':page.url,'reason':reason}
