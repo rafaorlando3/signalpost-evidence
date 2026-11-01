@@ -534,7 +534,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
     """Explore distinct purposes and linked detail pages within the existing request cap."""
     home=Page(response.get('text',''),response['url']); host=urlsplit(response['url']).hostname
     pages=[];verified=[];seen={urlunsplit((*urlsplit(response['url'])[:4],''))};queue={};counts=collections.Counter();discovered=False
-    post_leads={};attempted_pages=1
+    post_leads={};exploratory_roles=set();attempted_pages=1
     operator_blocked=False;known_operator=None
     def ingest(page,rsp):
         nonlocal operator_blocked,known_operator
@@ -618,15 +618,22 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             url=sources.pop(0)
             if url in used or urlsplit(url).hostname!=host:continue
             used.add(url); rsp=fetcher.get(url,site=True,raw=True)
-            if rsp['status']!='available' or urlsplit(rsp['url']).hostname!=host:continue
-            urls,maps=xml_candidates(rsp.get('text',''),rsp['url'],host)
+            map_host=urlsplit(rsp['url']).hostname or ''
+            if (rsp['status']!='available' and not (verified and rsp.get('status_code')==404)) or (map_host!=host and not (verified and map_host.removeprefix('www.')==host.removeprefix('www.'))):continue
+            urls,maps=xml_candidates(rsp.get('text',''),rsp['url'],host,canonical_alias=bool(verified))
             sources.extend(sorted(maps,key=lambda u:(0 if re.search(r'post|news',u,re.I) else 1 if re.search(r'page',u,re.I) else 2,u)))
+            careers_seen=verified and (any(link_family(pg.url)=='hiring' for pg,_,_ in pages)
+                or any(family=='hiring' and url not in exploratory_roles for url,family in queue.items()))
             for candidate in urls:
                 family=link_family(candidate)
                 if (family is None and verified and re.search(r'post|news|feed',url,re.I)
                         and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)(?:$|[?#])',candidate,re.I)):
                     family='activity'
                 if family and candidate not in seen:queue.setdefault(candidate,family)
+                elif (careers_seen and len(exploratory_roles)<2 and candidate not in seen
+                      and len([p for p in urlsplit(candidate).path.split('/') if p])==1
+                      and not catalog_route(candidate) and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)$',urlsplit(candidate).path,re.I)):
+                    exploratory_roles.add(candidate);queue.setdefault(candidate,'hiring')
     from hiring_discovery import application_links
     def crawl_reserve():
         # Public application landing pages can contain the only literal deadline.
@@ -644,6 +651,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         def rank(item):
             url,family=item
             base=({'hiring':0,'activity':1,'identity':5} if verified else {'identity':0,'hiring':5,'activity':6})[family]
+            if url in exploratory_roles:base+=100
             depth=len([s for s in urlsplit(url).path.split('/') if s])
             # Up to three observed named role links precede redundant career indexes.
             role_count=sum(link_family(r['url'])=='hiring' and len([p for p in urlsplit(r['url']).path.split('/') if p])>=2 for _,r,_ in pages)
@@ -1212,12 +1220,12 @@ def research(row, fetcher, previous=None, search=None):
                                     ats=obj.get('_ats_response')
                                     item.update(publication_date_state='not_stated' if date is None else 'literal_publication_block',hiring_organisation_basis=obj['_employer_basis'],
                                         deadline_basis=obj['_deadline_basis'],application_url=ats['url'] if ats else obj['_application_url'],
-                                        status='listed_vacancy; literal deadline checked; application acceptance not tested')
+                                        status=('listed_vacancy; literal deadline checked; application acceptance not tested' if obj.get('validThrough') else 'published first-party vacancy invitation; deadline not stated; application acceptance not tested'))
                                     if obj.get('_application_contact'):item['application_contact']=obj['_application_contact']
                                     evidence_responses.extend(([ats] if ats else [])+[anchor_response])
                                 if not any(i['url']==item['url'] and str(i['date'])[:10]==str(item['date'])[:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp);positive_responses.append(rsp)
-                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, scoped published time or labelled CMS publication block on editorial detail pages' if field=='activity' else 'JobPosting, or explicit legal recruiting operator + named vacancy + matching linked public ATS deadline; unknown publication date stays null'))
+                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, scoped published time or labelled CMS publication block on editorial detail pages' if field=='activity' else 'JobPosting, explicit first-party named vacancy invitation, or matching linked public ATS deadline; unknown publication/deadline dates stay null'))
                     if limitations:
                         claims[-1]['qualifiers']={'coverage':'partial' if items else 'unresolved',
                             'candidate_limitations':limitations}

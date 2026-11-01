@@ -79,6 +79,18 @@ def audit(rows, cache):
                             else:counts['literal_visible_contacts_checked']+=1
                         elif variant not in retained:errors.append([row['organisation_number'],'contact link not supported by retained page'])
                         else:counts['literal_contact_links_checked']+=1
+            if c['field']=='website.hiring':
+                from hiring_discovery import continuous_first_party_vacancy
+                registry=next((s.get('json') for s in sources.values() if isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
+                for item in c['value']:
+                    if not item.get('status','').startswith('published first-party vacancy invitation'):continue
+                    matching=[]
+                    for eid,s in sources.items():
+                        if eid not in c['evidence_ids'] or s.get('url')!=item['url'] or 'json' in s:continue
+                        matching+=continuous_first_party_vacancy(Page(s.get('text',''),s['url']),{**s,'identity_verified':True},registry or {})
+                    if not any(x['title']==item['title'] and x['datePosted']==item['date'] and x['validThrough']==item.get('valid_through') and x['_application_url']==item.get('application_url') for x in matching):
+                        errors.append([row['organisation_number'],'first-party vacancy invitation not reproduced from retained evidence'])
+                    else:counts['first_party_vacancy_invitations_checked']+=1
         if compare(row,row): errors.append([row['organisation_number'],'false self change'])
     return {'passed':not errors,'counts':dict(counts),'errors':errors,'external_identity_review':external,
         'official_score':None,'precision':None,'recall':None,

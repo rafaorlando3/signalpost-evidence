@@ -69,6 +69,60 @@ def direct_recruiting_post(page,response,data):
         '_deadline_basis':'explicit Søknadsfrist in the recruiting post'}]
 
 
+def continuous_first_party_vacancy(page,response,data):
+    """Specific first-party recruiting notice; dates can remain unknown.
+
+    This reports a currently published recruitment invitation, not verified
+    acceptance of applications or a guessed publication/deadline date.
+    """
+    from agent import website_identity,normalized
+    from attribution import legal_stem
+    if not response.get('identity_verified') or response.get('delegated_from_verified_careers'):return []
+    if website_identity(str(data.get('organisasjonsnummer','')),page,data)!='exact':return []
+    heads=page.semantic_headings or page.main_headings or page.content_headings
+    if len(heads)!=1 or not urlsplit(page.url).path.rstrip('/'):return []
+    title=heads[0].strip();body=re.sub(r'\s+',' ',' '.join(page.article_parts)).strip()
+    page_title=re.split(r'\s+[|–—]\s*|\s+-\s+',page.title)[0].strip()
+    if re.match(r'^(?:stilling ledig|ledig stilling)\s+\S',page_title,re.I):title=page_title
+    if not 3<=len(title)<=180 or re.fullmatch(r'(?:ledige stillinger|karriere|careers?|jobs?|vacancies|jobb hos oss)',title,re.I):return []
+    if re.search(r'åpen\s+søknad|spontan|open application|talent pool|fristen er utløpt|stillingen er (?:besatt|avsluttet)|position (?:is )?(?:filled|closed)|på vegne av|for vår kunde|on behalf of|our client',body,re.I):return []
+    stem=legal_stem(data.get('navn',''))
+    if len(stem)<5 or not re.search(r'(?<!\w)'+re.escape(stem)+r'(?!\w)',normalized(body)):return []
+    named_role=re.match(r'^(?:stilling ledig|ledig stilling)\s+\S',title,re.I)
+    if not named_role and not re.search(r'\b(?:vi (?:søker|ser etter)|er du vår nye|we are (?:hiring|looking for))\b',body,re.I):return []
+    rolling=bool(re.search(r'\b(?:søknad(?:er|ene) vurderes fortløpende|applications (?:are )?reviewed (?:on a )?rolling basis)\b',body,re.I))
+    sections=re.findall(r'\b(?:ønskede kvalifikasjoner|hvem er du|hva du vil jobbe med|vi tilbyr)\b',body,re.I)
+    if not rolling and not (named_role and len(set(x.casefold() for x in sections))>=2):return []
+    # A partly stated or expired deadline must not become "unknown but open".
+    deadline=None
+    if re.search(r'søknadsfrist|application deadline',body,re.I):
+        m=re.search(r'(?:søknadsfrist|application deadline)\s*:?\s*(\d{1,2})[./](\d{1,2})[./](\d{4})(?!\d)',body,re.I)
+        if not m:return []
+        try:
+            deadline=dt.date(int(m[3]),int(m[2]),int(m[1]))
+            if deadline<dt.date.fromisoformat(response['retrieved_at'][:10]):return []
+        except ValueError:return []
+    host=(urlsplit(page.url).hostname or '').removeprefix('www.');contact=None;application=None
+    for link in page.links:
+        if link.get('third_party_context'):continue
+        u=link.get('url','');label=link.get('text','')
+        if u.startswith('mailto:') and re.search(r'søknad|apply|application',label,re.I):
+            address=urlsplit(u).path
+            if re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"+re.escape(host),address,re.I):contact=address;application=page.url;break
+        try:p=urlsplit(u);port=p.port
+        except ValueError:continue
+        if (p.scheme in {'http','https'} and p.hostname and not p.username and not p.password and port in (None,80,443)
+                and re.fullmatch(r'/(?:[A-Za-z0-9_-]+/){0,2}sok-stilling/[A-Za-z0-9_-]+/?',p.path)
+                and re.search(r'\b(?:søk(?: på)? stilling(?:en)?|søk her|send inn søknad|apply (?:now|for))\b',label,re.I)):
+            application=u;break
+    if not application:return []
+    return [{'@type':'JobPosting','title':title,'datePosted':None,'hiringOrganization':{'name':data['navn']},
+        'validThrough':deadline.isoformat() if deadline else None,'_literal_first_party':True,
+        '_application_url':application,**({'_application_contact':contact} if contact else {}),
+        '_employer_basis':'exact corporate ID on verified first-party page plus named employer in recruiting content',
+        '_deadline_basis':'explicit first-party deadline' if deadline else 'not stated; explicit job-specific application invitation on first-party page'}]
+
+
 def literal_hiring_candidates(page, response, data, hiring_pages):
     """Undated named first-party vacancy + matching linked public ATS deadline.
 
@@ -79,11 +133,12 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
     from agent import normalized
     direct=direct_recruiting_post(page,response,data)
     if direct:return direct
+    continuous=continuous_first_party_vacancy(page,response,data)
     if not response.get('identity_verified') or response.get('delegated_from_verified_careers'):return []
     operator=response.get('site_operator',{})
-    if operator.get('state')!='target':return []
+    if operator.get('state')!='target':return continuous
     heads=page.content_headings
-    if len(heads)!=1 or not re.search(r'/(?:karriere|careers?|jobs?|stillinger)/[^/]+',urlsplit(page.url).path,re.I):return []
+    if len(heads)!=1 or not re.search(r'/(?:karriere|careers?|jobs?|stillinger)/[^/]+',urlsplit(page.url).path,re.I):return continuous
     title=heads[0]
     if re.search(r'åpen\s+søknad|spontan|open\s+application|talent\s+pool',title,re.I):return []
     body=' '.join(page.main_parts or page.body_parts)
@@ -107,7 +162,7 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
             '_literal_first_party':True,'_ats_response':ats_response,
             '_employer_basis':'explicit legal operator of first-party recruiting page; ATS employer not independently displayed',
             '_deadline_basis':'Application due on explicitly linked public ATS job description'}]
-    return []
+    return continuous
 
 
 def delegated_hiring_pages(content_pages, fetcher, page_type):

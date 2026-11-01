@@ -18,7 +18,7 @@ def identity_content_candidate(url):
     return url
 
 
-def xml_candidates(text, source_url, host):
+def xml_candidates(text, source_url, host, *, canonical_alias=False):
     if len(text)>2_000_000 or re.search(r'<!\s*(DOCTYPE|ENTITY)\b',text,re.I):
         return [],[]
     try: root=ET.fromstring(text)
@@ -52,7 +52,12 @@ def xml_candidates(text, source_url, host):
         if not value: continue
         try:
             p=urlsplit(urljoin(source_url,value.strip()))
-            if p.scheme not in {'http','https'} or p.hostname!=host or p.username or p.password or p.port not in (None,80,443):continue
+            if p.scheme not in {'http','https'} or p.username or p.password or p.port not in (None,80,443):continue
+            if p.hostname!=host:
+                if not canonical_alias or (p.hostname or '').casefold().removeprefix('www.')!=host.casefold().removeprefix('www.'):continue
+                # URL lead only: request the path on the already verified host.
+                # Never grant identity or share facts from the alternate host.
+                p=p._replace(netloc=host)
             url=urlunsplit((p.scheme,p.netloc,p.path,p.query,''))
         except ValueError:continue
         if url in seen:continue

@@ -60,7 +60,7 @@ def _contact_scopes(page,include_text=False,include_blocks=False):
             if t not in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:
                 inside_article=any(n['tag']=='article' for n in self.stack)
                 self.node_count+=1
-                self.stack.append({'tag':t,'text':'','excluded':excluded,'scope_id':self.node_count,'ancestors':[n['scope_id'] for n in self.stack]})
+                self.stack.append({'tag':t,'text':'','excluded':excluded,'in_form':t=='form' or any(n['tag']=='form' for n in self.stack),'scope_id':self.node_count,'ancestors':[n['scope_id'] for n in self.stack]})
                 if t in {'p','address','article','section','div','li','td','footer'}:self.blocks.append(self.stack[-1])
                 semantic=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',context).replace('_',' ')
                 path=urlsplit(page.url).path.casefold().rstrip('/')
@@ -142,6 +142,26 @@ def foreign_contact_bindings(pages,data):
     return blocked
 
 
+def staff_contact_scopes(page):
+    """Short first-party contact cards with a role and same-domain mailbox.
+
+    These are candidates subject to the normal foreign-entity/address vetoes.
+    Bare numeric IDs, bios on news pages and other-domain mailboxes are not
+    sufficient evidence that an unlabelled number is a company phone.
+    """
+    if not re.search(r'/(?:kontakt[^/]*|contact[^/]*|ansatte|employees|staff)(?:/|$)',urlsplit(page.url).path,re.I):return []
+    host=(urlsplit(page.url).hostname or '').removeprefix('www.').casefold()
+    _,blocks=_contact_scopes(page,include_blocks=True);out=[]
+    for node in blocks:
+        text=node['text']
+        if node.get('excluded') or node.get('in_form') or len(text)>650:continue
+        emails=set(re.findall(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",text))
+        if len(emails)!=1 or next(iter(emails)).rsplit('@',1)[-1].casefold()!=host:continue
+        if not re.search(r'\b(?:daglig leder|salgsrepresentant|prosjektleder|administrasjonssjef|rådgiver|CEO|CTO|CFO|sales manager|project manager|managing director)\b',text,re.I):continue
+        out.append({**node,'staff_card':True})
+    return out
+
+
 def entity_contacts(page,data,units=(),conflicts=None):
     """Do not inherit another regional company's contacts from a shared site.
 
@@ -155,6 +175,7 @@ def entity_contacts(page,data,units=(),conflicts=None):
     codes={str(a['postnummer']) for a in addresses if a.get('postnummer')}
     places={_normal(a[k]) for a in addresses for k in ('kommune','poststed') if a.get(k)}
     scopes,text_scopes=_contact_scopes(page,include_text=True);out=[];held=[];literal_scopes={}
+    text_scopes+=staff_contact_scopes(page)
     # Exact legal-name/address imprints can be plain paragraphs in simple sites.
     full_name=_normal(data.get('navn',''))
     for index,p in enumerate(page.paragraphs):
@@ -173,6 +194,13 @@ def entity_contacts(page,data,units=(),conflicts=None):
         for match in re.finditer(r'(?m)^[ \t]*(\+[0-9][0-9 () .-]{7,22})[ \t]*$',text):
             value=match.group(1).strip()
             if 8<=len(re.sub(r'\D','',value))<=15:found.append(('phone',value,value))
+        if scope.get('staff_card'):
+            # A complete, formatted Norwegian phone line in a contact card.
+            # Never turn arbitrary eight-digit IDs or dates into phone facts.
+            for line in text.splitlines():
+                value=re.sub(r'\s+',' ',line).strip()
+                if re.fullmatch(r'(?:\+47[ .-]?)?\d{2}[ .-]\d{2}[ .-]\d{2}[ .-]\d{2}',value):
+                    found.append(('phone',value,value))
         for kind,value,label in found:
             item={'type':kind,'value':value,'label':label[:160],'source_url':page.url,'source_href':None,
                   'source_kind':'literal_visible_text','source_pointer':'visible company contact/footer or exact legal-imprint block'}

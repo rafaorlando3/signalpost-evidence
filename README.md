@@ -1,5 +1,13 @@
 # Signalpost — entity-attributed social recovery, local review (2026-10-31)
 
+## Coverage follow-up: staff cards and public recruiting notices
+
+Formatted phone lines in short staff contact cards can be recovered when the same card contains a professional role and an exact same-domain mailbox. This applies only to contact/staff routes, excludes forms/customer/agency blocks, and preserves the existing foreign-entity, regional-address and normalized-duplicate checks. Bare numeric IDs are not phone evidence.
+
+After site verification, a sitemap may supply www/apex-alias path leads on the verified host. A well-formed XML sitemap returned with HTTP404 can also supply leads; its response remains unavailable and is never used as factual evidence. Actual company/job pages must return usable content independently. At most two unclassified shallow sitemap paths are explored after explicit career intent, at lower priority than existing identity, news and job leads. No company or vacancy URL is embedded.
+
+A specific first-party recruiting notice needs an exact corporate ID, the named employer in its content and an explicit job-specific application invitation. Rolling review, or an explicitly named role with multiple job-detail sections, can support a published notice with unknown dates. Spontaneous applications, competing employers, closed roles and partial/expired deadlines remain excluded. Publication/deadline dates stay null when absent; application acceptance is never claimed. The source auditor reproduces these notices from retained pages.
+
 ## Generic discovery and linked legal identity (1 November follow-up)
 
 Name-derived URLs remain untrusted leads. A second bounded fallback can derive two moving-service marketing slugs from NACE 49.420 and the registered municipality; no company, city-specific host or organisation allowlist is embedded. Every fetched candidate must independently pass legal identity checks. This narrow category heuristic is not a replacement for general web search.
