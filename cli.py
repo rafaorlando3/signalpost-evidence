@@ -312,7 +312,7 @@ def main(argv=None):
     parser.add_argument('--summary', type=Path, help='new summary JSON (default: OUTPUT.summary.json)')
     parser.add_argument('--cache', type=Path, required=True, help='retained source cache/snapshots')
     parser.add_argument('--timeout-seconds', type=float, default=2400)
-    parser.add_argument('--public-search',choices=['auto','off'],default='auto',help='last-resort free anonymous search; no signup or payment')
+    parser.add_argument('--public-search',choices=['auto','off'],default='off',help='last-resort free anonymous search; no signup or payment')
     parser.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; shared20-request budget')
     parser.add_argument('--workers', type=int, default=4)
     mode = parser.add_mutually_exclusive_group()

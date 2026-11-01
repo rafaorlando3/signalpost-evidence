@@ -1409,7 +1409,7 @@ def main():
     p.add_argument('--cache',default='cache'); p.add_argument('--previous')
     mode=p.add_mutually_exclusive_group();mode.add_argument('--replay',action='store_true');mode.add_argument('--fresh',action='store_true')
     p.add_argument('--workers',type=int,default=4)
-    p.add_argument('--public-search',choices=['auto','off'],default='auto',help='late anonymous Mwmbl URL discovery, no key or paid fallback')
+    p.add_argument('--public-search',choices=['auto','off'],default='off',help='late anonymous Mwmbl URL discovery, no key or paid fallback')
     p.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; same shared request cap')
     p.add_argument('--search',choices=['none','tavily','tavily-free'],default='none')
     p.add_argument('--search-free-credit-limit',type=int,help='root-confirmed remaining free basic credits; requires account/PayGo verification')
