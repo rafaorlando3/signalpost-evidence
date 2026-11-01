@@ -175,19 +175,23 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
 
 
 def linked_public_job_detail(page,link):
-    """Observed job-board detail link on a first-party career page, not search."""
-    p=urlsplit(link.get('url',''));path=urlsplit(page.url).path
-    body=' '.join(page.article_parts)
-    career_context=bool(re.search(r'(?:^|[/_-])(?:careers?|karriere|jobs?|stillinger)(?:$|[/_-])',path,re.I))
-    role_context=(len(page.content_headings)==1 and bool(re.search(r'søknadsfrist|application deadline',body,re.I))
-                  and bool(re.search(r'arbeidsoppgaver|kvalifikasjoner|qualifications|responsibilities',body,re.I)))
-    if not career_context and not role_context:return False
-    if link.get('third_party_context') or not 3<=len(link.get('text','').strip())<=180:return False
-    # FINN legacy and current public ad URLs. Listing/search/apply URLs cannot
-    # enter through this route; the returned posting still needs exact employer.
+    """Observed job-board detail link in a first-party recruiting context."""
+    p=urlsplit(link.get('url',''))
+    # Reject non-ad links before examining page content. A page can have
+    # thousands of ordinary links; body parsing is once per eligible page.
     if p.hostname not in {'finn.no','www.finn.no'}:return False
-    return bool(re.fullmatch(r'/job/ad/[0-9]+/?',p.path)
+    if link.get('third_party_context') or not 3<=len(link.get('text','').strip())<=180:return False
+    detail=bool(re.fullmatch(r'/job/ad/[0-9]+/?',p.path)
                 or (p.path=='/job/fulltime/ad.html' and re.fullmatch(r'finnkode=[0-9]+',p.query)))
+    if not detail:return False
+    context=getattr(page,'_linked_public_job_context',None)
+    if context is None:
+        path=urlsplit(page.url).path;body=' '.join(page.article_parts)
+        career_context=bool(re.search(r'(?:^|[/_-])(?:careers?|karriere|jobs?|stillinger)(?:$|[/_-])',path,re.I))
+        role_context=(len(page.content_headings)==1 and bool(re.search(r'søknadsfrist|application deadline',body,re.I))
+                      and bool(re.search(r'arbeidsoppgaver|kvalifikasjoner|qualifications|responsibilities',body,re.I)))
+        context=page._linked_public_job_context=bool(career_context or role_context)
+    return context
 
 
 def closed_hiring_page(page):
