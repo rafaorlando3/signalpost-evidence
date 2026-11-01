@@ -40,7 +40,17 @@ def audit(rows, cache):
                 if pointer=='explicit_org_number' and not any(website_identity(row['organisation_number'],Page(s.get('text',''),s['url']))=='exact' for s in web):
                     errors.append([row['organisation_number'],'identity number not supported by retained page'])
                 support=c.get('identity_support')
-                if support and pointer=='explicit_site_operator':
+                if support and pointer=='linked_business_self_description_and_registered_address':
+                    from business_identity import business_identity,canonical
+                    from agent import site_operator_identity
+                    registry=next((s.get('json') for s in sources.values() if isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
+                    bundles=[(Page(s.get('text',''),s['url']),s) for s in web]
+                    bundles.sort(key=lambda pair:canonical(pair[0].url)!=canonical(support.get('entry_url','')))
+                    compatible=lambda pg:website_identity(row['organisation_number'],pg,registry)!='conflict' and site_operator_identity(row['organisation_number'],pg,registry)['state'] not in {'different','unresolved'}
+                    if not registry or business_identity(registry,bundles,compatible)!=support:
+                        errors.append([row['organisation_number'],'linked business identity proof not reproduced from retained first-party pages and registry'])
+                    else:counts['linked_business_identity_bundles_checked']+=1
+                elif support and pointer=='explicit_site_operator':
                     from agent import site_operator_identity
                     name=next((x.get('value') for x in row['claims'] if x.get('field')=='legal_name'),None)
                     if not any(site_operator_identity(row['organisation_number'],Page(s.get('text',''),s['url']),

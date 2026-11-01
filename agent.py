@@ -554,6 +554,15 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         if identity=='conflict': return False
         pages.append((page,rsp,identity))
         if identity=='exact' or corroborated_site(data,page,registry_redirect_host): verified.append((page,rsp))
+        if not verified:
+            from business_identity import business_identity
+            compatible=lambda pg:website_identity(org,pg,data)!='conflict' and site_operator_identity(org,pg,data)['state'] not in {'different','unresolved'}
+            proof=business_identity(data,[(pg,r) for pg,r,_ in pages],compatible)
+            if proof:
+                # The homepage is established by the linked bundle; all proof
+                # pages remain retained and are referenced in the final claim.
+                root_pg,root_rsp,_=pages[0]
+                verified.append((root_pg,{**root_rsp,'business_identity_support':proof}))
         activity_index=(link_family(rsp['url'])=='activity' and not article_detail(rsp['url'])
                         and not activity_candidates(page,rsp)[0])
         for link in page.links:
@@ -1036,10 +1045,12 @@ def research(row, fetcher, previous=None, search=None):
             else:
                 urls=search.discover(org,data['navn'],fetcher)
                 for i,url in enumerate(urls):yield url,'search',len(urls)-i-1,[]
-        from registry_discovery import name_domain_candidates
+        from registry_discovery import name_domain_candidates,industry_city_candidates
         existing={host_key(lead['url']) for lead in leads}
         derived=[u for u in name_domain_candidates(data) if host_key(u) not in existing]
         for index,url in enumerate(derived):yield url,'name_domain_heuristic',len(derived)-index-1,[]
+        for index,url in enumerate(industry_city_candidates(data)):
+            if host_key(url) not in existing and url not in derived:yield url,'industry_city_heuristic',1-index,[]
     for url,origin,remaining_leads,hints in candidates():
         started_requests=fetcher.requests
         response=fetcher.get(url,site=True,raw=True); webstate=response
@@ -1067,6 +1078,7 @@ def research(row, fetcher, previous=None, search=None):
                     'site_operator':rsp.get('site_operator',anchor_response.get('site_operator',{}))}) for pg,rsp,identity in inspected
                     if identity!='conflict' and urlsplit(rsp['url']).hostname==urlsplit(anchor_response['url']).hostname]
                 method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
+                        'linked_business_self_description_and_registered_address' if anchor_response.get('business_identity_support') else
                         'explicit_org_number' if website_identity(org,anchor,data)=='exact' else
                         'exact_legal_footer_and_registered_address' if legal_footer_identity(data,anchor) else 'registry_domain_name_and_postal_address')
                 add('website.verified_url',response['url'],anchor_response,pointer=method,
@@ -1079,10 +1091,28 @@ def research(row, fetcher, previous=None, search=None):
                 elif method=='explicit_site_operator':
                     claims[-1]['identity_support']=anchor_response['site_operator']
                     claims[-1]['evidence_excerpt']=None
+                elif method=='linked_business_self_description_and_registered_address':
+                    proof=anchor_response['business_identity_support'];claims[-1]['identity_support']=proof;claims[-1]['evidence_excerpt']=None
+                    from business_identity import canonical
+                    wanted={canonical(proof['legal_name_source']['source_url']),canonical(proof['address_source']['source_url']),canonical(proof['entry_url'])}
+                    for part in ('legal_name_source','address_source'):
+                        for link in proof[part]['links']:wanted.update([link['source_url'],link['target_url']])
+                    for pg,rsp,_ in inspected:
+                        if canonical(rsp['url']) in wanted:
+                            extra=claim('identity_bundle',None,rsp,evidence)
+                            claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
+                    extra=claim('identity_anchor',org,entity,evidence)
+                    claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 # Identity may be proved on a privacy/contact page. Describe the
                 # homepage instead of publishing that legal page's boilerplate.
                 description_page,description_response=content_pages[0]
                 description=description_page.description
+                description_pointer='meta[name=description] or scoped visible homepage paragraph; navigation and footer excluded'
+                if method=='linked_business_self_description_and_registered_address' and (not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4):
+                    own_description=anchor_response['business_identity_support']['legal_name_source']
+                    description=own_description['self_description']
+                    description_page,description_response=next((pg,rsp) for pg,rsp in content_pages if rsp['url']==own_description['source_url'])
+                    description_pointer='literal scoped own-company self-description from the linked legal identity source'
                 if not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4:
                     description=next((v for v in description_page.paragraphs if 70<=len(v)<=2000 or (len(v)>=20 and group_description(v))),None)
                 if description and re.search(r'lorem ipsum|dolor sit amet|(?:web\s*site|nettside).{0,45}(?:under construction|coming soon|underveis|under arbeid)|^(?:under construction|coming soon)[.! ]*$',description,re.I):description=None
@@ -1090,7 +1120,7 @@ def research(row, fetcher, previous=None, search=None):
                 collective=group_description(description or '')
                 add('website.description',description or None,description_response,
                     state='ambiguous' if collective else None,
-                    pointer='meta[name=description] or scoped visible homepage paragraph; navigation and footer excluded',excerpt=description)
+                    pointer=description_pointer,excerpt=description)
                 if collective:
                     claims[-1]['qualifiers']={'subject_scope':'group',
                         'own_entity_description':'not_established',

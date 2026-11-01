@@ -157,6 +157,21 @@ class CrossPageContactIdentity(unittest.TestCase):
             self.assertEqual([x['value'] for x in channels],['ours@example.no'])
             self.assertEqual(held,[])
 
+    def test_wrapped_own_legal_name_and_preceding_agency_credit(self):
+        from contacts import collect_entity_contacts
+        for name in ['Example AS','Example<br>AS']:
+            page=Page('<footer><p>© 2026<br>'+name+'<br>. Utviklet av <a href="https://agency.test">Other Studio AS</a>.</p><a href="mailto:ours@example.no">Email</a><a href="tel:12345678">Call</a></footer>','https://example.no/')
+            channels,held,_=collect_entity_contacts([(page,{'url':page.url})],self.DATA)
+            self.assertEqual({x['value'] for x in channels},{'ours@example.no','12345678'})
+            self.assertEqual(held,[])
+
+    def test_own_parent_imprint_does_not_override_separate_foreign_child_card(self):
+        from contacts import collect_entity_contacts
+        page=Page('<footer><p>Example AS</p><div><p>Example Shanghai Ltd.</p><a href="mailto:foreign@example.no">Email</a></div><a href="mailto:ours@example.no">Ours</a></footer>','https://example.no/contact')
+        channels,held,_=collect_entity_contacts([(page,{'url':page.url})],self.DATA)
+        self.assertEqual({x['value'] for x in channels},{'ours@example.no'})
+        self.assertTrue(any(x['value']=='foreign@example.no' for x in held))
+
     def test_similarly_named_other_company_is_not_own_and_neighbour_is_preserved(self):
         from contacts import collect_entity_contacts
         page=Page('<section><div><p>Northern Example AS</p><a href="mailto:other@example.no">Other</a><a href="tel:+4711111111">Call</a></div><div><a href="mailto:ours@example.no">Ours</a><a href="tel:+4722222222">Call</a></div></section>','https://example.no/contact')

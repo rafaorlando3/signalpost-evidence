@@ -66,3 +66,23 @@ def name_domain_candidates(data):
     else:grouped=words
     hosts=[compact+'.no',('-'.join(grouped)+'.no') if len(grouped)>1 else compact+'.com']
     return list(dict.fromkeys('https://'+h+'/' for h in hosts))[:2]
+
+
+def industry_city_candidates(data):
+    """Two untrusted category/locality URL leads, never ownership evidence.
+
+    Marketing slugs use a generic Norwegian service category and the official
+    municipality. No company, organisation number or city-specific host list.
+    """
+    import re,unicodedata
+    # NACE49.420 is moving services. The public-facing service-category name
+    # is not necessarily the company's legal name, so legal identity is still
+    # established independently after the page is fetched.
+    service={'49.420':'flyttebyra'}.get((data.get('naeringskode1') or {}).get('kode'))
+    city=(data.get('forretningsadresse') or {}).get('kommune')
+    if not service or not isinstance(city,str):return []
+    city=city.casefold().translate(str.maketrans({'ø':'o','æ':'ae','å':'a'}))
+    city=''.join(c for c in unicodedata.normalize('NFKD',city) if not unicodedata.combining(c))
+    city=re.sub(r'[^a-z0-9]+','-',city).strip('-')
+    if not 2<=len(city)<=45:return []
+    return ['https://'+service+'-'+city+'.no/','https://'+service+city.replace('-','')+'.no/']

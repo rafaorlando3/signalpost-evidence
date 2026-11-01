@@ -116,7 +116,11 @@ def foreign_contact_bindings(pages,data):
         for node in blocks:
             text=node['text']
             if node.get('excluded') or len(text)>2000:continue
-            matches=list(legal.finditer(text));names={namekey(m.group(1)) for m in matches}
+            # A legal name can wrap between DOM nodes. It remains the target's
+            # imprint, not a new entity named only by its last line.
+            if own and re.search(r'(?im)^[ \t]*(?:©\s*(?:[0-9]{4}\s*)?)?'+r'\s+'.join(re.escape(w) for w in own.split())+r'[ \t]*(?=\n|$)',text):continue
+            matches=[m for m in legal.finditer(text) if not re.search(r'(?:utviklet|laget|designet|levert)\s+av\s*$|(?:developed|designed|website|site)\s+by\s*$',text[max(0,m.start(1)-70):m.start(1)],re.I)]
+            names={namekey(m.group(1)) for m in matches}
             if len(names)!=1 or own in names:continue
             if str(data.get('organisasjonsnummer','')) and re.search(r'(?<!\d)'+r'\s*'.join(data['organisasjonsnummer'])+r'(?!\d)',text):continue
             match=matches[0];name=match.group(1).strip()
@@ -134,7 +138,7 @@ def foreign_contact_bindings(pages,data):
             if any(node['scope_id'] in other['ancestors'] and name==other_name for other,other_name,_ in bindings):continue
             for channel in channels:
                 blocked.setdefault(contact_key(channel),{'reason':'same channel is explicitly published for another legal entity',
-                    'other_legal_name':name,'source_url':page.url,'evidence_excerpt':text.strip()[:2000]})
+                    'other_legal_name':name,'source_url':page.url,'evidence_excerpt':node['text'].strip()[:2000]})
     return blocked
 
 

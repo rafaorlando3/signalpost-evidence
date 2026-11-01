@@ -1,5 +1,13 @@
 # Signalpost — entity-attributed social recovery, local review (2026-10-31)
 
+## Generic discovery and linked legal identity (1 November follow-up)
+
+Name-derived URLs remain untrusted leads. A second bounded fallback can derive two moving-service marketing slugs from NACE 49.420 and the registered municipality; no company, city-specific host or organisation allowlist is embedded. Every fetched candidate must independently pass legal identity checks. This narrow category heuristic is not a replacement for general web search.
+
+When a homepage has no complete legal imprint, observed same-host links can connect its explicit full legal self-description on an About page with its exact registered street/postcode on a Contact page. Only visible, scoped business text supplies that self-description, including CMS div/font blocks. Metadata alone, customer quotes, testimonials, group operators, other-host pages, unlinked documents and conflicting legal IDs cannot supply this proof. Literal spans, the observed link paths and all retained source pages are exposed and reproduced by the source auditor. Where the homepage has no descriptive text, this same verified legal self-description can supply the description with its actual source.
+
+Contact checks also distinguish a preceding web-agency credit from a contact owner and recognize a legal name wrapped across DOM nodes. Separate foreign subsidiary cards still veto their repeated channels elsewhere. Registry contact publication remains disabled. Local tests and A/B source comparisons do not establish an official total score; the reference union and independent scoring remain external dependencies. Nothing in this follow-up authorizes sending a revision.
+
 ## Contact identity and normalized uniqueness (1 November)
 
 Contact extraction checks all explored pages for small blocks explicitly naming another legal entity. Such evidence vetoes the same channel repeated in an unlabeled employee card, including a locally formatted phone beside that subsidiary's email. The closest contact block governs; neighbouring employees, provider credits after a contact and introductory labels around the target legal name do not establish another owner. An unscoped visible-text email cannot override a conflicting contact address when it also belongs to a different business domain. Address drift alone does not establish a different legal owner of an own-domain mailbox or switchboard.
