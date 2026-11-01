@@ -183,10 +183,12 @@ def linked_public_job_detail(page,link):
     p=urlsplit(link.get('url',''))
     # Reject non-ad links before examining page content. A page can have
     # thousands of ordinary links; body parsing is once per eligible page.
-    if p.hostname not in {'finn.no','www.finn.no'}:return False
+    if p.hostname not in {'finn.no','www.finn.no','arbeidsplassen.nav.no'}:return False
     if link.get('third_party_context') or not 3<=len(link.get('text','').strip())<=180:return False
-    detail=bool(re.fullmatch(r'/job/ad/[0-9]+/?',p.path)
-                or (p.path=='/job/fulltime/ad.html' and re.fullmatch(r'finnkode=[0-9]+',p.query)))
+    detail=(bool(re.fullmatch(r'/stillinger/stilling/[0-9a-fA-F-]{36}/?',p.path))
+            if p.hostname=='arbeidsplassen.nav.no' else
+            bool(re.fullmatch(r'/job/ad/[0-9]+/?',p.path)
+                 or (p.path=='/job/fulltime/ad.html' and re.fullmatch(r'finnkode=[0-9]+',p.query))))
     if not detail:return False
     context=getattr(page,'_linked_public_job_context',None)
     if context is None:
@@ -226,7 +228,7 @@ def contradicted_by_closed_ad(page,hiring_pages,data):
     return False
 
 
-def delegated_hiring_pages(content_pages, fetcher, page_type):
+def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, units=()):
     seeds=[];seen={rsp['url'] for _,rsp in content_pages};out=[]
     for page,rsp in content_pages:
         for link in page.links:
@@ -252,6 +254,18 @@ def delegated_hiring_pages(content_pages, fetcher, page_type):
         pg=page_type(rsp.get('text',''),rsp['url'])
         if re.search(r'\b(?:sign in|logg inn|access denied|captcha)\b',pg.title,re.I):continue
         rsp={**rsp,'identity_verified':False,'delegated_from_verified_careers':True,'delegated_from_url':parent}
+        # NAV exposes the current ad in inert Next Flight JSON rather than
+        # JSON-LD. Reuse the public-ad verifier: a link alone cannot establish
+        # employer, publication date, active state or the registered child.
+        if data and urlsplit(rsp['url']).hostname=='arbeidsplassen.nav.no':
+            from public_recruiting import parse_postings
+            for record in parse_postings(pg,rsp,data,units):
+                item=record['item']
+                pg.ld.append({'@type':'JobPosting','title':item['title'],
+                    'datePosted':item['date'],'validThrough':item['valid_through'],
+                    'hiringOrganization':{'name':data.get('navn')},
+                    '_public_board_item':item})
+                rsp={**rsp,'public_job_board':True}
         out.append((pg,rsp))
         # Follow only explicit job-detail links within the observed career host.
         for link in pg.links:

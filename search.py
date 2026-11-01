@@ -46,9 +46,7 @@ def identity_candidates(results, org, name):
 
 
 def candidate_urls(results):
-    excluded = {'facebook.com', 'linkedin.com', 'instagram.com', 'proff.no',
-                'brreg.no', 'purehelp.no', '1881.no', 'gulesider.no', 'wikipedia.org',
-                'vexter.no', '1850.no', 'bizzy.org', 'virksomhet.brreg.no'}
+    excluded = DIRECTORIES
     seen = set()
     for result in results:
         url = result.get('url') if isinstance(result, dict) else None
@@ -145,7 +143,7 @@ class TavilySearch:
         if path.exists() and (fetcher.replay or not fetcher.fresh):
             cached = json.loads(path.read_text())
             record.update(state='cached', urls=list(candidate_urls([{'url': u} for u in cached['urls']])), retrieved_at=cached['retrieved_at'])
-            if mode=='identity':record['candidates']=cached.get('candidates',[])
+            if mode in {'identity','name_focus'}:record['candidates']=cached.get('candidates',[])
             fetcher.hits += 1
             return record['urls']
         if fetcher.replay:
@@ -157,17 +155,21 @@ class TavilySearch:
         record.update(request_attempts=1, credits_reported=None, paid_cost_usd=None)
         try:
             response = self.transport(payload, max(.1, min(8, fetcher.end - time.monotonic())))
-            candidates=identity_candidates(response.get('results',[]),org,name) if mode=='identity' else []
-            urls = [c['url'] for c in candidates] if mode=='identity' else list(candidate_urls(response.get('results', [])))[:2]
+            candidates=identity_candidates(response.get('results',[]),org,name) if mode in {'identity','name_focus'} else []
+            # Prefer result titles/snippets matching the queried legal identity
+            # over unrelated business portals. They remain URL leads only:
+            # the fetched first-party site must independently establish identity.
+            urls = ([c['url'] for c in candidates] if candidates or mode=='identity'
+                    else list(candidate_urls(response.get('results', [])))[:2])
             record.update(state='completed', urls=urls,
                           credits_reported=response.get('usage', {}).get('credits'))
-            if mode=='identity':record['candidates']=candidates
+            if mode in {'identity','name_focus'}:record['candidates']=candidates
             # Cache only candidate URLs, never snippets, answers, API credentials or full output.
             from datetime import datetime, timezone
             record['retrieved_at'] = datetime.now(timezone.utc).isoformat()
             temp = path.with_suffix('.' + str(threading.get_ident()) + '.tmp')
             temp.write_text(json.dumps({'urls': urls, 'retrieved_at': record['retrieved_at'],
-                                       **({'candidates':candidates} if mode=='identity' else {})}))
+                                       **({'candidates':candidates} if mode in {'identity','name_focus'} else {})}))
             temp.replace(path)
             return urls
         except (OSError, ValueError, TypeError, AttributeError, http.client.HTTPException) as exc:
@@ -177,7 +179,7 @@ class TavilySearch:
     def iter_candidates(self,org,name,fetcher):
         """Second query is lazy: a confirmed first-stage site avoids its charge."""
         stages=[];seen=set()
-        modes=('legacy','identity') if self.strategy=='adaptive' else (self.strategy,)
+        modes=('name_focus','identity') if self.strategy=='adaptive' else (self.strategy,)
         for mode in modes:
             urls=self.discover(org,name,fetcher,mode)
             stage=dict(fetcher.discovery);stages.append(stage)

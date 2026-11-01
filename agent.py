@@ -1069,12 +1069,6 @@ def research(row, fetcher, previous=None, search=None):
                 root=parsed.hostname[4:]+(':'+str(parsed.port) if parsed.port else '')
                 alternate=urlunsplit((parsed.scheme,root,parsed.path,parsed.query,''))
                 yield alternate,'canonical_host_candidate',remaining,[]
-        if search and data.get('navn'):
-            if hasattr(search,'iter_candidates'):
-                for url,remaining,hints in search.iter_candidates(org,data['navn'],fetcher):yield url,'search',remaining,hints
-            else:
-                urls=search.discover(org,data['navn'],fetcher)
-                for i,url in enumerate(urls):yield url,'search',len(urls)-i-1,[]
         from registry_discovery import name_domain_candidates,industry_city_candidates
         existing={host_key(lead['url']) for lead in leads}
         derived=[u for u in name_domain_candidates(data) if host_key(u) not in existing]
@@ -1090,6 +1084,15 @@ def research(row, fetcher, previous=None, search=None):
         for homepage in legal_form_domain_candidates(data):
             if fetcher.requests<=fetcher.limit-2:
                 yield homepage,'legal_form_domain_heuristic',0,[]
+        # Optional broad search must not consume the slots that already recover
+        # a first-party site or an exact-employer public ad without credentials.
+        # A site found earlier closes this lazy generator without a search call.
+        if search and data.get('navn') and fetcher.requests<=fetcher.limit-3:
+            if hasattr(search,'iter_candidates'):
+                for url,remaining,hints in search.iter_candidates(org,data['navn'],fetcher):yield url,'search',remaining,hints
+            else:
+                urls=search.discover(org,data['navn'],fetcher)
+                for i,url in enumerate(urls):yield url,'search',len(urls)-i-1,[]
         if getattr(fetcher,'public_search',None):
             candidates=fetcher.public_search.discover(data,fetcher)
             for index,candidate in enumerate(candidates):
@@ -1183,7 +1186,7 @@ def research(row, fetcher, previous=None, search=None):
                                 excerpt=(item.get('source_href') or item['value']) if item else None)
                     claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 from hiring_discovery import delegated_hiring_pages, literal_hiring_candidates
-                hiring_pages=content_pages+delegated_hiring_pages(content_pages,fetcher,Page)
+                hiring_pages=content_pages+delegated_hiring_pages(content_pages,fetcher,Page,data=data,units=units)
                 for field,types in [('hiring',{'JobPosting'}),('activity',{'NewsArticle','Article','BlogPosting'})]:
                     items=[]; evidence_responses=[];positive_responses=[];limitations=[]
                     def limitation(response,reason):
@@ -1255,6 +1258,9 @@ def research(row, fetcher, previous=None, search=None):
                                 if attribution:item['attribution']=attribution
                                 if obj.get('_publication_date_basis'):item['publication_date_basis']=obj['_publication_date_basis']
                                 if field=='hiring': item.update(valid_through=obj.get('validThrough'),status='published_posting; application availability not independently checked')
+                                if obj.get('_public_board_item'):
+                                    item.update(obj['_public_board_item'])
+                                    evidence_responses.extend([entity,locations])
                                 if literal_candidate:
                                     ats=obj.get('_ats_response')
                                     item.update(publication_date_state='not_stated' if date is None else 'literal_publication_block',hiring_organisation_basis=obj['_employer_basis'],

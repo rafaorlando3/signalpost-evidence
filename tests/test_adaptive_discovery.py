@@ -9,6 +9,36 @@ from search import TavilySearch, identity_candidates
 from test_discovery import Pages, ORG
 
 class AdaptiveDiscovery(unittest.TestCase):
+    def test_focused_first_query_prioritizes_company_lead_and_keeps_legal_hint(self):
+        calls=[]
+        def post(payload,timeout):
+            calls.append(payload)
+            return {'results':[
+                {'url':'https://io.no/directory/example','title':'Example AS '+ORG},
+                {'url':'https://unrelated.test/','title':'Other business'},
+                {'url':'https://ours.test/contact','title':'Example AS','content':'Org '+ORG}
+            ],'usage':{'credits':1}}
+        with tempfile.TemporaryDirectory() as d:
+            s=TavilySearch(d,key='fixture',strategy='adaptive',transport=post)
+            iterator=s.iter_candidates(ORG,'Example AS',Fetcher(d))
+            self.assertEqual(next(iterator),('https://ours.test/',1,['https://ours.test/contact']))
+            iterator.close()
+            self.assertEqual(len(calls),1)
+            self.assertEqual(calls[0]['query'],'"Example AS"')
+            self.assertEqual(calls[0]['search_depth'],'basic')
+            replay=s.iter_candidates(ORG,'Example AS',Fetcher(d,replay=True))
+            self.assertEqual(next(replay)[2],['https://ours.test/contact'])
+            replay.close()
+            self.assertEqual(len(calls),1)
+
+    def test_all_discovery_modes_exclude_known_directory_subdomains(self):
+        from search import candidate_urls
+        self.assertEqual(list(candidate_urls([
+            {'url':'https://www.io.no/company/example'},
+            {'url':'https://sub.proffi.no/company/example'},
+            {'url':'https://ours.test/contact'}
+        ])),['https://ours.test/'])
+
     def test_number_query_cache_retains_urls_not_snippets(self):
         calls=[]
         def post(payload,timeout):

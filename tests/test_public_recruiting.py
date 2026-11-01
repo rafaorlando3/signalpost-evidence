@@ -69,6 +69,35 @@ class NAVPrimary(unittest.TestCase):
  def test_malformed_application_object_is_withheld(self):
   self.assertFalse(parse(response=self.source(application='not an object')))
 
+class LinkedNAVPipeline(unittest.TestCase):
+ def test_observed_career_link_recovers_nav_ad_and_audit_rechecks_identity(self):
+  from hiring_discovery import linked_public_job_detail
+  own='https://exampleplant.no/'
+  for changes,accepted in [({},True),({'status':'INACTIVE'},False),
+                            ({'employer':{'orgnr':'974761076','name':DATA['navn']}},False)]:
+   with self.subTest(changes=changes),tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
+    pipeline_fixtures.Pipeline().fixture(d);save(d,BASE,{**DATA,'hjemmeside':own})
+    nav=NAVPrimary().source(**changes)
+    career='<main><h1>Ledige stillinger</h1><a href="'+nav['url']+'">Mechanical engineer</a></main>'
+    pages=[(own+'robots.txt','User-agent: *\nAllow: /'),
+           (own,'<footer>Example Plant AS Org.nr. '+ORG+'</footer><a href="/karriere/">Careers</a>'),
+           (own+'karriere/',career),
+           ('https://arbeidsplassen.nav.no/robots.txt','User-agent: *\nAllow: /')]
+    for url,text in pages:
+     (Path(d)/(digest(url.encode())+'.json')).write_text(encode(rsp(url,text)))
+    (Path(d)/(digest(nav['url'].encode())+'.json')).write_text(encode(nav))
+    row=research({'organisation_number':ORG},Fetcher(d,replay=True,public_jobs=False))
+    hiring=next(c for c in row['claims'] if c['field']=='website.hiring')
+    self.assertEqual(hiring['availability']=='available',accepted)
+    if accepted:
+     self.assertEqual(hiring['value'][0],parse(response=nav)[0]['item'])
+     self.assertTrue(audit([row],d)['passed'])
+     changed=copy.deepcopy(row)
+     next(c for c in changed['claims'] if c['field']=='website.hiring')['value'][0]['employer_binding']['published_organisation_number']='974761076'
+     self.assertFalse(audit([changed],d)['passed'])
+    plain=Page(career,own+'news/customer-story/')
+    self.assertFalse(linked_public_job_detail(plain,plain.links[0]))
+
 class PublicDiscoveryPipeline(unittest.TestCase):
  def test_existing_website_leads_keep_priority_over_public_search_budget(self):
   with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
@@ -90,7 +119,10 @@ class PublicDiscoveryPipeline(unittest.TestCase):
    sources=[('https://www.finn.no/robots.txt','User-agent: *\nAllow: /'),(query,'<a href="'+AD+'">Mechanical engineer</a>'),(AD,html()),('https://own-brand.test/robots.txt','User-agent: *\nAllow: /'),('https://own-brand.test/','<title>Example Plant</title><p>Manufacturing and repair services for industrial customers.</p><footer>Example Plant AS Org.nr. '+ORG+'</footer><a href="mailto:office@own-brand.test">Email</a>')]
    for url,text in sources:
     record=rsp(url,text);(Path(d)/(digest(url.encode())+'.json')).write_text(encode(record))
-   row=research({'organisation_number':ORG},Fetcher(d,replay=True));c={x['field']:x for x in row['claims']}
+   class SearchMustRemainUnused:
+    def iter_candidates(self,*args):
+     raise AssertionError('broad search must not precede a sufficient public ad and homepage')
+   row=research({'organisation_number':ORG},Fetcher(d,replay=True),search=SearchMustRemainUnused());c={x['field']:x for x in row['claims']}
    self.assertEqual(c['website.verified_url']['value'],'https://own-brand.test/')
    self.assertEqual(c['website.hiring']['value'][0]['url'],AD)
    self.assertTrue(audit([row],d)['passed'])
