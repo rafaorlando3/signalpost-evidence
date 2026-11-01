@@ -88,7 +88,7 @@ def audit(rows, cache):
                     for eid,s in sources.items():
                         if eid not in c['evidence_ids'] or s.get('url')!=item['url'] or 'json' in s:continue
                         matching+=continuous_first_party_vacancy(Page(s.get('text',''),s['url']),{**s,'identity_verified':True},registry or {})
-                    if not any(x['title']==item['title'] and x['datePosted']==item['date'] and x['validThrough']==item.get('valid_through') and x['_application_url']==item.get('application_url') for x in matching):
+                    if not any(x['title']==item['title'] and x['datePosted']==item['date'] and x['validThrough']==item.get('valid_through') and x['_application_url']==item.get('application_url') and x.get('_deadline_text')==item.get('deadline_text') for x in matching):
                         errors.append([row['organisation_number'],'first-party vacancy invitation not reproduced from retained evidence'])
                     else:counts['first_party_vacancy_invitations_checked']+=1
         if compare(row,row): errors.append([row['organisation_number'],'false self change'])

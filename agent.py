@@ -506,6 +506,8 @@ def identity_excerpt(org,page):
     return None
 
 def link_family(url):
+    from site_discovery import excluded_content_url
+    if excluded_content_url(url):return None
     path=urlsplit(url).path.casefold()
     if re.search(r'nyhetsbrev|newsletter|\.pdf$|\.jpg$|\.png$',path): return None
     # Whole path words: 'bestillinger' means orders, not 'stillinger' (jobs).
@@ -571,7 +573,10 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             label=normalized(link['text'])
             if link.get('in_navigation') and re.fullmatch(r'english|engelsk|norsk|norwegian|bokmål|nynorsk|deutsch|svenska|dansk|en|no|nb|nn',label):
                 continue
-            url=urlunsplit((*urlsplit(link['url'])[:4],''));family=link_family(url)
+            url=urlunsplit((*urlsplit(link['url'])[:4],''))
+            from site_discovery import excluded_content_url
+            if excluded_content_url(url):continue
+            family=link_family(url)
             if family is None:
                 if re.search(r'\b(kontakt|contact|personvern|privacy|om oss|about us)\b',label): family='identity'
                 elif re.match(r'^(?:vi søker|we are hiring|ledige stillinger|job vacancies)\b',label):family='hiring'
@@ -625,6 +630,8 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
             careers_seen=verified and (any(link_family(pg.url)=='hiring' for pg,_,_ in pages)
                 or any(family=='hiring' and url not in exploratory_roles for url,family in queue.items()))
             for candidate in urls:
+                from site_discovery import excluded_content_url
+                if excluded_content_url(candidate):continue
                 family=link_family(candidate)
                 if (family is None and verified and re.search(r'post|news|feed',url,re.I)
                         and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)(?:$|[?#])',candidate,re.I)):
@@ -634,17 +641,19 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
                       and len([p for p in urlsplit(candidate).path.split('/') if p])==1
                       and not catalog_route(candidate) and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)$',urlsplit(candidate).path,re.I)):
                     exploratory_roles.add(candidate);queue.setdefault(candidate,'hiring')
-    from hiring_discovery import application_links
+    from hiring_discovery import application_links,linked_public_job_detail
+    def has_application_lead():
+        return any(application_links(pg) or any(linked_public_job_detail(pg,l) for l in pg.links) for pg,_,_ in pages)
     def crawl_reserve():
         # Public application landing pages can contain the only literal deadline.
         # Leave room for their robots request, three GETs and one redirect once a role links one.
-        return 5 if verified and any(application_links(pg) for pg,_,_ in pages) else (0 if verified else reserve_requests)
+        return 5 if verified and has_application_lead() else (0 if verified else reserve_requests)
     while attempted_pages<18 and fetcher.requests<fetcher.limit-crawl_reserve():
         # An already fetched news index provides stronger discovery leads than
         # another map request. XML remains a fallback when those leads run out.
         pending_posts=any(u not in seen and u in queue for u in post_leads)
         pending_roles=any(f=='hiring' and not any(urlsplit(v).path.rstrip('/')==urlsplit(u).path.rstrip('/') and urlsplit(v).query==urlsplit(u).query for v in seen) for u,f in queue.items())
-        has_application=any(application_links(pg) for pg,_,_ in pages)
+        has_application=has_application_lead()
         if not discovered and (not queue or (verified and len(seen)>=4 and not pending_posts)) and not (pending_roles and (has_application or portal_child)):
             discovered=True;discover()
         if not queue:break
@@ -1167,6 +1176,9 @@ def research(row, fetcher, previous=None, search=None):
                             candidates,reasons=activity_candidates(pg,rsp)
                             for reason in reasons:limitation(rsp,reason)
                         else:
+                            from hiring_discovery import closed_hiring_page
+                            if rsp.get('delegated_from_verified_careers') and closed_hiring_page(pg):
+                                limitation(rsp,'linked job posting is explicitly closed or expired');continue
                             literal_candidates=literal_hiring_candidates(pg,rsp,data,hiring_pages)
                             candidates=list(objects(pg.ld))+literal_candidates
                         for obj in candidates:
@@ -1222,6 +1234,9 @@ def research(row, fetcher, previous=None, search=None):
                                         deadline_basis=obj['_deadline_basis'],application_url=ats['url'] if ats else obj['_application_url'],
                                         status=('listed_vacancy; literal deadline checked; application acceptance not tested' if obj.get('validThrough') else 'published first-party vacancy invitation; deadline not stated; application acceptance not tested'))
                                     if obj.get('_application_contact'):item['application_contact']=obj['_application_contact']
+                                    if obj.get('_deadline_text'):
+                                        item['deadline_text']=obj['_deadline_text']
+                                        item['status']='published first-party vacancy invitation; rolling ASAP, no calendar deadline; application acceptance not tested'
                                     evidence_responses.extend(([ats] if ats else [])+[anchor_response])
                                 if not any(i['url']==item['url'] and str(i['date'])[:10]==str(item['date'])[:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp);positive_responses.append(rsp)

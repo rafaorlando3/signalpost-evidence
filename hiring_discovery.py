@@ -94,20 +94,27 @@ def continuous_first_party_vacancy(page,response,data):
     sections=re.findall(r'\b(?:ønskede kvalifikasjoner|hvem er du|hva du vil jobbe med|vi tilbyr)\b',body,re.I)
     if not rolling and not (named_role and len(set(x.casefold() for x in sections))>=2):return []
     # A partly stated or expired deadline must not become "unknown but open".
-    deadline=None
+    deadline=None;deadline_text=None
     if re.search(r'søknadsfrist|application deadline',body,re.I):
         m=re.search(r'(?:søknadsfrist|application deadline)\s*:?\s*(\d{1,2})[./](\d{1,2})[./](\d{4})(?!\d)',body,re.I)
-        if not m:return []
+        rolling_match=re.search(r'(?:søknadsfrist|application deadline)\s*:?\s*(snarest|as soon as possible)(?:[.!]|$|\s)',body,re.I)
+        rolling_deadline=bool(rolling and rolling_match)
+        if rolling_deadline:deadline_text=rolling_match[1]
+        if not m and not rolling_deadline:return []
         try:
-            deadline=dt.date(int(m[3]),int(m[2]),int(m[1]))
-            if deadline<dt.date.fromisoformat(response['retrieved_at'][:10]):return []
+            deadline=dt.date(int(m[3]),int(m[2]),int(m[1])) if m else None
+            if deadline and deadline<dt.date.fromisoformat(response['retrieved_at'][:10]):return []
         except ValueError:return []
     host=(urlsplit(page.url).hostname or '').removeprefix('www.');contact=None;application=None
     for link in page.links:
         if link.get('third_party_context'):continue
         u=link.get('url','');label=link.get('text','')
-        if u.startswith('mailto:') and re.search(r'søknad|apply|application',label,re.I):
+        if u.startswith('mailto:'):
             address=urlsplit(u).path
+            offset=body.find(address)
+            nearby=body[max(0,offset-220):offset] if offset>=0 else ''
+            invitation=re.search(r'(?:søknad|application|\bCV\b).{0,160}?(?:send(?:es)?\s+(?:til|to)|sendes|e-?post|email|e-mail)\b|send.{0,100}?(?:søknad|application).{0,60}?\b(?:til|to)\b',nearby,re.I)
+            if not re.search(r'søknad|apply|application',label,re.I) and not invitation:continue
             if re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"+re.escape(host),address,re.I):contact=address;application=page.url;break
         try:p=urlsplit(u);port=p.port
         except ValueError:continue
@@ -118,9 +125,10 @@ def continuous_first_party_vacancy(page,response,data):
     if not application:return []
     return [{'@type':'JobPosting','title':title,'datePosted':None,'hiringOrganization':{'name':data['navn']},
         'validThrough':deadline.isoformat() if deadline else None,'_literal_first_party':True,
+        **({'_deadline_text':deadline_text} if deadline_text else {}),
         '_application_url':application,**({'_application_contact':contact} if contact else {}),
         '_employer_basis':'exact corporate ID on verified first-party page plus named employer in recruiting content',
-        '_deadline_basis':'explicit first-party deadline' if deadline else 'not stated; explicit job-specific application invitation on first-party page'}]
+        '_deadline_basis':'explicit first-party deadline' if deadline else 'rolling ASAP invitation; calendar deadline not stated' if deadline_text else 'not stated; explicit job-specific application invitation on first-party page'}]
 
 
 def literal_hiring_candidates(page, response, data, hiring_pages):
@@ -165,19 +173,37 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
     return continuous
 
 
+def linked_public_job_detail(page,link):
+    """Observed job-board detail link on a first-party career page, not search."""
+    p=urlsplit(link.get('url',''));path=urlsplit(page.url).path
+    if not re.search(r'(?:^|[/_-])(?:careers?|karriere|jobs?|stillinger)(?:$|[/_-])',path,re.I):return False
+    if link.get('third_party_context') or not 3<=len(link.get('text','').strip())<=180:return False
+    # FINN legacy and current public ad URLs. Listing/search/apply URLs cannot
+    # enter through this route; the returned posting still needs exact employer.
+    if p.hostname not in {'finn.no','www.finn.no'}:return False
+    return bool(re.fullmatch(r'/job/ad/[0-9]+/?',p.path)
+                or (p.path=='/job/fulltime/ad.html' and re.fullmatch(r'finnkode=[0-9]+',p.query)))
+
+
+def closed_hiring_page(page):
+    return bool(re.search(r'fristen er utløpt|stillingen er (?:besatt|avsluttet)|position (?:is )?(?:filled|closed)|no longer accepting applications',page.text,re.I)
+                or re.search(r'(?<!\w)Besatt(?!\w)',page.text,re.I))
+
+
 def delegated_hiring_pages(content_pages, fetcher, page_type):
     seeds=[];seen={rsp['url'] for _,rsp in content_pages};out=[]
     for page,rsp in content_pages:
         for link in page.links:
             u=link.get('url','');text=link.get('text','')
             public_application=u in application_links(page)
+            public_job=bool(rsp.get('identity_verified') and linked_public_job_detail(page,link))
             try:
                 p=urlsplit(u);port=p.port
             except ValueError:continue
             if p.scheme not in ('http','https') or not p.hostname or p.username or p.password:continue
             if port not in (None,80,443) or link.get('third_party_context'):continue
             if re.search(r'login|sign[-_]?in|profile|apply|application',p.path,re.I) and not public_application:continue
-            if not public_application and not re.search(r'\b(?:careers?|karriere|jobbe?\s+(?:hos|i)|ledige\s+stillinger|vacancies|jobs?)\b',text,re.I):continue
+            if not public_application and not public_job and not re.search(r'\b(?:careers?|karriere|jobbe?\s+(?:hos|i)|ledige\s+stillinger|vacancies|jobs?)\b',text,re.I):continue
             if p.hostname==urlsplit(rsp['url']).hostname:continue
             u=urlunsplit((p.scheme,p.netloc,p.path,p.query,''))
             if not any(x[0]==u for x in seeds):seeds.append((u,rsp['url']))

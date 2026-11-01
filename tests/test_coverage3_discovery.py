@@ -1,0 +1,44 @@
+import tempfile,unittest
+from unittest.mock import patch
+from agent import Page,Fetcher,crawl_company
+from hiring_discovery import delegated_hiring_pages,closed_hiring_page
+
+class Coverage3Discovery(unittest.TestCase):
+ def test_asset_contact_labels_and_sitemap_paths_cannot_consume_page_budget(self):
+  html='<title>Example Works</title><footer>Org.nr. 810 034 882</footer><a href="/contact">Contact</a>'
+  for path in ['/about/privacy.jpg.webp','/contact/icon.svg','/careers/role.mp4','/contact-form-confirmation']:
+   html+='<a href="'+path+'">Contact</a>'
+  response={'url':'https://example.test/','status':'available','text':html}
+  requested=[]
+  def get(url,**kw):
+   requested.append(url)
+   return {'url':url,'status':'available','text':'<p>Org.nr. 810 034 882</p>' if url.endswith('/contact') else '<urlset><url><loc>https://example.test/jobs/opening.png.webp</loc></url></urlset>','status_code':200}
+  with tempfile.TemporaryDirectory() as d:
+   f=Fetcher(d,replay=True)
+   with patch.object(f,'get',side_effect=get):
+    verified,pages=crawl_company('810034882',{'navn':'Example Works AS'},response,f)
+  self.assertTrue(verified);self.assertIn('https://example.test/contact',requested)
+  self.assertFalse(any(x in u for u in requested for x in ['.webp','.svg','.mp4','confirmation']))
+ def test_linked_named_ad_is_discovered_without_an_external_job_seed(self):
+  page=Page('<h1>Careers</h1><p>Open applications welcome.</p><a href="https://www.finn.no/job/ad/123456789">Mechanical engineer</a>','https://example.test/careers')
+  rsp={'url':page.url,'identity_verified':True};requested=[]
+  def get(url,**kw):
+   requested.append(url)
+   return {'url':url,'text':'<title>Mechanical engineer</title>','status':'available'}
+  with tempfile.TemporaryDirectory() as d:
+   f=Fetcher(d,replay=True)
+   with patch.object(f,'get',side_effect=get):out=delegated_hiring_pages([(page,rsp)],f,Page)
+  self.assertEqual(requested,['https://www.finn.no/job/ad/123456789'])
+  self.assertFalse(out[0][1]['identity_verified'])
+  self.assertEqual(out[0][1]['delegated_from_url'],page.url)
+ def test_named_ad_search_customer_and_unverified_links_do_not_delegate(self):
+  for path,url,third,verified in [('/careers','https://www.finn.no/job/search?query=engineer',False,True),('/customers','https://www.finn.no/job/ad/123',False,True),('/careers','https://www.finn.no/job/ad/123',True,True),('/careers','https://www.finn.no/job/ad/123',False,False)]:
+   pg=Page('<a href="'+url+'">Mechanical engineer</a>','https://example.test'+path);pg.links[0]['third_party_context']=third
+   with tempfile.TemporaryDirectory() as d:
+    f=Fetcher(d,replay=True)
+    with patch.object(f,'get',side_effect=AssertionError('not a public career lead')):
+     self.assertEqual(delegated_hiring_pages([(pg,{'url':pg.url,'identity_verified':verified})],f,Page),[])
+ def test_closed_ad_is_not_open_because_schema_remains_on_page(self):
+  self.assertTrue(closed_hiring_page(Page('<h1>Engineer</h1><div>Besatt</div>','https://board.test/job/ad/123')))
+  self.assertTrue(closed_hiring_page(Page('<h1>Engineer</h1><p>Fristen er utløpt</p>','https://board.test/job/ad/123')))
+  self.assertFalse(closed_hiring_page(Page('<h1>Engineer</h1><p>Applications welcome.</p>','https://board.test/job/ad/123')))

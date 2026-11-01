@@ -20,3 +20,7 @@ class ContinuousHiring(unittest.TestCase):
   body='<title>Stilling ledig elektriker – Example Engineering</title>'+self.body.replace('Søknader vurderes fortløpende.','Hvem er du? Ønskede kvalifikasjoner: Fagbrev elektriker. Vi tilbyr: fast jobb.').replace('/sok-stilling/567','/tenant/sok-stilling/567').replace('Søk på stillingen','Send inn søknad her.')
   c=self.result(body)[0];self.assertEqual(c['title'],'Stilling ledig elektriker');self.assertIsNone(c['datePosted'])
   self.assertFalse(self.result(body.replace('<title>Stilling ledig elektriker – Example Engineering</title>','')))
+ def test_rolling_asap_deadline_and_literal_application_mail_block(self):
+  body=self.body.replace('Søknader vurderes fortløpende.','Søknadsfrist: Snarest. Søknader vurderes fortløpende. Enkel søknad og CV sendes til: Anne Example Avdelingsleder office@example.no').replace('https://ats.test/sok-stilling/567','mailto:office@example.no').replace('Søk på stillingen','office@example.no')
+  result=self.result(body)[0];self.assertIsNone(result['validThrough']);self.assertEqual(result['_application_contact'],'office@example.no');self.assertEqual(result['_deadline_text'],'Snarest')
+  for changed in [body.replace('Snarest','19.10'),body.replace('Søknader vurderes fortløpende.',''),body.replace('Enkel søknad og CV sendes til:','For technical questions contact:'),body.replace('office@example.no','agency@other.no')]:self.assertFalse(self.result(changed))

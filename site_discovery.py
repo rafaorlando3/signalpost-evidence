@@ -4,6 +4,13 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 
 
+def excluded_content_url(url):
+    """Assets and action/confirmation endpoints are not research documents."""
+    path=urlsplit(url).path
+    return bool(re.search(r"\.(?:pdf|jpe?g|png|gif|svg|webp|avif|ico|bmp|tiff?|woff2?|ttf|eot|mp[34]|webm|mov|zip|gz|css|js)$",path,re.I)
+                or re.search(r"(?:^|/)(?:contact-form-confirmation|form-confirmation|submit|logout)(?:/|$)",path,re.I))
+
+
 def identity_content_candidate(url):
     """Drop an isolated cookie-dialog UI toggle from an identity-page lead.
 

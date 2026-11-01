@@ -1,3 +1,13 @@
+## Bounded discovery and rolling vacancies (1 November, coverage3)
+
+Company-page exploration now rejects non-document assets (including compound image extensions and query-bearing URLs) before labels or sitemaps can enqueue them. Contact-form confirmation and action endpoints are not content leads. This saves the existing20-request budget without changing company identity rules.
+
+A verified first-party career page can delegate an observed named FINN advertisement, including its legacy public ad URL. External search/listings, customer contexts and unverified sources do not enter through this route. The fetched ad still needs the existing exact named-employer/publication checks; visible closed/expired states veto it. Up to five requests remain reserved for public job-detail landing pages, under the shared company cap. No vacancy URL is hardcoded, and no application is submitted.
+
+A specific first-party recruiting notice with exact corporate identity and a named employer may state a rolling ASAP deadline. With explicit rolling review and a same-domain application mailbox in a short literal application-instruction block, this is recorded as a published invitation. The literal deadline wording is retained, publication/calendar-deadline dates remain null when unestablished, and application acceptance is not asserted. Incomplete numeric deadlines, expired notices, spontaneous applications and another employer remain excluded. The source auditor reconstructs the invitation and its literal deadline wording.
+
+The initial new12-employer cohort revealed the rolling-deadline parser gap and therefore became a development diagnostic. A replacement12-employer cohort is frozen before confirmatory execution. The40-company stratified cohort is kept separate. General-domain fallback experiments without a measured coverage gain were not retained. Detailed same-source comparisons, source audits and limits are local under evaluation-20261101-coverage3; no official total,80-point qualification, send or push is implied.
+
 # Signalpost — entity-attributed social recovery, local review (2026-10-31)
 
 ## Coverage follow-up: staff cards and public recruiting notices
