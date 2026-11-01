@@ -69,7 +69,7 @@ class LinkedIdentityPipeline(unittest.TestCase):
             data={**BusinessIdentity.DATA,'organisasjonsnummer':ORG}
             save(folder,BASE,data)
             sources=[('https://exampletherapy.no/robots.txt','User-agent: *\nDisallow:'),
-                     ('https://exampletherapy.no/','<title>Example Therapy</title><a href="/about">About</a><a href="/contact">Contact</a>'),
+                     ('https://exampletherapy.no/','<title>Example Therapy</title><meta name="description" content="05.10.26: We currently have short waiting times for all ages."><a href="/about">About</a><a href="/contact">Contact</a>'),
                      ('https://exampletherapy.no/about','<div><font>Example Therapy AS har levert behandling siden 2016.</font></div>'),
                      ('https://exampletherapy.no/contact','<p>Example Therapy Road 12, 1426 Solberg</p><a href="mailto:office@exampletherapy.no">Email</a><a href="tel:12345678">Call</a>')]
             for url,text in sources:

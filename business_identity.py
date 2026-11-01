@@ -86,7 +86,7 @@ def business_identity(data,pages,identity_check=None):
     for key,page,response in eligible:
         links=path_to(key)
         if links is None:continue
-        for paragraph in self_description_blocks(page):
+        for paragraph in sorted(self_description_blocks(page),key=len):
             if not role.search(normal(paragraph)):continue
             offset=page.text.find(paragraph)
             if offset<0:continue

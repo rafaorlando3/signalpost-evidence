@@ -8,6 +8,8 @@ When a homepage has no complete legal imprint, observed same-host links can conn
 
 Contact checks also distinguish a preceding web-agency credit from a contact owner and recognize a legal name wrapped across DOM nodes. Separate foreign subsidiary cards still veto their repeated channels elsewhere. Registry contact publication remains disabled. Local tests and A/B source comparisons do not establish an official total score; the reference union and independent scoring remain external dependencies. Nothing in this follow-up authorizes sending a revision.
 
+Explicit blog/archive body markers and Blog/CollectionPage microdata identify editorial indexes as discovery sources. A child post preview or the index's own CMS timestamp cannot turn the listing into an individual dated article. Linked article detail pages remain eligible with their own content and publication evidence.
+
 ## Contact identity and normalized uniqueness (1 November)
 
 Contact extraction checks all explored pages for small blocks explicitly naming another legal entity. Such evidence vetoes the same channel repeated in an unlabeled employee card, including a locally formatted phone beside that subsidiary's email. The closest contact block governs; neighbouring employees, provider credits after a contact and introductory labels around the target legal name do not establish another owner. An unscoped visible-text email cannot override a conflicting contact address when it also belongs to a different business domain. Address drift alone does not establish a different legal owner of an own-domain mailbox or switchboard.

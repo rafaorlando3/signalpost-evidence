@@ -194,7 +194,7 @@ class Page(HTMLParser):
     def __init__(self, text, url):
         super().__init__(convert_charrefs=True)
         self.url=url; self.raw_html=text; self.parts=[]; self.links=[]; self.ld=[]; self.skip=0; self.script=None
-        self.title=''; self.in_title=False; self.description=''; self.anchor=None;self.meta={};self.post_container=False
+        self.title=''; self.in_title=False; self.description=''; self.anchor=None;self.meta={};self.post_container=False;self.editorial_listing=False
         self.headings=[];self.heading=None;self.times=[];self.feeds=[];self.link_context=[];self.editorial_scopes=[];self.comment_scopes=[]
         self.content_headings=[];self.content_times=[];self.main_headings=[];self.main_times=[];self.semantic_headings=[];self.heading_is_semantic=False;self.heading_is_main=False;self.heading_is_content=False;self.body_parts=[];self.post_parts=[];self.main_parts=[]
         self.footer_parts=[];self.paragraphs=[];self.paragraph=None;self.paragraph_is_content=False
@@ -219,9 +219,10 @@ class Page(HTMLParser):
         # WordPress and Squarespace mark an individual editorial view on body,
         # even when its content uses div/main instead of article.type-post.
         # A blog listing, static page or homepage is not a detail view.
-        if tag=='body' and urlsplit(self.url).path.rstrip('/'):
+        if tag=='body':
             classes=set(post_context.casefold().split())
-            if 'single-post' in classes or {'view-item','collection-type-blog'}<=classes:
+            self.editorial_listing=bool(classes & {'blog','archive','search'}) or bool(re.search(r'/(?:Blog|CollectionPage|SearchResultsPage)\b',a.get('itemtype') or ''))
+            if urlsplit(self.url).path.rstrip('/') and ('single-post' in classes or {'view-item','collection-type-blog'}<=classes):
                 self.post_container=True
         if tag=='main' and 'posts-entry' in post_context.split() and article_detail(self.url):self.post_container=True
         third_party=(self.link_context[-1][1] if self.link_context else False) or bool(re.search(r'sponsor|partner|customer|testimonial|shar(?:e|ing)|author|agency|webdesign|site-credit|powered-by|theme-credit',context,re.I))
@@ -689,6 +690,7 @@ def activity_candidates(page, response):
     Menu/product/collection metadata and modified-only timestamps cannot be
     promoted to published news. One uncertain item never removes valid siblings.
     """
+    if page.editorial_listing:return [],['editorial index or archive is a discovery source, not an individual dated post']
     candidates=[];limitations=[]
     def limit(reason):
         if reason not in limitations:limitations.append(reason)
@@ -1108,7 +1110,7 @@ def research(row, fetcher, previous=None, search=None):
                 description_page,description_response=content_pages[0]
                 description=description_page.description
                 description_pointer='meta[name=description] or scoped visible homepage paragraph; navigation and footer excluded'
-                if method=='linked_business_self_description_and_registered_address' and (not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4):
+                if method=='linked_business_self_description_and_registered_address' and (not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4 or re.sub(r' (as|asa|sti|nuf)$','',normalized(data.get('navn',''))) not in normalized(description)):
                     own_description=anchor_response['business_identity_support']['legal_name_source']
                     description=own_description['self_description']
                     description_page,description_response=next((pg,rsp) for pg,rsp in content_pages if rsp['url']==own_description['source_url'])
