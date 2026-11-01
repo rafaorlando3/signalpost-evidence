@@ -42,3 +42,16 @@ class Coverage3Discovery(unittest.TestCase):
   self.assertTrue(closed_hiring_page(Page('<h1>Engineer</h1><div>Besatt</div>','https://board.test/job/ad/123')))
   self.assertTrue(closed_hiring_page(Page('<h1>Engineer</h1><p>Fristen er utløpt</p>','https://board.test/job/ad/123')))
   self.assertFalse(closed_hiring_page(Page('<h1>Engineer</h1><p>Applications welcome.</p>','https://board.test/job/ad/123')))
+ def test_expired_reciprocal_board_ad_vetoes_only_the_same_named_employer_and_role(self):
+  import json
+  from hiring_discovery import literal_hiring_candidates
+  data={'navn':'Example Engineering AS','organisasjonsnummer':'810034882'}
+  u='https://example.test/engineer';ad='https://www.finn.no/job/ad/123456789'
+  body='<h1>Mechanical engineer</h1><p>Example Engineering AS: Vi søker ingeniør. Kvalifikasjoner: degree. Søknadsfrist: Snarest. Søknader vurderes fortløpende. Søknad sendes til: office@example.test</p><a href="mailto:office@example.test">office@example.test</a><a href="'+ad+'">finn.no</a><footer>Org.nr. 810 034 882</footer>'
+  page=Page(body,u);rsp={'url':u,'identity_verified':True,'retrieved_at':'2026-11-01T00:00:00Z'}
+  self.assertTrue(literal_hiring_candidates(page,rsp,data,[]))
+  for employer,title,closed,expected in [('Example Engineering AS','Mechanical engineer',True,False),('Different AS','Mechanical engineer',True,True),('Example Engineering AS','Sales manager',True,True),('Example Engineering AS','Mechanical engineer',False,True)]:
+   ld={'@type':'JobPosting','title':title,'hiringOrganization':{'name':employer},'datePosted':'2026-10-01'}
+   board=Page('<div>'+('Fristen er utløpt' if closed else 'Applications welcome')+'</div><script type="application/ld+json">'+json.dumps(ld)+'</script>',ad)
+   sources=[(board,{'url':ad,'requested_url':ad,'delegated_from_url':u,'delegated_from_verified_careers':True})]
+   self.assertEqual(bool(literal_hiring_candidates(page,rsp,data,sources)),expected)

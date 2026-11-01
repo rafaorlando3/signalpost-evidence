@@ -139,6 +139,7 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
     an employer hidden inside an HTML comment on the ATS.
     """
     from agent import normalized
+    if contradicted_by_closed_ad(page,hiring_pages,data):return []
     direct=direct_recruiting_post(page,response,data)
     if direct:return direct
     continuous=continuous_first_party_vacancy(page,response,data)
@@ -176,7 +177,11 @@ def literal_hiring_candidates(page, response, data, hiring_pages):
 def linked_public_job_detail(page,link):
     """Observed job-board detail link on a first-party career page, not search."""
     p=urlsplit(link.get('url',''));path=urlsplit(page.url).path
-    if not re.search(r'(?:^|[/_-])(?:careers?|karriere|jobs?|stillinger)(?:$|[/_-])',path,re.I):return False
+    body=' '.join(page.article_parts)
+    career_context=bool(re.search(r'(?:^|[/_-])(?:careers?|karriere|jobs?|stillinger)(?:$|[/_-])',path,re.I))
+    role_context=(len(page.content_headings)==1 and bool(re.search(r'søknadsfrist|application deadline',body,re.I))
+                  and bool(re.search(r'arbeidsoppgaver|kvalifikasjoner|qualifications|responsibilities',body,re.I)))
+    if not career_context and not role_context:return False
     if link.get('third_party_context') or not 3<=len(link.get('text','').strip())<=180:return False
     # FINN legacy and current public ad URLs. Listing/search/apply URLs cannot
     # enter through this route; the returned posting still needs exact employer.
@@ -188,6 +193,29 @@ def linked_public_job_detail(page,link):
 def closed_hiring_page(page):
     return bool(re.search(r'fristen er utløpt|stillingen er (?:besatt|avsluttet)|position (?:is )?(?:filled|closed)|no longer accepting applications',page.text,re.I)
                 or re.search(r'(?<!\w)Besatt(?!\w)',page.text,re.I))
+
+
+def contradicted_by_closed_ad(page,hiring_pages,data):
+    """A same-role, exact-employer, explicitly linked closed ad vetoes a notice.
+
+    An expired unrelated ad, merely linked in navigation, must not veto another
+    vacancy. Without fetched public evidence the application state stays unknown.
+    """
+    from agent import objects,normalized,schema_types
+    from attribution import legal_stem
+    heads=page.semantic_headings or page.main_headings or page.content_headings
+    if len(heads)!=1:return False
+    title=normalized(heads[0]);employer=legal_stem(data.get('navn',''))
+    observed={l['url'] for l in page.links if linked_public_job_detail(page,l)}
+    for board,response in hiring_pages:
+        if response.get('delegated_from_url')!=page.url or not closed_hiring_page(board):continue
+        if response.get('requested_url',board.url) not in observed:continue
+        for obj in objects(board.ld):
+            if 'JobPosting' not in schema_types(obj):continue
+            hiring=obj.get('hiringOrganization') or {}
+            if (isinstance(hiring,dict) and legal_stem(hiring.get('name',''))==employer
+                    and normalized(obj.get('title',''))==title):return True
+    return False
 
 
 def delegated_hiring_pages(content_pages, fetcher, page_type):
