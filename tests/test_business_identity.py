@@ -85,3 +85,12 @@ class LinkedIdentityPipeline(unittest.TestCase):
             claim=next(c for c in changed['claims'] if c['field']=='website.verified_url')
             claim['identity_support']['address_source']['registered_postcode']='9999'
             self.assertFalse(audit([changed],folder)['passed'])
+            # A useful service description need not repeat the legal name.
+            # New identity proof must not replace it with a different sentence.
+            url,text=sources[1]
+            useful='Professional therapy and rehabilitation for adults and children.'
+            text=text.replace('05.10.26: We currently have short waiting times for all ages.',useful)
+            rsp={'url':url,'requested_url':url,'text':text,'status':'available','status_code':200,'retrieved_at':'2026-11-01T00:00:00Z','content_sha256':digest(text.encode())}
+            (Path(folder)/(digest(url.encode())+'.json')).write_text(encode(rsp))
+            preserved=research({'organisation_number':ORG},Fetcher(folder,replay=True))
+            self.assertEqual(next(c['value'] for c in preserved['claims'] if c['field']=='website.description'),useful)

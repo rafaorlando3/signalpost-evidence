@@ -1110,7 +1110,7 @@ def research(row, fetcher, previous=None, search=None):
                 description_page,description_response=content_pages[0]
                 description=description_page.description
                 description_pointer='meta[name=description] or scoped visible homepage paragraph; navigation and footer excluded'
-                if method=='linked_business_self_description_and_registered_address' and (not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4 or re.sub(r' (as|asa|sti|nuf)$','',normalized(data.get('navn',''))) not in normalized(description)):
+                if method=='linked_business_self_description_and_registered_address' and (not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4 or re.match(r'^(?:\d{1,2}[./-]){2}\d{2,4}\s*[:–-]',description.strip())):
                     own_description=anchor_response['business_identity_support']['legal_name_source']
                     description=own_description['self_description']
                     description_page,description_response=next((pg,rsp) for pg,rsp in content_pages if rsp['url']==own_description['source_url'])
