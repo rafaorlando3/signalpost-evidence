@@ -15,6 +15,8 @@ class EditorialIndex(unittest.TestCase):
 
     def test_single_post_still_uses_own_content_date(self):
         url='https://example.test/office-parking/'
-        body='<body class="single-post"><meta property="article:published_time" content="2026-03-04"><article class="type-post"><h1>New office at Example AS</h1><p>'+('Example AS now has new office facilities. '*4)+'</p></article></body>'
+        # Several WordPress themes declare the global Blog vocabulary on each
+        # genuine single-post body; that alone must not classify it as a list.
+        body='<body class="single-post" itemtype="https://schema.org/Blog"><meta property="article:published_time" content="2026-03-04"><article class="type-post"><h1>New office at Example AS</h1><p>'+('Example AS now has new office facilities. '*4)+'</p></article></body>'
         candidates,_=activity_candidates(Page(body,url),{'url':url})
         self.assertEqual(candidates[0]['datePublished'],'2026-03-04')

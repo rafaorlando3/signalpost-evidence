@@ -221,7 +221,8 @@ class Page(HTMLParser):
         # A blog listing, static page or homepage is not a detail view.
         if tag=='body':
             classes=set(post_context.casefold().split())
-            self.editorial_listing=bool(classes & {'blog','archive','search'}) or bool(re.search(r'/(?:Blog|CollectionPage|SearchResultsPage)\b',a.get('itemtype') or ''))
+            single_view='single-post' in classes or {'view-item','collection-type-blog'}<=classes
+            self.editorial_listing=bool(classes & {'blog','archive','search'}) or (not single_view and bool(re.search(r'/(?:Blog|CollectionPage|SearchResultsPage)\b',a.get('itemtype') or '')))
             if urlsplit(self.url).path.rstrip('/') and ('single-post' in classes or {'view-item','collection-type-blog'}<=classes):
                 self.post_container=True
         if tag=='main' and 'posts-entry' in post_context.split() and article_detail(self.url):self.post_container=True
