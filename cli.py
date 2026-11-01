@@ -103,7 +103,7 @@ def execute(items, args, folder, previous):
     command = [
         sys.executable, '-B', str(Path(__file__).with_name('agent.py')),
         '--input', str(source), '--output', str(staged), '--cache', str(args.cache),
-        '--workers', str(args.workers), '--search', args.search, '--public-jobs',args.public_jobs,
+        '--workers', str(args.workers), '--search', args.search, '--public-jobs',args.public_jobs,'--public-search',args.public_search,
         '--replay' if args.replay else '--fresh',
     ]
     if args.search == 'tavily-free':
@@ -271,6 +271,7 @@ def run(args):
                 'request_budget_total': 20 * len(unique),
                 'third_party_cost_usd': (None if any(op.get('third_party_cost_usd') is None for op in operations)
                                          else sum(op.get('third_party_cost_usd', 0) for op in operations)),
+                'public_search_request_attempts':sum(r.get('public_search_discovery',{}).get('request_attempts',0) for r in final if not r.get('_cli',{}).get('duplicate_of')),
                 'search_request_attempts': search_attempts,
                 'search_attempts_complete': not search_unknown,
                 'search_basic_credit_upper_bound': search_bound,
@@ -311,6 +312,7 @@ def main(argv=None):
     parser.add_argument('--summary', type=Path, help='new summary JSON (default: OUTPUT.summary.json)')
     parser.add_argument('--cache', type=Path, required=True, help='retained source cache/snapshots')
     parser.add_argument('--timeout-seconds', type=float, default=2400)
+    parser.add_argument('--public-search',choices=['auto','off'],default='auto',help='last-resort free anonymous search; no signup or payment')
     parser.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; shared20-request budget')
     parser.add_argument('--workers', type=int, default=4)
     mode = parser.add_mutually_exclusive_group()

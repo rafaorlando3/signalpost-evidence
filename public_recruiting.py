@@ -172,6 +172,55 @@ def parse_postings(page,response,data,units):
     return finn_postings(page,response,data,units) if host in FINN else nav_postings(page,response,data,units)
 
 
+def search_employers(page,provider):
+    """Read visible search-card employer labels for ordering, never facts."""
+    class Cards(HTMLParser):
+        def __init__(self):
+            super().__init__();self.active=False;self.depth=0;self.skip=0;self.values=[];self.out={}
+        def handle_starttag(self,tag,attrs):
+            attrs=dict(attrs)
+            if tag=='article':
+                if not self.active:self.active=True;self.urls=[];self.paragraphs=[];self.strong=[]
+                self.depth+=1
+            if not self.active:return
+            if tag in {'script','style'}:self.skip+=1
+            if tag in {'p','strong'}:self.values.append([tag,[]])
+            if tag=='a':
+                from urllib.parse import urljoin
+                try:url=urljoin(page.url,attrs.get('href',''))
+                except ValueError:return
+                if detail_url(url,provider) and url not in self.urls:self.urls.append(url)
+        def handle_data(self,text):
+            if self.active and not self.skip:
+                for _,parts in self.values:parts.append(text)
+        def handle_endtag(self,tag):
+            if not self.active:return
+            if tag in {'script','style'}:self.skip=max(0,self.skip-1)
+            if self.values and self.values[-1][0]==tag:
+                _,parts=self.values.pop();value=' '.join(''.join(parts).split())
+                (self.paragraphs if tag=='p' else self.strong).append(value)
+            if tag=='article':
+                self.depth-=1
+                if self.depth:return
+                labels=(self.strong if provider=='finn' else [self.paragraphs[i+1] for i,v in enumerate(self.paragraphs[:-1]) if v.casefold() in {'arbeidsgiver','arbeidsgivar','employer'}])
+                labels=list(dict.fromkeys(v for v in labels if v))
+                if len(self.urls)==1 and len(labels)==1:self.out[self.urls[0]]=labels[0]
+                self.active=False;self.values=[]
+    parser=Cards();parser.feed(page.raw_html);return parser.out
+
+
+def ranked_search_links(page,provider,data,units):
+    from attribution import legal_stem
+    names={legal_stem(data.get('navn',''))}
+    names.update(legal_stem(u.get('navn','')) for u in units if u.get('overordnetEnhet')==data.get('organisasjonsnummer'))
+    labels=search_employers(page,provider);links=[]
+    for link in page.links:
+        u=link['url']
+        if detail_url(u,provider) and not link.get('third_party_context') and u not in links:links.append(u)
+    preferred=[u for u in links if labels.get(u) and legal_stem(labels[u]) in names]
+    return preferred+[u for u in links if u not in preferred],len(preferred)
+
+
 def discover(data,units,fetcher,*,max_details=2):
     """One query per board, at most two details total; same20-request budget."""
     from agent import Page
@@ -180,19 +229,11 @@ def discover(data,units,fetcher,*,max_details=2):
     if not isinstance(name,str) or not target:return out
     queries=[('finn','https://www.finn.no/job/search?'+urlencode({'q':name})),
              ('nav','https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':name}))]
-    seen=set()
-    for provider,url in queries:
-        if fetcher.requests>=fetcher.limit-1:break
-        rsp=fetcher.get(url,site=True,raw=True)
-        out['sources'].append(rsp);check={'provider':provider,'url':url,'state':rsp['status'],'detail_candidates':0};out['checks'].append(check)
-        if rsp['status']!='available':continue
-        pg=Page(rsp.get('text',''),rsp['url']);links=[]
-        for link in pg.links:
-            u=link['url']
-            if detail_url(u,provider) and not link.get('third_party_context') and u not in seen and u not in links:links.append(u)
-        check['detail_candidates']=len(links)
+    seen=set();deferred=[]
+    def inspect(links):
         for u in links:
             if out['detail_attempts']>=max_details or fetcher.requests>=fetcher.limit:break
+            if u in seen:continue
             seen.add(u);out['detail_attempts']+=1;detail=fetcher.get(u,site=True,raw=True);out['sources'].append(detail)
             if detail['status']!='available':continue
             records=parse_postings(Page(detail.get('text',''),detail['url']),detail,data,units)
@@ -200,5 +241,18 @@ def discover(data,units,fetcher,*,max_details=2):
                 if any(job_key(r['item'])==job_key(record['item']) for r in out['records']):continue
                 out['records'].append(record)
                 if record['homepage'] and record['homepage'] not in out['website_leads']:out['website_leads'].append(record['homepage'])
+    for provider,url in queries:
+        if fetcher.requests>=fetcher.limit-1:break
+        rsp=fetcher.get(url,site=True,raw=True)
+        out['sources'].append(rsp);check={'provider':provider,'url':url,'state':rsp['status'],'detail_candidates':0};out['checks'].append(check)
+        if rsp['status']!='available':continue
+        pg=Page(rsp.get('text',''),rsp['url']);links,preferred=ranked_search_links(pg,provider,data,units)
+        check['detail_candidates']=len(links)
+        check['matching_employer_labels']=preferred
+        # Ambiguous broad results do not consume both detail slots before the
+        # other board can supply a clearly labelled employer. They remain a
+        # fallback, and every chosen detail still needs its corporate ID.
+        inspect(links[:preferred]);deferred.extend(links[preferred:])
         if out['records'] or out['detail_attempts']>=max_details:break
+    if not out['records']:inspect(deferred)
     return out

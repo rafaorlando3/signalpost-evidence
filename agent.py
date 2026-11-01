@@ -60,13 +60,14 @@ class Fetcher:
     locks = collections.defaultdict(threading.Lock)
     host_last = {}
 
-    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True):
+    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True, public_search=None):
         self.directory = Path(directory); self.directory.mkdir(parents=True, exist_ok=True)
         self.replay, self.fresh = replay, fresh
         self.limit = limit; self.end = time.monotonic()+deadline
         self.requests = 0; self.hits = 0; self.robots = {}; self.records = []
         self.registry_snapshot=registry_snapshot
         self.public_jobs=public_jobs
+        self.public_search=public_search
 
     def get(self, url, *, site=False, raw=False):
         if self.registry_snapshot is not None:
@@ -1089,6 +1090,10 @@ def research(row, fetcher, previous=None, search=None):
         for homepage in legal_form_domain_candidates(data):
             if fetcher.requests<=fetcher.limit-2:
                 yield homepage,'legal_form_domain_heuristic',0,[]
+        if getattr(fetcher,'public_search',None):
+            candidates=fetcher.public_search.discover(data,fetcher)
+            for index,candidate in enumerate(candidates):
+                yield candidate['url'],'anonymous_search',len(candidates)-index-1,candidate['hints']
     for url,origin,remaining_leads,hints in candidates():
         started_requests=fetcher.requests
         response=fetcher.get(url,site=True,raw=True); webstate=response
@@ -1394,6 +1399,7 @@ def research(row, fetcher, previous=None, search=None):
     output['run']={'started_at':started,'completed_at':now(),'terminal_status':'completed','version':VERSION}
     output['operations']={'requests':fetcher.requests,'cache_hits':fetcher.hits,'runtime_ms':round((time.monotonic()-tic)*1000),'third_party_cost_usd':getattr(fetcher,'discovery',{}).get('paid_cost_usd',0)}
     if hasattr(fetcher,'discovery'): output['discovery']=fetcher.discovery
+    if hasattr(fetcher,'public_search_discovery'):output['public_search_discovery']=fetcher.public_search_discovery
     from output_contract import complete_envelope
     return complete_envelope(output)
 
@@ -1403,6 +1409,7 @@ def main():
     p.add_argument('--cache',default='cache'); p.add_argument('--previous')
     mode=p.add_mutually_exclusive_group();mode.add_argument('--replay',action='store_true');mode.add_argument('--fresh',action='store_true')
     p.add_argument('--workers',type=int,default=4)
+    p.add_argument('--public-search',choices=['auto','off'],default='auto',help='late anonymous Mwmbl URL discovery, no key or paid fallback')
     p.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; same shared request cap')
     p.add_argument('--search',choices=['none','tavily','tavily-free'],default='none')
     p.add_argument('--search-free-credit-limit',type=int,help='root-confirmed remaining free basic credits; requires account/PayGo verification')
@@ -1414,6 +1421,8 @@ def main():
     if args.registry_snapshot:
         from frozen_registry import FrozenRegistry
         registry_snapshot=FrozenRegistry(args.registry_snapshot)
+    from free_search import AnonymousSearch
+    anonymous_search=AnonymousSearch() if args.public_search=='auto' else None
     search=None
     if args.search in ('tavily','tavily-free'):
         from search import TavilySearch,FreeTavilySearch
@@ -1430,7 +1439,7 @@ def main():
     prior={r['organisation_number']:r for r in (json.loads(x) for x in Path(args.previous).read_text().split('\n') if x.strip())} if args.previous else {}
     output=Path(args.output); output.parent.mkdir(parents=True,exist_ok=True); start=time.monotonic()
     def work(row):
-        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot,public_jobs=args.public_jobs!='off')
+        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot,public_jobs=args.public_jobs!='off',public_search=anonymous_search)
         try: return research(row,fetcher,prior.get(str(row.get('organisation_number',''))),search)
         except Exception as error:
             return {'organisation_number':str(row.get('organisation_number','')),'run':{'terminal_status':'failed','completed_at':now()},
@@ -1446,6 +1455,7 @@ def main():
     report={'inputs':len(rows),'outputs':len(results),'failed':sum(r['run']['terminal_status']=='failed' for r in results),
         'requests':sum(r['operations']['requests'] for r in results),'runtime_seconds':round(time.monotonic()-start,2),
         'third_party_cost_usd':None if search and search.attempts else 0,
+        'public_search_request_attempts':anonymous_search.attempts if anonymous_search else 0,
         'search_request_attempts':search.attempts if search else 0,
         'search_basic_credit_upper_bound':search.attempts if search else 0,
         'coverage':dict(collections.Counter(c['field'] for r in results for c in r['claims'] if c['availability']=='available')),

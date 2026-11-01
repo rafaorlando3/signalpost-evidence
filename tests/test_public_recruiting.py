@@ -5,7 +5,8 @@ from unittest.mock import patch
 from agent import Page,Fetcher,research,digest,encode
 from public_recruiting import parse_postings,job_key,discover
 from audit import audit
-from test_pipeline import Pipeline,save,BASE,ORG
+import test_pipeline as pipeline_fixtures
+from test_pipeline import save,BASE,ORG
 
 DATA={'organisasjonsnummer':ORG,'navn':'Example Plant AS','antallAnsatte':20}
 AD='https://www.finn.no/job/ad/123456789'
@@ -44,7 +45,7 @@ class PublicRecruiting(unittest.TestCase):
    def __init__(self):self.urls=[]
    def get(self,url,**kwargs):
     self.urls.append(url);self.requests+=1
-    return rsp(url, '<a href="'+AD+'">Mechanical engineer</a>' if '/search?' in url else html())
+    return rsp(url, '<article><a href="'+AD+'">Mechanical engineer</a><strong>Example Plant AS</strong></article>' if '/search?' in url else html())
   f=F();result=discover(DATA,[],f);self.assertEqual(len(result['records']),1);self.assertEqual(len(f.urls),2);self.assertEqual(f.urls[0],'https://www.finn.no/job/search?'+urlencode({'q':DATA['navn']}));self.assertEqual(f.urls[1],AD)
  def test_missing_search_results_and_wrong_numbers_never_become_jobs(self):
   class F:
@@ -71,7 +72,7 @@ class NAVPrimary(unittest.TestCase):
 class PublicDiscoveryPipeline(unittest.TestCase):
  def test_existing_website_leads_keep_priority_over_public_search_budget(self):
   with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
-   Pipeline().fixture(d);save(d,BASE,DATA)
+   pipeline_fixtures.Pipeline().fixture(d);save(d,BASE,DATA)
    own='https://exampleplant.no/'
    for url,text in [(own+'robots.txt','User-agent: *\nAllow: /'),(own,'<title>Example Plant</title><p>Manufacturing and repair services for industrial customers.</p><footer>Example Plant AS Org.nr. '+ORG+'</footer>')]:
     (Path(d)/(digest(url.encode())+'.json')).write_text(encode(rsp(url,text)))
@@ -84,7 +85,7 @@ class PublicDiscoveryPipeline(unittest.TestCase):
    self.assertLess(visited.index(own),query)
  def test_no_hint_homepage_and_job_discovered_audited_and_tamper_rejected(self):
   with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
-   Pipeline().fixture(d);save(d,BASE,DATA)
+   pipeline_fixtures.Pipeline().fixture(d);save(d,BASE,DATA)
    query='https://www.finn.no/job/search?'+urlencode({'q':DATA['navn']})
    sources=[('https://www.finn.no/robots.txt','User-agent: *\nAllow: /'),(query,'<a href="'+AD+'">Mechanical engineer</a>'),(AD,html()),('https://own-brand.test/robots.txt','User-agent: *\nAllow: /'),('https://own-brand.test/','<title>Example Plant</title><p>Manufacturing and repair services for industrial customers.</p><footer>Example Plant AS Org.nr. '+ORG+'</footer><a href="mailto:office@own-brand.test">Email</a>')]
    for url,text in sources:
@@ -105,9 +106,39 @@ class LegalSuffixFallback(unittest.TestCase):
   self.assertFalse(legal_form_domain_candidates({**data,'navn':'Holding AS'}))
   for number,expected in [(ORG,'available'),('974761076',None)]:
    with tempfile.TemporaryDirectory() as d,patch('socket.getaddrinfo',side_effect=AssertionError('network forbidden')):
-    Pipeline().fixture(d);save(d,BASE,data);own='https://exampleas.no/'
+    pipeline_fixtures.Pipeline().fixture(d);save(d,BASE,data);own='https://exampleas.no/'
     for url,text in [(own+'robots.txt','User-agent: *\nAllow: /'),(own,'<title>Example</title><p>Manufacturing and repair services for industrial customers.</p><footer>Example AS Org.nr. '+number+'</footer>')]:
      (Path(d)/(digest(url.encode())+'.json')).write_text(encode(rsp(url,text)))
     c={x['field']:x for x in research({'organisation_number':ORG},Fetcher(d,replay=True))['claims']}
     if expected:self.assertEqual(c['website.verified_url']['value'],own)
     else:self.assertNotEqual(c['website.verified_url']['availability'],'available')
+
+class SearchCardRanking(unittest.TestCase):
+ def test_correct_employer_below_unrelated_results_gets_the_detail_budget(self):
+  wrong='https://www.finn.no/job/ad/111111111'
+  class F:
+   requests=0;limit=8
+   def __init__(self):self.urls=[]
+   def get(self,url,**kwargs):
+    self.urls.append(url);self.requests+=1
+    body='<article><a href="'+wrong+'">Engineer</a><strong>Other AS</strong></article><article><a href="'+AD+'">Engineer</a><strong>Example Plant AS</strong></article>' if '/search?' in url else html()
+    return rsp(url,body)
+  f=F();r=discover(DATA,[],f);self.assertEqual(len(r['records']),1);self.assertNotIn(wrong,f.urls);self.assertEqual(r['detail_attempts'],1)
+ def test_nav_matching_employer_precedes_unrelated_finn_details(self):
+  source=NAVPrimary().source();nav_url=source['url'];wrong='https://www.finn.no/job/ad/111111111'
+  class F:
+   requests=0;limit=10
+   def __init__(self):self.urls=[]
+   def get(self,url,**kwargs):
+    self.urls.append(url);self.requests+=1
+    if '/job/search?' in url:return rsp(url,'<article><a href="'+wrong+'">Engineer</a><strong>Other AS</strong></article>')
+    if '/stillinger?' in url:return rsp(url,'<article><a href="'+nav_url+'">Mechanical engineer</a><p>Arbeidsgiver</p><p>Example Plant AS</p><p>Sted</p><p>Oslo</p></article>')
+    return source
+  f=F();r=discover(DATA,[],f);self.assertEqual(len(r['records']),1);self.assertEqual(r['records'][0]['item']['url'],nav_url);self.assertNotIn(wrong,f.urls)
+ def test_search_label_cannot_replace_the_posting_corporate_number(self):
+  class F:
+   requests=0;limit=8
+   def get(self,url,**kwargs):
+    self.requests+=1
+    return rsp(url,'<article><a href="'+AD+'">Engineer</a><strong>Example Plant AS</strong></article>' if '/search?' in url else html(number='974761076'))
+  self.assertFalse(discover(DATA,[],F())['records'])
