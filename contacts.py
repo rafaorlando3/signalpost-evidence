@@ -1,8 +1,20 @@
 """Literal contact links from identity-verified company pages; never guessed."""
 import re
+import unicodedata
 from urllib.parse import unquote, urlsplit
 
 CONTACT_LIMIT = 60
+
+def contact_key(item):
+    """One channel across pages and formatting; preserve distinct extensions."""
+    value=item['value'].strip().casefold()
+    if item['type']=='phone':
+        base,_,extension=value.partition(';ext=')
+        value=re.sub(r'\D','',base)
+        if value.startswith('00'):value=value[2:]
+        if len(value)==8:value='47'+value
+        if extension:value+=';ext='+extension
+    return item['type'],value
 
 def contact_links(page):
     found=[];seen=set()
@@ -32,12 +44,13 @@ def _normal(value):
     return re.sub(r'[^\w]+',' ',str(value).casefold()).strip()
 
 
-def _contact_scopes(page,include_text=False):
+def _contact_scopes(page,include_text=False,include_blocks=False):
     from html.parser import HTMLParser
     from urllib.parse import urljoin
+    location_page=bool(re.search(r'/(?:utsalg(?:ene)?|avdelinger?|locations?|offices?)(?:/|$)',urlsplit(page.url).path,re.I))
     class Blocks(HTMLParser):
         def __init__(self):
-            super().__init__(convert_charrefs=True);self.stack=[];self.links={};self.skip=0;self.section=None;self.sections=[];self.footers=[]
+            super().__init__(convert_charrefs=True);self.stack=[];self.links={};self.skip=0;self.section=None;self.sections=[];self.footers=[];self.blocks=[];self.node_count=0
         def handle_starttag(self,t,attrs):
             a=dict(attrs)
             context=' '.join(str(a.get(k) or '') for k in ('class','id','role','aria-label'))
@@ -46,7 +59,9 @@ def _contact_scopes(page,include_text=False):
                 self.section={'tag':'heading_section','text':'','excluded':excluded};self.sections.append(self.section)
             if t not in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:
                 inside_article=any(n['tag']=='article' for n in self.stack)
-                self.stack.append({'tag':t,'text':'','excluded':excluded})
+                self.node_count+=1
+                self.stack.append({'tag':t,'text':'','excluded':excluded,'scope_id':self.node_count,'ancestors':[n['scope_id'] for n in self.stack]})
+                if t in {'p','address','article','section','div','li','td','footer'}:self.blocks.append(self.stack[-1])
                 semantic=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',context).replace('_',' ')
                 path=urlsplit(page.url).path.casefold().rstrip('/')
                 contact_page=bool(re.search(r'kontakt|contact',path))
@@ -59,6 +74,10 @@ def _contact_scopes(page,include_text=False):
                 try:u=urljoin(page.url,a['href'])
                 except ValueError:return
                 self.links.setdefault(u,[]).append(list(self.stack[-9:])+([self.section] if self.section else []))
+                if urlsplit(u).scheme.casefold() in {'mailto','tel'}:
+                    for node in self.stack[-9:]:
+                        node.setdefault('contact_hrefs',[]).append(u)
+                        node.setdefault('contact_offsets',[]).append((u,len(node['text'])))
         def handle_data(self,v):
             if self.skip or any(n.get('excluded') for n in self.stack):return
             if self.section and len(self.section['text'])<2500:self.section['text']+=v+'\n'
@@ -68,19 +87,65 @@ def _contact_scopes(page,include_text=False):
             if t in {'script','style','noscript'}:self.skip=max(0,self.skip-1)
             for i in range(len(self.stack)-1,-1,-1):
                 if self.stack[i]['tag']==t:del self.stack[i:];break
-    parser=Blocks();parser.feed(getattr(page,'raw_html',''))
+    parser=getattr(page,'_parsed_contact_blocks',None)
+    if parser is None:
+        parser=Blocks();parser.feed(getattr(page,'raw_html',''));page._parsed_contact_blocks=parser
+    if include_blocks:return parser.links,parser.blocks
     if include_text:
-        return parser.links,[n for n in parser.footers if not n.get('excluded')]+[n for n in parser.sections if not n.get('excluded') and re.match(r'\s*(?:kontakt|contact|contact information|kontaktinformasjon)(?:\s|$)',n['text'],re.I)]
+        return parser.links,[n for n in parser.footers if not n.get('excluded')]+[{**n,'location_section':location_page} for n in parser.sections if not n.get('excluded') and (location_page or re.match(r'\s*(?:kontakt|contact|contact information|kontaktinformasjon)(?:\s|$)',n['text'],re.I))]
     return parser.links
 
 
-def entity_contacts(page,data,units=()):
+def foreign_contact_bindings(pages,data):
+    """Literal channels in a small, single-other-legal-entity block veto reuse.
+
+    This also catches a foreign subsidiary's employee repeated elsewhere without
+    the subsidiary name. A shared domain alone never overrides this evidence.
+    """
+    def namekey(value):
+        value=re.sub(r'^(?:Bedrift|Company|Om|About)\s*:?\s+','',value.strip(),flags=re.I)
+        value=re.sub(r'^(?:CEO|CFO|COO|CTO|EVP|Director|Officer)\b[^,\n]{0,110},\s*','',value,flags=re.I)
+        return _normal(''.join(c for c in unicodedata.normalize('NFKD',value) if not unicodedata.combining(c)))
+    own=namekey(data.get('navn',''));blocked={}
+    legal=re.compile(r'(?:^|\n)[ \t]*(?:©\s*(?:[0-9]{4}\s*)?)?([^\n]{2,120}?\b(?:ASA|AS|AB|GmbH|Ltd\.?|Limited|LLC|Inc\.?|SIA))\s*(?=\n|$)')
+    email=re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+    phone=re.compile(r'\b(?:Tel(?:efon)?|Tlf|Phone|Mobil)(?:[ \t]*:)?[ \t]*(\+?[0-9 () .-]{7,25})',re.I)
+    for page,response in pages:
+        _,blocks=_contact_scopes(page,include_blocks=True)
+        bindings=[]
+        for node in blocks:
+            text=node['text']
+            if node.get('excluded') or len(text)>2000:continue
+            matches=list(legal.finditer(text));names={namekey(m.group(1)) for m in matches}
+            if len(names)!=1 or own in names:continue
+            if str(data.get('organisasjonsnummer','')) and re.search(r'(?<!\d)'+r'\s*'.join(data['organisasjonsnummer'])+r'(?!\d)',text):continue
+            match=matches[0];name=match.group(1).strip()
+            # Bind forward within the small legal contact block. A provider
+            # credit after the company's contacts cannot claim those contacts.
+            def nearby(position):
+                return position>=match.end(1) and len(re.sub(r'\s+',' ',text[match.end(1):position]))<=350
+            channels=[{'type':'email','value':m.group(0)} for m in email.finditer(text) if nearby(m.start())]
+            channels += [{'type':'phone','value':m.group(1).strip().rstrip(' .-')} for m in phone.finditer(text) if nearby(m.start())]
+            channels += [{'type':'email' if urlsplit(u).scheme.casefold()=='mailto' else 'phone','value':unquote(urlsplit(u).path).strip()} for u,pos in node.get('contact_offsets',[]) if nearby(pos)]
+            if channels:bindings.append((node,name,channels))
+        # A parent section can contain several staff cards. Bind to the
+        # smallest legal contact block, never spill into a neighbouring card.
+        for node,name,channels in bindings:
+            if any(node['scope_id'] in other['ancestors'] and name==other_name for other,other_name,_ in bindings):continue
+            for channel in channels:
+                blocked.setdefault(contact_key(channel),{'reason':'same channel is explicitly published for another legal entity',
+                    'other_legal_name':name,'source_url':page.url,'evidence_excerpt':text.strip()[:2000]})
+    return blocked
+
+
+def entity_contacts(page,data,units=(),conflicts=None):
     """Do not inherit another regional company's contacts from a shared site.
 
     A postal block outside all registered target/subunit addresses is unresolved,
     not proof of a new office. Regional pages must match a registered locality.
     No registry email or phone is returned by this function.
     """
+    conflicts=foreign_contact_bindings([(page,{})],data) if conflicts is None else conflicts
     candidates=contact_links(page);addresses=[data.get(k) or {} for k in ('forretningsadresse','postadresse')]
     addresses += [u.get('address') or u.get('beliggenhetsadresse') or {} for u in units if isinstance(u,dict)]
     codes={str(a['postnummer']) for a in addresses if a.get('postnummer')}
@@ -91,8 +156,12 @@ def entity_contacts(page,data,units=()):
     for index,p in enumerate(page.paragraphs):
         if full_name and _normal(p)==full_name:
             text_scopes.append({'tag':'legal_imprint','text':' '.join(page.paragraphs[index:index+5])})
+    stem=re.sub(r' (as|asa|sti|nuf)$','',_normal(data.get('navn','')))
     for scope in text_scopes:
         text=scope['text']
+        if scope.get('location_section'):
+            heading=_normal(text.split('\n',1)[0])
+            if not (len(stem)>=4 and heading.startswith(stem+' ') and any(re.search(r'(?<!\w)'+re.escape(p)+r'(?!\w)',heading) for p in places)):continue
         found=[('email',m.group(0),m.group(0)) for m in re.finditer(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}",text)]
         for match in re.finditer(r'\b(?:Tel(?:efon)?|Tlf|Phone|Mobil)\s*:?[ \t]*(\+?[0-9 () .-]{7,25})',text,re.I):
             value=match.group(1).strip().rstrip(' .-')
@@ -104,7 +173,6 @@ def entity_contacts(page,data,units=()):
             item={'type':kind,'value':value,'label':label[:160],'source_url':page.url,'source_href':None,
                   'source_kind':'literal_visible_text','source_pointer':'visible company contact/footer or exact legal-imprint block'}
             candidates.append(item);literal_scopes[id(item)]=[[scope]]
-    stem=re.sub(r' (as|asa|sti|nuf)$','',_normal(data.get('navn','')))
     regional=False
     title=_normal(re.split(r'\s+[|–—]\s*|\|',page.title)[0])
     if len(stem)>=5 and stem in title:
@@ -120,8 +188,25 @@ def entity_contacts(page,data,units=()):
         regional=not any(locality==place or locality.startswith(place+' ') for place in places)
     archive=bool(re.search(r'/(?:news|nyheter|aktuelt|blogg?|updates)/page/[0-9]+',urlsplit(page.url).path,re.I))
     own_host=(urlsplit(page.url).hostname or '').removeprefix('www.')
+    located_keys=set()
     for item in candidates:
         reason='regional staff page is not tied to a registered target locality' if regional else None
+        conflict=conflicts.get(contact_key(item))
+        # A short staff/contact card can repeat a foreign entity's email with a
+        # locally formatted phone number. Do not guess a country calling code.
+        if not conflict:
+            for ancestry in literal_scopes.get(id(item),scopes.get(item.get('source_href'),[])):
+                for node in reversed(ancestry):
+                    if node['tag'] not in {'p','address','article','section','div','li','td'} or len(node['text'])>800:continue
+                    emails=re.findall(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",node['text'])
+                    emails += [unquote(urlsplit(u).path).strip() for u in node.get('contact_hrefs',[]) if urlsplit(u).scheme.casefold()=='mailto']
+                    if len(set(emails))>2:continue
+                    conflict=next((conflicts[('email',e.casefold())] for e in emails if ('email',e.casefold()) in conflicts),None)
+                    # Stop at the closest contact-bearing card. A higher
+                    # container containing another employee is not its owner.
+                    if emails:break
+                if conflict:break
+        if conflict:reason=conflict['reason']
         if archive and item['type']=='email' and item['value'].rsplit('@',1)[-1].casefold()!=own_host.casefold():
             reason='news archive mentions another-domain contact; own-company contact role not established'
         observations=[]
@@ -134,14 +219,53 @@ def entity_contacts(page,data,units=()):
                         observations.append(found);break
             if codes and observations and not any(v and v<=codes for v in observations):
                 reason='contact block contains a postal address outside the registered target/subunits; separate-entity ownership unresolved'
-        if reason:held.append({'type':item['type'],'value':item['value'],'source_url':page.url,'reason':reason})
+            elif codes and observations:located_keys.add(contact_key(item))
+        if reason:
+            record={'type':item['type'],'value':item['value'],'source_url':page.url,'reason':reason}
+            if conflict:record['conflicting_entity_binding']=conflict
+            held.append(record)
         else:out.append(item)
+    # An unscoped text copy cannot bypass a scoped conflicting address. Keep
+    # shared channels only when another block explicitly matches a target unit.
+    address_conflicts={contact_key(h):h for h in held if h['reason'].startswith('contact block contains a postal address')}
+    filtered=[]
+    for item in out:
+        key=contact_key(item)
+        if key in address_conflicts and key not in located_keys:
+            held.append({'type':item['type'],'value':item['value'],'source_url':page.url,
+                         'reason':'unscoped copy cannot override a conflicting contact-block address'})
+        else:filtered.append(item)
+    out=filtered
     # Formatting variants of the same phone/email are one contact fact.
     unique=[];seen=set()
     for item in out:
-        v=item['value'].casefold() if item['type']=='email' else re.sub(r'\D','',item['value'])
-        if item['type']=='phone' and v.startswith('00'):v=v[2:]
-        if item['type']=='phone' and len(v)==8:v='47'+v
-        key=(item['type'],v)
+        key=contact_key(item)
         if key not in seen:seen.add(key);unique.append(item)
     return unique[:CONTACT_LIMIT],held
+
+
+def collect_entity_contacts(pages,data,units=()):
+    """Cross-page veto, normalized uniqueness, and retained literal variants."""
+    conflicts=foreign_contact_bindings(pages,data)
+    channels=[];by_key={};held=[];sources=[]
+    for page,response in pages:
+        items,limits=entity_contacts(page,data,units,conflicts=conflicts)
+        held.extend(limits)
+        used=False
+        for item in items:
+            key=contact_key(item)
+            if key in by_key:
+                first=by_key[key]
+                if item!=first and item not in first.get('additional_source_variants',[]):
+                    first.setdefault('additional_source_variants',[]).append(dict(item))
+                used=True
+            elif len(channels)<CONTACT_LIMIT:
+                item=dict(item);channels.append(item);by_key[key]=item;used=True
+        # Contradictory source evidence is part of the abstention audit too.
+        if used or any(b['source_url']==page.url for b in conflicts.values()):sources.append(response)
+    unique_limits={}
+    for limit in held:
+        key=(*contact_key(limit),limit['source_url'],limit['reason'])
+        unique_limits.setdefault(key,limit)
+    held=sorted(unique_limits.values(),key=lambda h:0 if h.get('conflicting_entity_binding') else 1)
+    return channels,held,sources

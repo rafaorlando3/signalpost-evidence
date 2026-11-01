@@ -510,6 +510,7 @@ def link_family(url):
     if re.search(r'(?:^|[/_-])(?:karriere|careers?|jobb(?:er|e)?|jobs?|stillinger?|vacanc(?:y|ies))(?:$|[/_-])',path): return 'hiring'
     if re.search(r'(?:^|[/_-])(?:news|nyheter?|aktuelt|blogg?|presse|press|presserom|pressroom|newsroom|artikler|articles?|stories|insights)(?:$|[/_-])|/20\d{2}/',path): return 'activity'
     if re.search(r'kontakt|contact|personvern|privacy|beting|vilk|impressum|imprint|legal|om-oss|about',path): return 'identity'
+    if re.search(r'/(?:utsalg(?:ene)?|avdelinger?|locations?|offices?)(?:/|$)',path):return 'identity'
     return None
 
 def catalog_route(url):
@@ -1094,17 +1095,11 @@ def research(row, fetcher, previous=None, search=None):
                     claims[-1]['qualifiers']={'subject_scope':'group',
                         'own_entity_description':'not_established',
                         'reason':'explicit collective wording; legal site identity does not attribute group statements to this entity'}
-                from contacts import entity_contacts,CONTACT_LIMIT
-                contacts=[];contact_sources=[];seen_contacts=set();contact_limits=[]
-                for pg,rsp in content_pages:
-                    scoped,held=entity_contacts(pg,data,sites)
-                    contact_limits.extend(held[:10])
-                    for item in scoped:
-                        key=(item['type'],item['value'])
-                        if key not in seen_contacts and len(contacts)<CONTACT_LIMIT:
-                            contacts.append(item);seen_contacts.add(key);contact_sources.append(rsp)
+                from contacts import collect_entity_contacts
+                contacts,contact_limits,contact_sources=collect_entity_contacts(content_pages,data,sites)
                 contact_anchor=contact_sources[0] if contact_sources else anchor_response
                 add('website.contact_channels',contacts or None,contact_anchor,excerpt=(contacts[0].get('source_href') or contacts[0]['value']) if contacts else None,
+                    state='ambiguous' if not contacts and contact_limits else None,
                     pointer='literal mailto/tel links on verified company pages; third-party and unresolved regional contact blocks excluded; ownership/use not independently checked')
                 if contact_limits:
                     claims[-1]['qualifiers']={'coverage':'partial' if contacts else 'unresolved','candidate_limitations':contact_limits[:20]}

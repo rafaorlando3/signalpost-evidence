@@ -110,3 +110,70 @@ class ArchiveContacts(unittest.TestCase):
         self.assertIn('staff@example.test',[c['value'] for c in accepted])
         self.assertNotIn('tenant@other.test',[c['value'] for c in accepted])
         self.assertTrue(any('archive' in c['reason'] for c in held))
+
+class CrossPageContactIdentity(unittest.TestCase):
+    DATA={'navn':'Example AS'}
+
+    def test_foreign_subsidiary_vetoes_repeated_staff_card_and_local_phone(self):
+        from contacts import collect_entity_contacts
+        staff=Page('<h1>Employees</h1><div class="employee"><p>Jane</p><a href="mailto:jane@example.no">Email</a><a href="tel:021 5046 0806">Phone</a></div><div class="employee"><a href="mailto:ours@example.no">Email</a><a href="tel:+47 12345678">Call</a></div>','https://example.no/contact')
+        offices=Page('<article><h3>Foreign office</h3><div><p>Example Shanghai Co., Ltd.<br>Shanghai</p><p>Tel: +86 21 5046 0806<br>Email: jane@example.no</p></div></article>','https://example.no/offices')
+        items,held,sources=collect_entity_contacts([(staff,{'url':staff.url}),(offices,{'url':offices.url})],self.DATA)
+        self.assertEqual({x['value'] for x in items},{'ours@example.no','+47 12345678'})
+        self.assertTrue(any(x['value']=='021 5046 0806' and x.get('conflicting_entity_binding') for x in held))
+        self.assertEqual(len(sources),2)
+
+    def test_exact_target_foreign_branch_is_not_a_separate_entity(self):
+        from contacts import entity_contacts
+        page=Page('<article><p>Example AS<br>China Office</p><p><a href="tel:+86 21 1234 5678">Call</a><a href="mailto:china@example.no">Email</a></p></article>','https://example.no/contact')
+        items,held=entity_contacts(page,self.DATA)
+        self.assertIn('china@example.no',{x['value'] for x in items})
+        self.assertFalse(held)
+
+    def test_other_entity_channel_cannot_return_from_literal_footer(self):
+        from contacts import collect_entity_contacts
+        a=Page('<footer><p>Contact</p><p>subsidiary@example.no</p></footer>','https://example.no/')
+        b=Page('<div><p>Example Subsidiary AS</p><p>Email: subsidiary@example.no</p></div>','https://example.no/offices')
+        channels,held,_=collect_entity_contacts([(a,{'url':a.url}),(b,{'url':b.url})],self.DATA)
+        self.assertFalse(channels)
+        self.assertTrue(held)
+
+    def test_global_dedup_keeps_literal_sources_and_distinct_extensions(self):
+        from contacts import collect_entity_contacts,contact_key
+        a=Page('<a href="tel:12345678">Call</a><a href="mailto:Info@example.no">Email</a><a href="tel:+4712345678;ext=1">Desk1</a>','https://example.no/')
+        b=Page('<a href="tel:0047 12 34 56 78">Call</a><a href="mailto:info@example.no">Email</a><a href="tel:+4712345678;ext=2">Desk2</a>','https://example.no/contact')
+        channels,held,sources=collect_entity_contacts([(a,{'url':a.url}),(b,{'url':b.url})],self.DATA)
+        self.assertEqual(len(channels),4)
+        self.assertEqual(len({contact_key(x) for x in channels}),4)
+        self.assertEqual(sum(len(x.get('additional_source_variants',[])) for x in channels),2)
+        self.assertEqual(len(sources),2)
+        self.assertEqual(held,[])
+
+    def test_own_imprint_label_and_provider_credit_do_not_steal_contacts(self):
+        from contacts import collect_entity_contacts
+        for label in ['Bedrift: Example AS','Om Example AS','EVP Communications officer, Example AS']:
+            page=Page('<footer><p>'+label+'</p><a href="mailto:ours@example.no">Email</a><p>Website by Other Studio AS</p></footer>','https://example.no/')
+            channels,held,_=collect_entity_contacts([(page,{'url':page.url})],self.DATA)
+            self.assertEqual([x['value'] for x in channels],['ours@example.no'])
+            self.assertEqual(held,[])
+
+    def test_similarly_named_other_company_is_not_own_and_neighbour_is_preserved(self):
+        from contacts import collect_entity_contacts
+        page=Page('<section><div><p>Northern Example AS</p><a href="mailto:other@example.no">Other</a><a href="tel:+4711111111">Call</a></div><div><a href="mailto:ours@example.no">Ours</a><a href="tel:+4722222222">Call</a></div></section>','https://example.no/contact')
+        channels,held,_=collect_entity_contacts([(page,{'url':page.url})],self.DATA)
+        self.assertEqual({x['value'] for x in channels},{'ours@example.no','+4722222222'})
+
+    def test_accent_variant_with_exact_registered_id_is_not_another_legal_entity(self):
+        from contacts import collect_entity_contacts
+        page=Page('<div><p>Bodèn Example AS</p><p>Org nr 810 034 882</p><a href="tel:12345678">Call</a></div>','https://example.no/contact')
+        channels,held,_=collect_entity_contacts([(page,{'url':page.url})],{'navn':'BODEN EXAMPLE AS','organisasjonsnummer':'810034882'})
+        self.assertEqual(len(channels),1)
+        self.assertEqual(held,[])
+
+    def test_outlets_only_recover_target_registered_city_and_footer_cannot_reenter(self):
+        from contacts import entity_contacts
+        data={'navn':'Example AS','forretningsadresse':{'postnummer':'4950','poststed':'RISØR'}}
+        page=Page('<h2>Example Risør</h2><p>Tel: 47 47 11 25</p><h2>Example Sannidal</h2><p>Tel: 45 97 86 71</p><footer><h3>Contact</h3><p>3766 Sannidal</p><a href="mailto:group@other.no">Email</a><p>Example AS</p><p>group@other.no</p></footer>','https://example.no/utsalgene')
+        channels,held=entity_contacts(page,data)
+        self.assertEqual([c['value'] for c in channels],['47 47 11 25'])
+        self.assertTrue(any(c['value']=='group@other.no' for c in held))

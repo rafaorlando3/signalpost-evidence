@@ -55,16 +55,20 @@ def audit(rows, cache):
                 external.append({'organisation_number':row['organisation_number'],'url':c['value'],
                     'method':pointer,'evidence_ids':c['evidence_ids']})
             if c['field']=='website.contact_channels':
-                from contacts import contact_links
+                from contacts import contact_links,contact_key
                 retained=[i for eid,s in sources.items() if eid in c['evidence_ids'] and 'text' in s
                           for i in contact_links(Page(s['text'],s['url']))]
                 for item in c['value']:
-                    if item.get('source_kind')=='literal_visible_text':
-                        if not any(item['value'] in Page(s.get('text',''),s['url']).text for eid,s in sources.items() if eid in c['evidence_ids']):
-                            errors.append([row['organisation_number'],'visible contact not literal retained text'])
-                        else:counts['literal_visible_contacts_checked']+=1
-                    elif item not in retained:errors.append([row['organisation_number'],'contact link not supported by retained page'])
-                    else:counts['literal_contact_links_checked']+=1
+                    variants=[{k:v for k,v in item.items() if k!='additional_source_variants'},*item.get('additional_source_variants',[])]
+                    if any(contact_key(v)!=contact_key(item) for v in variants):
+                        errors.append([row['organisation_number'],'contact variant is not the same normalized channel'])
+                    for variant in variants:
+                        if variant.get('source_kind')=='literal_visible_text':
+                            if not any(variant['source_url']==s['url'] and variant['value'] in Page(s.get('text',''),s['url']).text for eid,s in sources.items() if eid in c['evidence_ids']):
+                                errors.append([row['organisation_number'],'visible contact not literal retained text'])
+                            else:counts['literal_visible_contacts_checked']+=1
+                        elif variant not in retained:errors.append([row['organisation_number'],'contact link not supported by retained page'])
+                        else:counts['literal_contact_links_checked']+=1
         if compare(row,row): errors.append([row['organisation_number'],'false self change'])
     return {'passed':not errors,'counts':dict(counts),'errors':errors,'external_identity_review':external,
         'official_score':None,'precision':None,'recall':None,

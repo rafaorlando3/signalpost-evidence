@@ -1,5 +1,11 @@
 # Signalpost — entity-attributed social recovery, local review (2026-10-31)
 
+## Contact identity and normalized uniqueness (1 November)
+
+Contact extraction checks all explored pages for small blocks explicitly naming another legal entity. Such evidence vetoes the same channel repeated in an unlabeled employee card, including a locally formatted phone beside that subsidiary's email. The closest contact block governs; neighbouring employees, provider credits after a contact and introductory labels around the target legal name do not establish another owner. An unscoped visible-text copy cannot override a conflicting contact address.
+
+Equivalent phone formats and email case variants across pages are one channel; distinct extensions remain distinct. The original literal representation and additional source variants remain available, with their source evidence. Linked outlet/office directory pages are ordinary bounded identity leads; a plain-text outlet contact needs the target company label and registered locality. No company, contact, final URL or ID is hardcoded, and registry phone/email are still not published. The source auditor checks the retained variants as well as the primary representation. Evaluation artifacts remain local; no submission or push is implied.
+
 Current local candidate builds on the three-fix review `2aaaef3cac092c04f58e8b2f27fbb59de696c20e`; the official submitted version remains `c2e81e14f8e7ee7423083710a8244b28970d9adb`. No send, push or official revision activation is implied.
 
 ## Run from evaluator-supplied organisation numbers
