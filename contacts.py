@@ -54,6 +54,8 @@ def _contact_scopes(page,include_text=False,include_blocks=False):
         def handle_starttag(self,t,attrs):
             a=dict(attrs)
             context=' '.join(str(a.get(k) or '') for k in ('class','id','role','aria-label'))
+            from site_discovery import scoped_context
+            context=scoped_context(t,context)
             excluded=any(n.get('excluded') for n in self.stack) or bool(re.search(r'sponsor|partner|customer|author|agency|webdesign|site.credit|powered.by',context,re.I))
             if t in {'h1','h2','h3','h4','h5','h6'}:
                 self.section={'tag':'heading_section','text':'','excluded':excluded};self.sections.append(self.section)

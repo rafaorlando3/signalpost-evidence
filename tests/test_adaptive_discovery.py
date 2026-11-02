@@ -48,18 +48,18 @@ class AdaptiveDiscovery(unittest.TestCase):
             s=TavilySearch(d,key='fixture-key',strategy='adaptive',transport=post)
             f=Fetcher(d)
             results=list(s.iter_candidates(ORG,'Example AS',f))
-            self.assertEqual(len(calls),2)
+            self.assertEqual(len(calls),3)
             self.assertEqual(results[-1][2],['https://ours.test/contact'])
             self.assertIn(ORG,calls[1]['query'])
             self.assertEqual(calls[1]['search_depth'],'basic')
-            self.assertEqual(f.discovery['credits_reported'],2)
-            self.assertEqual(f.discovery['request_attempts'],2)
+            self.assertEqual(f.discovery['credits_reported'],3)
+            self.assertEqual(f.discovery['request_attempts'],3)
             self.assertIsNone(f.discovery['paid_cost_usd'])
             for file in Path(d).rglob('*.json'):
                 self.assertNotIn('secret-search-snippet',file.read_text())
                 self.assertNotIn('fixture-key',file.read_text())
             list(s.iter_candidates(ORG,'Example AS',Fetcher(d,replay=True)))
-            self.assertEqual(len(calls),2)
+            self.assertEqual(len(calls),3)
 
     def test_stop_after_first_confirmed_candidate_avoids_second_query(self):
         calls=[]

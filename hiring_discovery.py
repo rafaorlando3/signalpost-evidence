@@ -228,9 +228,27 @@ def contradicted_by_closed_ad(page,hiring_pages,data):
     return False
 
 
+def external_career_leads(page):
+    """Observed public career links; not employer proof or application actions."""
+    out=[]
+    for link in page.links:
+        u=link.get('url','');label=link.get('text','')
+        try:p=urlsplit(u);port=p.port
+        except ValueError:continue
+        if (p.scheme not in {'http','https'} or not p.hostname or p.username or p.password
+                or port not in (None,80,443) or link.get('third_party_context')
+                or p.hostname==urlsplit(page.url).hostname):continue
+        if re.search(r'login|sign[-_]?in|profile|apply|application',p.path,re.I):continue
+        if re.search(r'privacy|personvern|cookies|data-protection',p.path,re.I):continue
+        if not re.search(r'\b(?:careers?|karriere|jobbe?\s+(?:hos|i)|ledige\s+stillinger|vacancies|jobs?)\b',label,re.I):continue
+        out.append(urlunsplit((p.scheme,p.netloc,p.path,p.query,'')))
+    return list(dict.fromkeys(out))
+
+
 def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, units=()):
     seeds=[];seen={rsp['url'] for _,rsp in content_pages};out=[]
     for page,rsp in content_pages:
+        career_urls=set(external_career_leads(page))
         for link in page.links:
             u=link.get('url','');text=link.get('text','')
             public_application=u in application_links(page)
@@ -241,7 +259,7 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
             if p.scheme not in ('http','https') or not p.hostname or p.username or p.password:continue
             if port not in (None,80,443) or link.get('third_party_context'):continue
             if re.search(r'login|sign[-_]?in|profile|apply|application',p.path,re.I) and not public_application:continue
-            if not public_application and not public_job and not re.search(r'\b(?:careers?|karriere|jobbe?\s+(?:hos|i)|ledige\s+stillinger|vacancies|jobs?)\b',text,re.I):continue
+            if not public_application and not public_job and urlunsplit((p.scheme,p.netloc,p.path,p.query,'')) not in career_urls:continue
             if p.hostname==urlsplit(rsp['url']).hostname:continue
             u=urlunsplit((p.scheme,p.netloc,p.path,p.query,''))
             if not any(x[0]==u for x in seeds):seeds.append((u,rsp['url']))
@@ -268,13 +286,18 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
                 rsp={**rsp,'public_job_board':True}
         out.append((pg,rsp))
         # Follow only explicit job-detail links within the observed career host.
+        details=[]
         for link in pg.links:
-            v=link['url']
+            v=urlunsplit((*urlsplit(link['url'])[:4],''))
             try:q=urlsplit(v);port=q.port
             except ValueError:continue
             if (q.hostname==urlsplit(rsp['url']).hostname and q.scheme in ('http','https')
                     and not q.username and not q.password and port in (None,80,443)
                     and re.search(r'/(?:jobs?|positions?|vacancies|stillinger)/[^/?]+',q.path,re.I)
-                    and not re.search(r'login|apply|profile',q.path,re.I) and v not in seen):
-                seeds.append((v,rsp['url']))
+                    and not re.search(r'login|apply|profile',q.path,re.I) and v not in seen
+                    and not any(v==entry[0] for entry in details)):
+                details.append((v,rsp['url']))
+        # Specific roles precede duplicate portal indexes or unrelated footer
+        # links already queued from another first-party page.
+        seeds=details+seeds
     return out

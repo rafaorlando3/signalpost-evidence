@@ -28,6 +28,14 @@ def literal_span(text,value):
     return {'start':m.start(),'end':m.end(),'text':text[m.start():m.end()]} if m else None
 
 
+def street_span(text,value):
+    """An exact street/house pair may be displayed house-first by a CMS."""
+    direct=literal_span(text,value)
+    if direct:return direct
+    match=re.fullmatch(r'(.+?)\s+(\d+[A-Za-z]?)',str(value).strip())
+    return literal_span(text,match[2]+' '+match[1]) if match else None
+
+
 def self_description_blocks(page):
     """Visible business text, including CMS blocks that do not use paragraphs."""
     if hasattr(page,'_business_self_description_blocks'):return page._business_self_description_blocks
@@ -37,6 +45,8 @@ def self_description_blocks(page):
         def handle_starttag(self,tag,attrs):
             if tag in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}:return
             a=dict(attrs);context=' '.join(str(a.get(k) or '') for k in ('class','id','role','aria-label'))
+            from site_discovery import scoped_context
+            context=scoped_context(tag,context)
             excluded=bool(self.stack and self.stack[-1]['excluded']) or tag in {'head','script','style','noscript','nav','header','footer','aside','form','dialog','blockquote','q'} or bool(re.search(r'sponsor|partner|customer|testimonial|author|agency|webdesign|site.credit|powered.by',context,re.I))
             node={'tag':tag,'excluded':excluded,'parts':[],'size':0};self.stack.append(node)
             if tag in {'p','div','section','font','span','h1','h2','h3'}:self.blocks.append(node)
@@ -61,7 +71,7 @@ def business_identity(data,pages,identity_check=None):
     full=normal(data.get('navn',''));stem=re.sub(r' (as|asa|sti|nuf|sa)$','',full)
     if len(stem)<5 or full==stem:return None
     # Every legal differentiator stays in the pattern; no short brand matching.
-    role=re.compile(r'^(?:(?:vi(?: i)?|we(?: at)?) )?'+re.escape(full)+r' (?:(?:er|har|tilbyr|leverer|driver|utvikler|produserer|holder)\b|(?:is|has|offers|provides|develops|was founded)\b)')
+    role=re.compile(r'^(?:(?:vi(?: i)?|we(?: at)?) )?'+re.escape(full)+r' (?:(?:er|har|tilbyr|leverer|driver|utvikler|produserer|holder|utfører)\b|(?:is|has|offers|provides|develops|was founded)\b)')
     eligible=[];graph={}
     for page,response in pages:
         key=canonical(page.url)
@@ -105,11 +115,11 @@ def business_identity(data,pages,identity_check=None):
             address=data.get(field) or {};street=next(iter(address.get('adresse') or []),'');postal=address.get('postnummer')
             if not street or not postal:continue
             # Do not select unrelated matching numbers elsewhere in the site.
-            street_span=literal_span(page.text,street)
-            if not street_span:continue
-            local=page.text[max(0,street_span['start']-400):street_span['end']+400]
+            street_match=street_span(page.text,street)
+            if not street_match:continue
+            local=page.text[max(0,street_match['start']-400):street_match['end']+400]
             if not re.search(r'(?<!\w)'+re.escape(stem)+r'(?!\w)',normal(local)):continue
-            start=max(0,street_span['start']-150);near=page.text[start:street_span['end']+150]
+            start=max(0,street_match['start']-150);near=page.text[start:street_match['end']+150]
             match=re.search(r'(?<!\d)'+re.escape(str(postal))+r'(?!\d)',near)
             if not match:continue
             postal_span={'start':start+match.start(),'end':start+match.end(),'text':match[0]}
@@ -117,6 +127,6 @@ def business_identity(data,pages,identity_check=None):
                 'registered_name':data.get('navn'),'organisation_number':data.get('organisasjonsnummer'),
                 'entry_url':home.url,'legal_name_source':legal[0][2],
                 'address_source':{'source_url':page.url,'address_kind':field,'registered_street':street,'registered_postcode':postal,
-                                  'literal_spans':[street_span,postal_span],'links':links},
+                                  'literal_spans':[street_match,postal_span],'links':links},
                 'scope':'first-party legal self-description plus exact registered address; no registry contact published'}
     return None

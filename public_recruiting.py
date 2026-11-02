@@ -222,22 +222,27 @@ def ranked_search_links(page,provider,data,units):
 
 
 def discover(data,units,fetcher,*,max_details=2):
-    """One query per board, at most two details total; same20-request budget."""
+    """Both boards before a second detail; one bounded registered-trade fallback."""
     from agent import Page
     out={'records':[],'website_leads':[],'checks':[],'sources':[],'detail_attempts':0}
     name=data.get('navn');target=data.get('organisasjonsnummer')
     if not isinstance(name,str) or not target:return out
     queries=[('finn','https://www.finn.no/job/search?'+urlencode({'q':name})),
              ('nav','https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':name}))]
-    seen=set();deferred=[]
+    seen=set();deferred=[];preferred_deferred=[];closed_keys=set()
     def inspect(links):
         for u in links:
             if out['detail_attempts']>=max_details or fetcher.requests>=fetcher.limit:break
             if u in seen:continue
             seen.add(u);out['detail_attempts']+=1;detail=fetcher.get(u,site=True,raw=True);out['sources'].append(detail)
             if detail['status']!='available':continue
-            records=parse_postings(Page(detail.get('text',''),detail['url']),detail,data,units)
+            pg=Page(detail.get('text',''),detail['url'])
+            from hiring_discovery import closed_hiring_page
+            if urlsplit(detail['url']).hostname in FINN and closed_hiring_page(pg):
+                closed_keys.add(job_key({'url':detail['url']}))
+            records=parse_postings(pg,detail,data,units)
             for record in records:
+                if job_key(record['item']) in closed_keys:continue
                 if any(job_key(r['item'])==job_key(record['item']) for r in out['records']):continue
                 out['records'].append(record)
                 if record['homepage'] and record['homepage'] not in out['website_leads']:out['website_leads'].append(record['homepage'])
@@ -252,7 +257,39 @@ def discover(data,units,fetcher,*,max_details=2):
         # Ambiguous broad results do not consume both detail slots before the
         # other board can supply a clearly labelled employer. They remain a
         # fallback, and every chosen detail still needs its corporate ID.
-        inspect(links[:preferred]);deferred.extend(links[preferred:])
+        # One stale matching FINN ad must not consume both detail slots before
+        # NAV has a chance to supply the current exact-employer advertisement.
+        inspect(links[:min(preferred,1)])
+        if out['records']:inspect(links[1:preferred])
+        preferred_deferred.extend(links[1:preferred]);deferred.extend(links[preferred:])
         if out['records'] or out['detail_attempts']>=max_details:break
+    if not out['records']:inspect(preferred_deferred)
     if not out['records']:inspect(deferred)
+    if not out['records'] and out['detail_attempts']<max_details and fetcher.requests<=fetcher.limit-3:
+        trade=registered_trade_query(data,units)
+        if trade:
+            url='https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':trade})
+            rsp=fetcher.get(url,site=True,raw=True);out['sources'].append(rsp)
+            check={'provider':'nav','url':url,'state':rsp['status'],'detail_candidates':0,
+                   'query_basis':'unique current registered child trade name; URL discovery only'}
+            out['checks'].append(check)
+            if rsp['status']=='available':
+                links,preferred=ranked_search_links(Page(rsp.get('text',''),rsp['url']),'nav',data,units)
+                check.update(detail_candidates=len(links),matching_employer_labels=preferred)
+                inspect(links[:preferred])
+                if not out['records']:inspect(links[preferred:])
     return out
+
+
+def registered_trade_query(data,units):
+    """One current workplace's literal trade name, not an inferred brand."""
+    from attribution import legal_stem
+    from agent import valid_org
+    target=data.get('organisasjonsnummer');parent=legal_stem(data.get('navn',''))
+    names={u['navn'].strip() for u in units if isinstance(u,dict) and u.get('overordnetEnhet')==target
+           and valid_org(str(u.get('organisasjonsnummer',''))) and isinstance(u.get('navn'),str)
+           and 3<=len(u['navn'].strip())<=200}
+    if len(names)!=1:return None
+    name=next(iter(names));child=legal_stem(name)
+    if not parent or not child or parent in child or child in parent:return None
+    return name

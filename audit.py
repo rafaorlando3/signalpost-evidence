@@ -37,7 +37,8 @@ def audit(rows, cache):
                     errors.append([row['organisation_number'],c['field'],str(exc)])
             if c['field']=='website.verified_url':
                 web=[s for eid,s in sources.items() if eid in c['evidence_ids'] and 'json' not in s]
-                if pointer=='explicit_org_number' and not any(website_identity(row['organisation_number'],Page(s.get('text',''),s['url']))=='exact' for s in web):
+                registry_identity=next((s.get('json') for s in sources.values() if isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
+                if pointer=='explicit_org_number' and not any(website_identity(row['organisation_number'],Page(s.get('text',''),s['url']),registry_identity)=='exact' for s in web):
                     errors.append([row['organisation_number'],'identity number not supported by retained page'])
                 support=c.get('identity_support')
                 if support and pointer=='linked_business_self_description_and_registered_address':

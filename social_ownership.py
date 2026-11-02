@@ -103,6 +103,8 @@ class Controls(HTMLParser):
 
     def handle_starttag(self,tag,attrs):
         attrs=dict(attrs);context=' '.join((attrs.get(k) or '') for k in ('class','id','aria-label','title','itemprop','rel'))
+        from site_discovery import scoped_context
+        context=scoped_context(tag,context)
         comment_block=tag in {'article','div','section','ol','ul','li'} and any(re.fullmatch(r'(?:comments?(?:[-_][\w]+)?|wp-block-post-comments(?:[-_][\w]+)?)',token,re.I) for token in ((attrs.get('class') or '')+' '+(attrs.get('id') or '')).split())
         excluded=(any(n['excluded'] for n in self.stack) or bool(EXCLUDED.search(context)) or comment_block)
         semantic_context=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',context).replace('_',' ')

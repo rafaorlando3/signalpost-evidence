@@ -114,6 +114,10 @@ class ExtraEvidence(unittest.TestCase):
         page='<h1>Engineer</h1><script type="application/ld+json">'+json.dumps(posting)+'</script>'
         r=h.observe({h.HOME:home,'https://careers.test/':page})
         self.assertIsNone(h.by_field(r,'website.hiring')['value'])
+        posting['hiringOrganization']['name']='Example'
+        page='<h1>Engineer</h1><script type="application/ld+json">'+json.dumps(posting)+'</script>'
+        r=h.observe({h.HOME:home,'https://careers.test/':page})
+        self.assertIsNone(h.by_field(r,'website.hiring')['value'])
         posting['hiringOrganization']['name']='Example AS'
         page='<h1>Engineer</h1><script type="application/ld+json">'+json.dumps(posting)+'</script>'
         r=h.observe({h.HOME:home,'https://careers.test/':page})

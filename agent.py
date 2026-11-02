@@ -216,6 +216,8 @@ class Page(HTMLParser):
     def handle_starttag(self, tag, attrs):
         a=dict(attrs)
         context=' '.join((a.get(k) or '') for k in ('class','id','aria-label','title','data-sentry-component','data-sentry-source-file'))
+        from site_discovery import scoped_context
+        context=scoped_context(tag,context)
         post_context=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',a.get('class') or '').replace('_',' ')
         if tag=='article' and re.search(r'(?:^|\s)type-post(?:\s|$)|\bsingle[ -]+post\b',post_context,re.I):self.post_container=True
         # WordPress and Squarespace mark an individual editorial view on body,
@@ -489,6 +491,19 @@ def website_identity(org, page, data=None, *, site_url=None):
     for value in re.findall(r'\borg\.[ \t]*[:\-]?[ \t]*(?:NO[ \t]*)?([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})(?![0-9])',page.text,re.I):
         number=re.sub(r'\D','',value)
         if valid_org(number):numbers.add(number)
+    if data and re.search(r'/(?:kontakt[^/]*|contact[^/]*|imprint|impressum|legal)(?:/|$)',urlsplit(page.url).path,re.I):
+        from business_identity import self_description_blocks
+        full=normalized(data.get('navn',''));stem=re.sub(r' (as|asa|sa|nuf|sti)$','',full)
+        brand=' '+normalized(page.title+' '+' '.join(page.content_headings))+' '
+        if full!=stem and len(stem)>=5 and ' '+stem+' ' in brand:
+            for block in self_description_blocks(page):
+                # A contact block beginning with the complete legal name and
+                # its checksum-valid identifier is explicit self-identification.
+                # Customer/quote/form blocks and arbitrary nine digits do not qualify.
+                match=re.match(r'^\s*'+r'\W+'.join(re.escape(t) for t in full.split())+
+                               r'\s*\(\s*([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})\s*\)',block,re.I)
+                number=re.sub(r'\D','',match[1]) if match else None
+                if number and valid_org(number):numbers.add(number)
     for item in objects(page.ld):
         if schema_types(item) & {'Organization','Corporation','LocalBusiness'}:
             for key in ('taxID','vatID'):
@@ -534,7 +549,7 @@ def social_profile(url):
     return canonical_profile(url) is not None
 
 
-def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, reserve_requests=0, seed_urls=(), portal_child=False):
+def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, reserve_requests=0, seed_urls=(), portal_child=False, priority_urls=()):
     """Explore distinct purposes and linked detail pages within the existing request cap."""
     home=Page(response.get('text',''),response['url']); host=urlsplit(response['url']).hostname
     pages=[];verified=[];seen={urlunsplit((*urlsplit(response['url'])[:4],''))};queue={};counts=collections.Counter();discovered=False
@@ -610,6 +625,17 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
                 if url not in seen:queue[url]=family
         return True
     if not ingest(home,response): return [],pages
+    prior_content=set()
+    for prior in priority_urls:
+        url=prior.get('url') if isinstance(prior,dict) else prior
+        if not isinstance(url,str):continue
+        try:p=urlsplit(url);port=p.port
+        except ValueError:continue
+        family=prior.get('family') if isinstance(prior,dict) else link_family(url)
+        if family not in {'identity','activity','hiring'}:continue
+        if (family and p.hostname==host and p.scheme in {'https','http'} and not p.username
+                and not p.password and port in (None,80,443) and url not in seen):
+            queue[url]=family;prior_content.add(url)
     for url in seed_urls:
         p=urlsplit(url)
         if p.hostname==host and p.scheme in ('https','http') and not p.username and not p.password and link_family(url)=='identity' and url not in seen:
@@ -643,13 +669,20 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
                       and len([p for p in urlsplit(candidate).path.split('/') if p])==1
                       and not catalog_route(candidate) and not re.search(r'\.(?:pdf|jpe?g|png|gif|svg|webp|mp4|xml)$',urlsplit(candidate).path,re.I)):
                     exploratory_roles.add(candidate);queue.setdefault(candidate,'hiring')
-    from hiring_discovery import application_links,linked_public_job_detail
+    from hiring_discovery import application_links,linked_public_job_detail,external_career_leads
     def has_application_lead():
         return any(application_links(pg) or any(linked_public_job_detail(pg,l) for l in pg.links) for pg,_,_ in pages)
     def crawl_reserve():
         # Public application landing pages can contain the only literal deadline.
         # Leave room for their robots request, three GETs and one redirect once a role links one.
-        return 5 if verified and has_application_lead() else (0 if verified else reserve_requests)
+        if verified and any(u not in seen for u in prior_content):return 0
+        if verified and has_application_lead():return 5
+        # An observed external careers portal needs a robots check, index and
+        # job detail. Do not spend every slot on internal auxiliary pages first.
+        if (verified and not any(activity_candidates(pg,rsp)[0] for pg,rsp,_ in pages)
+                and any((urlsplit(u).hostname or '').endswith('.'+host.removeprefix('www.'))
+                        for pg,_,_ in pages for u in external_career_leads(pg))):return 4
+        return 0 if verified else reserve_requests
     while attempted_pages<18 and fetcher.requests<fetcher.limit-crawl_reserve():
         # An already fetched news index provides stronger discovery leads than
         # another map request. XML remains a fallback when those leads run out.
@@ -662,6 +695,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         def rank(item):
             url,family=item
             base=({'hiring':0,'activity':1,'identity':5} if verified else {'identity':0,'hiring':5,'activity':6})[family]
+            if verified and url in prior_content:base-=80
             if url in exploratory_roles:base+=100
             depth=len([s for s in urlsplit(url).path.split('/') if s])
             # Up to three observed named role links precede redundant career indexes.
@@ -1033,6 +1067,26 @@ def research(row, fetcher, previous=None, search=None):
     from registry_discovery import registry_candidates,host_key
     units=pick(locations.get('json') or {},'_embedded','underenheter') or []
     leads=registry_candidates(org,data,units)
+    # Previous observations nominate URLs only. Fresh primary responses still
+    # establish identity and every fact; previous values are never copied.
+    previous_urls=[]
+    if isinstance(previous,dict) and previous.get('organisation_number')==org:
+        for item in previous.get('claims',[]):
+            if not isinstance(item,dict) or item.get('availability')!='available':continue
+            field=item.get('field');value=item.get('value')
+            if field=='website.verified_url' and isinstance(value,str):
+                from registry_discovery import web_url
+                checked=web_url(value)
+                if checked and not any(host_key(x['url'])==host_key(checked) for x in leads):
+                    leads.append({'url':checked,'origin':'previous_verified_url_revalidation'})
+            if field in {'website.activity','website.hiring','website.contact_channels'} and isinstance(value,list):
+                for fact in value:
+                    if not isinstance(fact,dict):continue
+                    url=fact.get('source_url') if field=='website.contact_channels' else fact.get('url')
+                    family={'website.activity':'activity','website.hiring':'hiring','website.contact_channels':'identity'}[field]
+                    if (isinstance(url,str) and not any(p['url']==url for p in previous_urls)
+                            and sum(p['family']==family for p in previous_urls)<8):
+                        previous_urls.append({'url':url,'family':family})
     public_jobs_result=None
     def public_jobs():
         nonlocal public_jobs_result
@@ -1041,7 +1095,7 @@ def research(row, fetcher, previous=None, search=None):
             public_jobs_result=(discover(data,units,fetcher) if getattr(fetcher,'public_jobs',True) else {'records':[],'website_leads':[],'checks':[],'sources':[],'detail_attempts':0})
         return public_jobs_result
     webstate={'url':'','status':'not_available','retrieved_at':now()}
-    attempts=[];operator_limits=[]
+    attempts=[];operator_limits=[];inspected_observations=set()
     def candidates():
         for index,lead in enumerate(leads):
             lead_url=lead['url'];parsed=urlsplit(lead_url)
@@ -1107,8 +1161,15 @@ def research(row, fetcher, previous=None, search=None):
             # Only an observed redirect from the declared entity URL extends
             # its domain anchor. Search, email and workplace URLs cannot do so.
             redirect_host=host_key(response['url']) if origin=='entity_website' and response.get('requested_url')==url else None
+            observed=(response['url'],response.get('content_sha256'),redirect_host,origin=='entity_portal_link')
+            if response.get('content_sha256') and observed in inspected_observations and not hints:
+                attempt.update(identity='not_established',reused_inspection=True,
+                               reason='same resolved URL, body hash and identity-anchor context already inspected in this observation')
+                continue
             verified,inspected=crawl_company(org,data,response,fetcher,registry_redirect_host=redirect_host,
-                                            reserve_requests=6 if remaining_leads else 0,seed_urls=hints,portal_child=origin=='entity_portal_link')
+                                            reserve_requests=6 if remaining_leads else 0,seed_urls=hints,
+                                            portal_child=origin=='entity_portal_link',priority_urls=previous_urls)
+            if response.get('content_sha256'):inspected_observations.add(observed)
             attempt.update(identity='verified' if verified else 'not_established',pages_inspected=len(inspected),
                            requests=fetcher.requests-started_requests)
             blockers=[(rsp,rsp['site_operator']) for pg,rsp,identity in inspected
@@ -1240,6 +1301,10 @@ def research(row, fetcher, previous=None, search=None):
                                     legal=re.sub(r' (as|asa|sti)$','',normalized(data.get('navn','')))
                                     if not employer or re.sub(r' (as|asa|sti)$','',normalized(employer))!=legal:
                                         limitation(rsp,'posting lacks an exact named hiring entity; own-entity attribution unresolved')
+                                        continue
+                                    if (rsp.get('delegated_from_verified_careers') and not obj.get('_public_board_item')
+                                            and normalized(employer)!=normalized(data.get('navn',''))):
+                                        limitation(rsp,'delegated posting names only a brand or group; exact legal hiring employer unresolved')
                                         continue
                                 attribution=None
                                 if field=='activity':

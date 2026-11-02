@@ -9,10 +9,17 @@ import time
 from urllib.parse import urlsplit, urlunsplit
 import re
 
-DIRECTORIES = {'proff.no','purehelp.no','1881.no','gulesider.no','brreg.no','vexter.no',
+PRIMARY_EXCLUSIONS = {'proff.no','purehelp.no','1881.no','gulesider.no','brreg.no','vexter.no',
                '1850.no','bizzy.org','wikipedia.org','facebook.com','linkedin.com','instagram.com',
                '180.no','io.no','vainu.com','listings.no','proffi.no','foretaksinfo.no',
                'firmalisten.no','yra.no','b2bprospect.no','finn.no','haandverkere.no','nol.no'}
+DIRECTORIES = PRIMARY_EXCLUSIONS | {
+               'byndle.no','nabonytt.no','asdata.no','firmadatabasen.no','norgelei.no',
+               'nor47business.com','regnskapstall.no','byggsikt.no','sokfirma.no',
+               'utdanning.no','jobbi.no','tracxn.com','plaace.co','tripadvisor.com',
+               'kredittsjekk.no','1890.no','cylex.no','opencorporates.com','tavily.com',
+               'barnehagelisten.no','headly.com','karrierestart.no','indeed.com',
+               'visitnorway.com','fjordnorway.com','visitvestlandet.no','mapcarta.com'}
 
 def identity_candidates(results, org, name):
     """Rank discovery only; snippets never become evidence or survive retention."""
@@ -65,7 +72,7 @@ def candidate_urls(results):
 
 
 class TavilySearch:
-    """One basic request per company, globally capped. No signup or paid fallback."""
+    """Bounded basic discovery requests, globally capped. No signup or paid fallback."""
     def __init__(self, directory, limit=100, key=None, transport=None, strategy='legacy'):
         if not 1 <= limit <= 1000: raise ValueError('search credit cap must be 1..1000')
         self.directory = Path(directory) / 'search'
@@ -90,7 +97,10 @@ class TavilySearch:
                                             'facebook.com','linkedin.com','instagram.com'])
         if mode=='identity':
             payload.update(query='"'+name[:200]+'" '+org+' Norge',max_results=10,
-                           country='norway',exclude_domains=sorted(DIRECTORIES))
+                           country='norway',exclude_domains=sorted(PRIMARY_EXCLUSIONS))
+        if mode=='filtered_name':
+            payload.update(query='"'+name[:200]+'"',max_results=10,country='norway',
+                           exclude_domains=sorted(DIRECTORIES))
         return payload
 
     def _post(self, payload, timeout):
@@ -143,7 +153,7 @@ class TavilySearch:
         if path.exists() and (fetcher.replay or not fetcher.fresh):
             cached = json.loads(path.read_text())
             record.update(state='cached', urls=list(candidate_urls([{'url': u} for u in cached['urls']])), retrieved_at=cached['retrieved_at'])
-            if mode in {'identity','name_focus'}:record['candidates']=cached.get('candidates',[])
+            if mode in {'identity','name_focus','filtered_name'}:record['candidates']=cached.get('candidates',[])
             fetcher.hits += 1
             return record['urls']
         if fetcher.replay:
@@ -155,7 +165,7 @@ class TavilySearch:
         record.update(request_attempts=1, credits_reported=None, paid_cost_usd=None)
         try:
             response = self.transport(payload, max(.1, min(8, fetcher.end - time.monotonic())))
-            candidates=identity_candidates(response.get('results',[]),org,name) if mode in {'identity','name_focus'} else []
+            candidates=identity_candidates(response.get('results',[]),org,name) if mode in {'identity','name_focus','filtered_name'} else []
             # Prefer result titles/snippets matching the queried legal identity
             # over unrelated business portals. They remain URL leads only:
             # the fetched first-party site must independently establish identity.
@@ -163,13 +173,13 @@ class TavilySearch:
                     else list(candidate_urls(response.get('results', [])))[:2])
             record.update(state='completed', urls=urls,
                           credits_reported=response.get('usage', {}).get('credits'))
-            if mode in {'identity','name_focus'}:record['candidates']=candidates
+            if mode in {'identity','name_focus','filtered_name'}:record['candidates']=candidates
             # Cache only candidate URLs, never snippets, answers, API credentials or full output.
             from datetime import datetime, timezone
             record['retrieved_at'] = datetime.now(timezone.utc).isoformat()
             temp = path.with_suffix('.' + str(threading.get_ident()) + '.tmp')
             temp.write_text(json.dumps({'urls': urls, 'retrieved_at': record['retrieved_at'],
-                                       **({'candidates':candidates} if mode in {'identity','name_focus'} else {})}))
+                                       **({'candidates':candidates} if mode in {'identity','name_focus','filtered_name'} else {})}))
             temp.replace(path)
             return urls
         except (OSError, ValueError, TypeError, AttributeError, http.client.HTTPException) as exc:
@@ -179,7 +189,7 @@ class TavilySearch:
     def iter_candidates(self,org,name,fetcher):
         """Second query is lazy: a confirmed first-stage site avoids its charge."""
         stages=[];seen=set()
-        modes=('name_focus','identity') if self.strategy=='adaptive' else (self.strategy,)
+        modes=('name_focus','identity','filtered_name') if self.strategy=='adaptive' else (self.strategy,)
         for mode in modes:
             urls=self.discover(org,name,fetcher,mode)
             stage=dict(fetcher.discovery);stages.append(stage)

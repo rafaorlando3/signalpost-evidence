@@ -4,6 +4,13 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 
 
+def scoped_context(tag, context):
+    """Squarespace body style switches are not local author/share owners."""
+    if tag!='body':return context
+    return ' '.join(token for token in context.split()
+                    if token.casefold() not in {'hide-article-author','show-article-author','product-social-sharing'})
+
+
 def excluded_content_url(url):
     """Assets and action/confirmation endpoints are not research documents."""
     path=urlsplit(url).path
