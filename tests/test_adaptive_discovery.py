@@ -9,6 +9,18 @@ from search import TavilySearch, identity_candidates
 from test_discovery import Pages, ORG
 
 class AdaptiveDiscovery(unittest.TestCase):
+    def test_directory_rejection_preserves_established_query_cache_identity(self):
+        with tempfile.TemporaryDirectory() as d:
+            s=TavilySearch(d,key='fixture')
+            self.assertEqual(s.payload('Example Plant AS',ORG,'name_focus')['query'],'"Example Plant AS"')
+            self.assertEqual(s.payload('Example Plant AS',ORG,'filtered_name')['query'],'"Example Plant AS"')
+            self.assertNotIn('northdata.de',s.payload('Example Plant AS',ORG,'filtered_name')['exclude_domains'])
+            self.assertEqual(s.payload('Tomas',ORG,'filtered_name')['query'],'"Tomas"')
+            candidates=identity_candidates([{'url':'https://no.kompass.com/company/example','content':ORG},
+                {'url':'https://www.northdata.de/example','content':ORG},
+                {'url':'https://ours.test/contact','title':'Example Plant'}],ORG,'Example Plant AS')
+            self.assertEqual(candidates,[{'url':'https://ours.test/','hints':['https://ours.test/contact']}])
+
     def test_focused_first_query_prioritizes_company_lead_and_keeps_legal_hint(self):
         calls=[]
         def post(payload,timeout):

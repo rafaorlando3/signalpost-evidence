@@ -13,13 +13,17 @@ PRIMARY_EXCLUSIONS = {'proff.no','purehelp.no','1881.no','gulesider.no','brreg.n
                '1850.no','bizzy.org','wikipedia.org','facebook.com','linkedin.com','instagram.com',
                '180.no','io.no','vainu.com','listings.no','proffi.no','foretaksinfo.no',
                'firmalisten.no','yra.no','b2bprospect.no','finn.no','haandverkere.no','nol.no'}
+ADDITIONAL_DIRECTORIES = {'northdata.com','northdata.de','northdata.no','kompass.com',
+                         'ceginformacio.hu','mappy.com','norgeguide.com','renholdsoversikten.no','verif.com'}
 DIRECTORIES = PRIMARY_EXCLUSIONS | {
                'byndle.no','nabonytt.no','asdata.no','firmadatabasen.no','norgelei.no',
                'nor47business.com','regnskapstall.no','byggsikt.no','sokfirma.no',
                'utdanning.no','jobbi.no','tracxn.com','plaace.co','tripadvisor.com',
                'kredittsjekk.no','1890.no','cylex.no','opencorporates.com','tavily.com',
                'barnehagelisten.no','headly.com','karrierestart.no','indeed.com',
-               'visitnorway.com','fjordnorway.com','visitvestlandet.no','mapcarta.com'}
+               'visitnorway.com','fjordnorway.com','visitvestlandet.no','mapcarta.com',
+               'northdata.com','northdata.de','northdata.no','kompass.com',
+               'ceginformacio.hu','mappy.com','norgeguide.com','renholdsoversikten.no','verif.com'}
 
 def identity_candidates(results, org, name):
     """Rank discovery only; snippets never become evidence or survive retention."""
@@ -99,8 +103,11 @@ class TavilySearch:
             payload.update(query='"'+name[:200]+'" '+org+' Norge',max_results=10,
                            country='norway',exclude_domains=sorted(PRIMARY_EXCLUSIONS))
         if mode=='filtered_name':
+            # Preserve the established query/cache identity. Expanded local
+            # URL rejection applies to both cached and fresh results, without
+            # invalidating previously captured discovery responses.
             payload.update(query='"'+name[:200]+'"',max_results=10,country='norway',
-                           exclude_domains=sorted(DIRECTORIES))
+                           exclude_domains=sorted(DIRECTORIES-ADDITIONAL_DIRECTORIES))
         return payload
 
     def _post(self, payload, timeout):

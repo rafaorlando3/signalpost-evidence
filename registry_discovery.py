@@ -2,7 +2,8 @@
 from urllib.parse import urlsplit, urlunsplit
 
 FREE_EMAIL = {'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'online.no',
-              'icloud.com', 'live.no', 'live.com', 'msn.com', 'proton.me', 'protonmail.com'}
+              'icloud.com', 'live.no', 'live.com', 'msn.com', 'proton.me', 'protonmail.com',
+              'gmx.net', 'gmx.de', 'web.de', 'hotmail.no', 'outlook.no', 'yahoo.no'}
 
 
 def web_url(value):

@@ -41,7 +41,7 @@ class PublicRecruiting(unittest.TestCase):
   self.assertNotEqual(job_key({'url':AD}),job_key({'url':'https://www.finn.no/job/ad/987654321'}))
  def test_search_result_is_a_url_lead_not_an_employer_assertion(self):
   class F:
-   requests=0;limit=5
+   requests=0;limit=20
    def __init__(self):self.urls=[]
    def get(self,url,**kwargs):
     self.urls.append(url);self.requests+=1

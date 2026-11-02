@@ -229,6 +229,11 @@ def discover(data,units,fetcher,*,max_details=2):
     if not isinstance(name,str) or not target:return out
     queries=[('finn','https://www.finn.no/job/search?'+urlencode({'q':name})),
              ('nav','https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':name}))]
+    # A small remaining budget cannot reliably pay for FINN's index, redirect
+    # and stale detail before reaching NAV. Prefer the current NAV index then;
+    # the other board remains a fallback and exact-employer checks are unchanged.
+    if fetcher.limit-fetcher.requests<=6:
+        queries.reverse()
     seen=set();deferred=[];preferred_deferred=[];closed_keys=set()
     def inspect(links):
         for u in links:
@@ -267,11 +272,15 @@ def discover(data,units,fetcher,*,max_details=2):
     if not out['records']:inspect(deferred)
     if not out['records'] and out['detail_attempts']<max_details and fetcher.requests<=fetcher.limit-3:
         trade=registered_trade_query(data,units)
-        if trade:
-            url='https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':trade})
+        from attribution import legal_stem
+        brand=legal_stem(name)
+        query=trade or (brand if 3<=len(brand)<=200 and brand!=name.casefold().strip() else None)
+        if query:
+            url='https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':query})
             rsp=fetcher.get(url,site=True,raw=True);out['sources'].append(rsp)
             check={'provider':'nav','url':url,'state':rsp['status'],'detail_candidates':0,
-                   'query_basis':'unique current registered child trade name; URL discovery only'}
+                   'query_basis':('unique current registered child trade name; URL discovery only' if trade else
+                                  'registered legal name without legal-form suffix; URL discovery only')}
             out['checks'].append(check)
             if rsp['status']=='available':
                 links,preferred=ranked_search_links(Page(rsp.get('text',''),rsp['url']),'nav',data,units)

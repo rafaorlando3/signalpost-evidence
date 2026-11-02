@@ -1152,6 +1152,11 @@ def research(row, fetcher, previous=None, search=None):
             for index,candidate in enumerate(candidates):
                 yield candidate['url'],'anonymous_search',len(candidates)-index-1,candidate['hints']
     for url,origin,remaining_leads,hints in candidates():
+        # Redirect aliases and a final unverified site must not consume the
+        # reserve left for a current exact-employer public posting. No prior
+        # facts are accepted here; public detail pages still prove each ad.
+        if public_jobs_result is None and getattr(fetcher,'public_jobs',True) and fetcher.requests>=fetcher.limit-8:
+            public_jobs()
         started_requests=fetcher.requests
         response=fetcher.get(url,site=True,raw=True); webstate=response
         attempt={'url':url,'origin':origin,'fetch_state':response['status'],'resolved_url':response['url'],
@@ -1167,7 +1172,7 @@ def research(row, fetcher, previous=None, search=None):
                                reason='same resolved URL, body hash and identity-anchor context already inspected in this observation')
                 continue
             verified,inspected=crawl_company(org,data,response,fetcher,registry_redirect_host=redirect_host,
-                                            reserve_requests=6 if remaining_leads else 0,seed_urls=hints,
+                                            reserve_requests=6 if remaining_leads or (public_jobs_result is None and getattr(fetcher,'public_jobs',True)) else 0,seed_urls=hints,
                                             portal_child=origin=='entity_portal_link',priority_urls=previous_urls)
             if response.get('content_sha256'):inspected_observations.add(observed)
             attempt.update(identity='verified' if verified else 'not_established',pages_inspected=len(inspected),

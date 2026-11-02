@@ -125,4 +125,5 @@ class ExternalCareerBudget(unittest.TestCase):
                          [{'url': 'https://ours.test/', 'hints': ['https://ours.test/kontakt']}])
         with tempfile.TemporaryDirectory() as directory:
             payload = TavilySearch(directory).payload('Example AS', mode='filtered_name')
-        self.assertEqual(set(payload['exclude_domains']), DIRECTORIES)
+        from search import ADDITIONAL_DIRECTORIES
+        self.assertEqual(set(payload['exclude_domains']), DIRECTORIES-ADDITIONAL_DIRECTORIES)

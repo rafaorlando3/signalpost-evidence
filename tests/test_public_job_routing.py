@@ -7,6 +7,52 @@ from test_public_recruiting import DATA, AD, ORG, html, rsp
 
 
 class FairBoardRouting(unittest.TestCase):
+    def test_legal_suffix_query_fallback_does_not_relax_employer_identity(self):
+        from attribution import legal_stem
+        for number,accepted in [(ORG,True),('988943037',False)]:
+            nav=fixtures.NAVPrimary().source(employer={'orgnr':number,'name':DATA['navn']},sourceUrl=None)
+            class F:
+                requests=0;limit=20
+                def get(self,url,**kwargs):
+                    self.requests+=1
+                    if url==nav['url']:return nav
+                    if urlencode({'q':legal_stem(DATA['navn'])}) in url:
+                        return rsp(url,'<article><p>Arbeidsgiver</p><p>'+DATA['navn']+'</p><a href="'+nav['url']+'">Engineer</a></article>')
+                    return rsp(url,'No results')
+            result=discover(DATA,[],F())
+            self.assertEqual(bool(result['records']),accepted)
+            self.assertEqual(result['checks'][-1]['query_basis'],'registered legal name without legal-form suffix; URL discovery only')
+
+    def test_six_remaining_requests_prioritise_current_nav_with_exact_child_binding(self):
+        unit={'organisasjonsnummer':'974761076','overordnetEnhet':ORG,'navn':DATA['navn']}
+        nav=fixtures.NAVPrimary().source(employer={'orgnr':'974761076','name':DATA['navn']},sourceUrl=None)
+        class F:
+            requests=14;limit=20
+            def get(self,url,**kwargs):
+                self.requests+=2 if '?' in url else 1
+                if self.requests>self.limit:return {**rsp(url,''),'status':'failed'}
+                if url==nav['url']:return nav
+                if 'arbeidsplassen.nav.no/stillinger?' in url:
+                    return rsp(url,'<article><p>Arbeidsgiver</p><p>'+DATA['navn']+'</p><a href="'+nav['url']+'">Engineer</a></article>')
+                return rsp(url,html(state='Besatt'))
+        fetch=F();result=discover(DATA,[unit],fetch)
+        self.assertEqual(len(result['records']),1)
+        self.assertEqual(result['checks'][0]['provider'],'nav')
+        self.assertEqual(result['records'][0]['item']['employer_binding']['method'],'published_registered_child_number')
+        self.assertLessEqual(fetch.requests,20)
+
+    def test_low_budget_nav_empty_still_allows_a_valid_finn_ad(self):
+        class F:
+            requests=14;limit=20
+            def get(self,url,**kwargs):
+                self.requests+=2 if '?' in url else 1
+                if 'arbeidsplassen.nav.no' in url:return rsp(url,'No results')
+                if '/search?' in url:return rsp(url,'<article><strong>'+DATA['navn']+'</strong><a href="'+AD+'">Engineer</a></article>')
+                return rsp(url,html())
+        result=discover(DATA,[],F())
+        self.assertEqual(len(result['records']),1)
+        self.assertEqual([c['provider'] for c in result['checks']],['nav','finn'])
+
     def test_stale_first_board_does_not_starve_active_nav_or_resurrect_closed_syndication(self):
         second='https://www.finn.no/job/ad/222222222'
         for source,accepted in [(None,True),(AD,False)]:
