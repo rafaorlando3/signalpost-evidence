@@ -249,9 +249,10 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
     seeds=[];seen={rsp['url'] for _,rsp in content_pages};out=[]
     for page,rsp in content_pages:
         career_urls=set(external_career_leads(page))
+        application_urls=set(application_links(page))
         for link in page.links:
             u=link.get('url','');text=link.get('text','')
-            public_application=u in application_links(page)
+            public_application=u in application_urls
             public_job=bool(rsp.get('identity_verified') and linked_public_job_detail(page,link))
             try:
                 p=urlsplit(u);port=p.port

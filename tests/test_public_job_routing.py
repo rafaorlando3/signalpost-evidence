@@ -7,6 +7,21 @@ from test_public_recruiting import DATA, AD, ORG, html, rsp
 
 
 class FairBoardRouting(unittest.TestCase):
+    def test_delegation_scans_large_noncareer_navigation_in_linear_passes(self):
+        from hiring_discovery import delegated_hiring_pages
+        class Links(list):
+            scans=0
+            def __iter__(self):
+                self.scans+=1
+                return super().__iter__()
+        page=Page('', 'https://example.test/')
+        page.links=Links({'url':'https://example.test/product/'+str(i),'text':'Catalog item','third_party_context':False} for i in range(1000))
+        class F:
+            requests=0;limit=20
+            def get(self,*a,**kw):raise AssertionError('Catalog navigation must not become a career request')
+        self.assertEqual(delegated_hiring_pages([(page,{'url':page.url,'identity_verified':True})],F(),Page),[])
+        self.assertLessEqual(page.links.scans,4)
+
     def test_legal_suffix_query_fallback_does_not_relax_employer_identity(self):
         from attribution import legal_stem
         for number,accepted in [(ORG,True),('988943037',False)]:

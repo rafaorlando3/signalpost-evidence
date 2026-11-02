@@ -60,6 +60,15 @@ class Markup(HTMLParser):
 
 
 def publication_block(page):
+    # The main Page parser has already decoded class attributes. Avoid a
+    # second full HTML parse when none of our exact CMS selectors can match.
+    # The source guard also prevents stale memoization if raw_html changes.
+    cached=getattr(page,'_publication_block_cache',None)
+    if cached is not None and cached[0] is page.raw_html:return cached[1]
+    if (getattr(page,'publication_marker_source',None) is page.raw_html and
+            getattr(page,'publication_marker',None) is False):
+        page._publication_block_cache=(page.raw_html,None)
+        return None
     blocks=[]
     for node in Markup(page.raw_html).blocks:
         text=re.sub(r'\s+',' ',node['text']).strip()
@@ -67,4 +76,6 @@ def publication_block(page):
         value=literal_date(text)
         if value:blocks.append({'date':value,'literal':text,'selector':node['kind']})
     dates={b['date'] for b in blocks}
-    return blocks[0] if len(dates)==1 else None
+    result=blocks[0] if len(dates)==1 else None
+    page._publication_block_cache=(page.raw_html,result)
+    return result

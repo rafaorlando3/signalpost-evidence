@@ -108,7 +108,9 @@ class Controls(HTMLParser):
         comment_block=tag in {'article','div','section','ol','ul','li'} and any(re.fullmatch(r'(?:comments?(?:[-_][\w]+)?|wp-block-post-comments(?:[-_][\w]+)?)',token,re.I) for token in ((attrs.get('class') or '')+' '+(attrs.get('id') or '')).split())
         excluded=(any(n['excluded'] for n in self.stack) or bool(EXCLUDED.search(context)) or comment_block)
         semantic_context=re.sub(r'(?<=[a-z])(?=[A-Z])',' ',context).replace('_',' ')
-        node={'tag':tag,'context':normal(semantic_context),'excluded':excluded,'text':'','links':[]}
+        chrome=(tag in {'header','nav','footer'} or attrs.get('role') in {'banner','navigation','contentinfo'} or
+                bool(re.search(r'(?:^|[\s_-])(?:header|footer|navbar)\d*(?:[\s_-]|$)',context,re.I)))
+        node={'tag':tag,'context':normal(semantic_context),'excluded':excluded,'text':'','links':[],'chrome':chrome}
         if tag not in VOID:self.stack.append(node)
         if tag in {'script','style','noscript'}:self.skip+=1
         if tag=='a' and attrs.get('href') and not self.skip:
@@ -118,7 +120,7 @@ class Controls(HTMLParser):
             self.anchor={'profile':profile,'href':destination,
                          'excluded':excluded,'label':attrs.get('aria-label') or attrs.get('title') or '',
                          'rel':(attrs.get('rel') or '').split(),'scopes':self.stack[-7:],
-                         'chrome':any(n['tag'] in {'header','nav','footer'} for n in self.stack)}
+                         'chrome':any(n['chrome'] for n in self.stack)}
             if profile:
                 self.links.append(self.anchor)
                 for ancestor in self.stack[-7:]:ancestor['links'].append(self.anchor)

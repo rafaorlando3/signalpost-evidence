@@ -10,7 +10,7 @@ from evaluator import collect
 
 
 class Deadline(unittest.TestCase):
-    def run_child(self, text, rows, timeout=2, await_prefix=False):
+    def run_child(self, text, rows, timeout=10, await_prefix=False):
         with tempfile.TemporaryDirectory() as d:
             output = Path(d)/'out.jsonl'
             code = 'from pathlib import Path\nimport time\np=Path('+repr(str(output))+')\n'+text

@@ -76,6 +76,27 @@ class Attribution(unittest.TestCase):
                     'javascript://facebook.com/acme','https://user:pass@facebook.com/acme'):
             self.assertIsNone(canonical_profile(url),url)
 
+    def test_platform_policy_help_and_account_paths_never_become_profiles(self):
+        h=test_agent.R5Precision()
+        for url in ('https://facebook.com/privacy/policy',
+                    'https://www.facebook.com/policies/privacy/',
+                    'https://facebook.com/%70rivacy/policy',
+                    'https://facebook.com/help', 'https://instagram.com/accounts/',
+                    'https://x.com/privacy', 'https://vimeo.com/terms',
+                    'https://facebook.com/privacy.php',
+                    'https://facebook.com/privacy-center'):
+            with self.subTest(url=url):
+                self.assertIsNone(canonical_profile(url))
+                node={'@type':'Organization','taxID':h.ORG,'url':url,'sameAs':url}
+                body='<script type="application/ld+json">'+json.dumps(node)+'</script>'
+                page=Page(body,url)
+                self.assertIsNone(profile_identity(page,{'organisasjonsnummer':h.ORG},h.HOME))
+                self.assertEqual(declared_profiles([(page,{'url':url})],{'organisasjonsnummer':h.ORG}),{})
+        for url in ('https://facebook.com/example','https://instagram.com/example',
+                    'https://linkedin.com/company/privacy-consulting',
+                    'https://facebook.com/privacyconsulting'):
+            self.assertIsNotNone(canonical_profile(url),url)
+
     def test_other_company_article_not_rescued_by_target_footer(self):
         helper=test_agent.R5Precision();url=helper.HOME+'news/partner'
         row=helper.observe({helper.HOME:'Org nr '+helper.ORG+'<a href="/news/partner">News</a>',url:

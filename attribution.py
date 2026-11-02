@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 ORGANIZATION_TYPES=set(json.loads(Path(__file__).with_name("organization_types.json").read_text())["types"])
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit, unquote
 
 
 def normal(value):
@@ -95,6 +95,11 @@ def canonical_profile(url):
         if host not in {'linkedin.com', 'facebook.com', 'youtube.com', 'instagram.com', 'twitter.com', 'x.com', 'vimeo.com', 'tiktok.com'}:
             return None
         path = p.path.rstrip('/')
+        # Platform documents and account utilities are not company profiles,
+        # even when an exact-entity sameAs node mistakenly declares them.
+        root = unquote(path).strip('/').split('/', 1)[0].casefold()
+        if re.fullmatch(r'(?:privacy(?:[-_]?(?:policy|center|centre))?|polic(?:y|ies)|help(?:[-_]?cent(?:er|re))?|support|terms(?:[-_]of[-_]service)?|legal|settings|accounts?|about)(?:\.php)?', root):
+            return None
         if not path or re.search(r'/(?:share|sharer|shareArticle|sharing|intent|plugins|widgets|login|watch|home|search)(?:[/.]|$)', path, re.I):
             return None
         if host == 'linkedin.com' and not re.fullmatch(r'/company/[^/]+', path):
@@ -154,6 +159,8 @@ def profile_identity(page, data, site_url):
 
     A name or handle alone never suffices. Blocked destinations stay unresolved.
     """
+    if canonical_profile(page.url) is None:
+        return None
     for obj in objects(page.ld):
         if (types(obj) & ORGANIZATION_TYPES and own_organization(obj, data)
                 and isinstance(obj.get('url'),str) and canonical_profile(obj['url'])==canonical_profile(page.url)):

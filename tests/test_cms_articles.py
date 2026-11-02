@@ -1,9 +1,25 @@
 import json
 import unittest
+from unittest.mock import patch
 from agent import Page,activity_candidates
+import publication
 
 
 class CMSArticleViews(unittest.TestCase):
+    def test_publication_analysis_is_reused_only_for_identical_page_content(self):
+        plain=Page('<p>Published on September 1, 2026</p>',self.url)
+        with patch.object(publication,'Markup',wraps=publication.Markup) as parse:
+            self.assertIsNone(publication.publication_block(plain))
+            self.assertEqual(parse.call_count,0)
+        page=Page('<span class="meta&#45;date date published">1 September 2026</span>',self.url)
+        with patch.object(publication,'Markup',wraps=publication.Markup) as parse:
+            self.assertEqual(publication.publication_block(page)['date'],'2026-09-01')
+            self.assertEqual(publication.publication_block(page)['date'],'2026-09-01')
+            self.assertEqual(parse.call_count,1)
+            page.raw_html='<span class="meta-date date published">2 September 2026</span>'
+            self.assertEqual(publication.publication_block(page)['date'],'2026-09-02')
+            self.assertEqual(parse.call_count,2)
+
     @staticmethod
     def helper():
         from test_agent import R5Precision

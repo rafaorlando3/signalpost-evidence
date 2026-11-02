@@ -1,3 +1,25 @@
+# Signalpost Evidence — intermediate revision, 2 November 2026
+
+This revision combines the earlier legal-entity website, social-account and dated-news corrections with bounded public recruiting discovery. The submission command is credential-free:
+
+```sh
+python3 -B cli.py --org-list orgs.txt --output runs/result.jsonl --cache cache/new-run --timeout-seconds 2400 --search none
+```
+
+Use Python 3.12.15, a fresh output path and an empty cache. There are no third-party Python dependencies. Alternatively build the pinned Dockerfile and pass the same CLI arguments with explicit input/output/cache mounts. The CLI writes one terminal envelope per input plus a summary and a portable review workspace. The evaluator supplies organisation numbers; no target-company website, job identifier, source cache or search credential is bundled into runtime inputs.
+
+Current fixes reject platform policy/help/account utility paths even when a source's `sameAs` declares them. Public-profile corroboration also refuses such destinations. CSS footer containers and ARIA navigation/contentinfo can support the existing declaration rule only when profiles on at least two networks match the full legal name or exact registered domain. A lone footer link and agency/group conflicts remain insufficient. The viewer displays the attribution basis beside each accepted social profile and distinguishes a company declaration from verified account control.
+
+The current unit suite contains 376 tests. CMS publication blocks are parsed at most once per unchanged page object; the primary Page parser records decoded selector markers so pages without any supported CMS date block avoid a redundant full parse. Delegated careers compute the application-link set once per page rather than rescanning every anchor for each anchor. Changed source content is reanalysed, and article identity/date rules and network budgets are unchanged.
+
+The named feedback cases were checked from organisation numbers against fresh public registry and website responses. The Thon group site and Appelx-to-StudioX redirect were withheld for their respective target entities; Systemhus profiles were not published for Byggmesteren Tromsø. The Amundsen profiles were preserved and the 3DP declared profiles recovered. Some positive website examples could not be re-established in this bounded run; these remain source/identity limitations, not proof the sites do not exist. Dated news requires a real individual article, company-subject attribution and its own publication evidence; menus, product pages and modification timestamps remain excluded.
+
+Optional Tavily discovery is disabled in this submission command. It requires an independently authorised evaluator-owned configuration and a declared credit allowance; a personal development account/key is not supplied. Default external API charges are zero; network/hosting costs and source rate limits are separate. Registry phone/email publication remains disabled pending the organiser's answer.
+
+The current [revision-2 smoke report](smoke/revision2-report.json) records 100/100 live terminal outputs from an initially empty cache, zero execution failures, 376 passing clean-container tests and 1,632 prior input envelopes preserved with source/contract audits. The run took 596.923 seconds under simultaneous local validation load; this is not a throughput guarantee for the organiser's larger batch. Source-level failures remain explicit.
+
+Earlier dated sections below are development history. Their local counts, estimates and no-send statements describe those earlier checkpoints. They are not an official score, an 80-point claim or a receipt that this revision has been accepted. Current submission and smoke-test receipts identify the exact code separately.
+
 ## Free late discovery and employer-aware job selection (coverage5)
 
 A final anonymous Mwmbl API fallback can discover up to two website candidates after the existing registry, bounded domain, job-board and legal-suffix paths fail. It uses the documented public v2 endpoint without a key or account. The anonymous service advertises 1,000 requests/month/IP at 1 request/second. The client spaces starts by 1.1 seconds, caps a run at 1,000 attempts, and stops the shared provider on 401/403/429. It never changes endpoints/IPs/credentials, creates an account or enables paid usage. Null reported quota metadata stays unknown. It is off by default after the 60-company live trial showed zero additional verified sites or jobs; `--public-search auto` explicitly enables experimental use. Every API GET shares the existing 20-request company budget. Snippets rank URLs only; they never become company facts. Each site still needs independent first-party identity evidence. Attribution: https://mwmbl.org/ ; API documentation: https://developer.mwmbl.org/ .

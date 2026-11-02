@@ -119,6 +119,17 @@ class SocialRecovery(unittest.TestCase):
         self.assertEqual(len(c['value']),2)
         self.assertTrue(all('corporate_navigation' in item['ownership_evidence'][0]['method'] for item in c['value']))
 
+    def test_css_footer_or_contentinfo_needs_matching_peers_and_keeps_agency_veto(self):
+        links='<a href="https://facebook.com/example">Facebook</a><a href="https://instagram.com/example">Instagram</a>'
+        for attrs in ('class="rl_footer3_link-list"','role="contentinfo"'):
+            c=self.observe('<div '+attrs+'>'+links+'</div>')
+            self.assertEqual(len(c['value']),2)
+            self.assertTrue(all('corporate_navigation' in i['ownership_evidence'][0]['method'] for i in c['value']))
+        for body in ('<div class="rl_footer3_link-list"><a href="https://facebook.com/example">Facebook</a></div>',
+                     '<div class="rl_footer3_link-list"><a href="https://facebook.com/example">Facebook</a><a href="https://instagram.com/parent">Instagram</a></div>',
+                     '<div class="webdesign rl_footer3_link-list">'+links+'</div>'):
+            self.assertIsNone(self.observe(body)['value'])
+
     def test_personal_linkedin_hashtag_and_media_item_are_still_not_profiles(self):
         for url in ('https://linkedin.com/in/example','https://tiktok.com/tag/example',
                     'https://instagram.com/p/example','https://youtube.com/watch?v=example'):

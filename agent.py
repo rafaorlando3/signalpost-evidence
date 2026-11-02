@@ -200,6 +200,7 @@ class Page(HTMLParser):
         self.headings=[];self.heading=None;self.times=[];self.feeds=[];self.link_context=[];self.editorial_scopes=[];self.comment_scopes=[]
         self.content_headings=[];self.content_times=[];self.main_headings=[];self.main_times=[];self.semantic_headings=[];self.heading_is_semantic=False;self.heading_is_main=False;self.heading_is_content=False;self.body_parts=[];self.post_parts=[];self.main_parts=[]
         self.footer_parts=[];self.paragraphs=[];self.paragraph=None;self.paragraph_is_content=False
+        self.publication_marker=False;self.publication_marker_source=text
         self.feed(text)
 
     def content_scope(self):
@@ -215,6 +216,12 @@ class Page(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         a=dict(attrs)
+        if not self.publication_marker:
+            classes=set((a.get('class') or '').split())
+            self.publication_marker=bool(
+                (tag=='span' and ({'meta-date','date','published'}<=classes or 'meta-text' in classes)) or
+                (tag=='div' and 'publish-date--article' in classes) or
+                (tag=='p' and 'postInfoText' in classes))
         context=' '.join((a.get(k) or '') for k in ('class','id','aria-label','title','data-sentry-component','data-sentry-source-file'))
         from site_discovery import scoped_context
         context=scoped_context(tag,context)
