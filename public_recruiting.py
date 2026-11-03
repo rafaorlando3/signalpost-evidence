@@ -21,6 +21,9 @@ def job_key(item):
         if not isinstance(raw,str):continue
         try:p=urlsplit(raw)
         except ValueError:continue
+        from vilect_careers import position_key
+        vilect=position_key(raw)
+        if vilect:return 'vilect:'+vilect
         if p.hostname in FINN:
             m=re.fullmatch(r'/(?:job/ad/)?([0-9]+)/?',p.path)
             if m:return 'finn:'+m[1]
@@ -160,7 +163,8 @@ def nav_postings(page,response,data,units):
               'status':'published_posting; application availability not independently checked','discovery':'public_board_search',
               'publication_date_basis':{'source':'NAV current-page Next Flight job object','field':'published'}}
         source=obj.get('sourceUrl')
-        if isinstance(source,str) and (detail_url(source,'finn') or (urlsplit(source).hostname in FINN and re.fullmatch(r'/[0-9]+/?',urlsplit(source).path))):item['source_posting_url']=source
+        from vilect_careers import position_key
+        if isinstance(source,str) and (detail_url(source,'finn') or position_key(source) or (urlsplit(source).hostname in FINN and re.fullmatch(r'/[0-9]+/?',urlsplit(source).path))):item['source_posting_url']=source
         out.append({'item':item,'response':{**response,'public_job_board':True},'homepage':_homepage(employer.get('homepage'))})
     return out
 

@@ -56,7 +56,8 @@ def audit(rows, cache):
                     from business_identity import canonical
                     from agent import site_operator_identity
                     bundles=[(Page(s.get('text',''),s['url']),s) for s in web]
-                    bundles.sort(key=lambda pair:canonical(pair[0].url)!=canonical(support.get('entry_url','')))
+                    # Preserve the asserted entry URL when / and empty-path snapshots coexist.
+                    bundles.sort(key=lambda pair:(pair[0].url!=support.get('entry_url'),canonical(pair[0].url)!=canonical(support.get('entry_url',''))))
                     compatible=lambda pg:website_identity(row['organisation_number'],pg,registry_identity)!='conflict' and site_operator_identity(row['organisation_number'],pg,registry_identity)['state'] not in {'different','unresolved'}
                     if not registry_identity or legal_name_identity(registry_identity,bundles,compatible)!=support:
                         errors.append([row['organisation_number'],'first-party legal name proof not reproduced'])
@@ -94,6 +95,19 @@ def audit(rows, cache):
                 from hiring_discovery import continuous_first_party_vacancy
                 registry=next((s.get('json') for s in sources.values() if isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
                 for item in c['value']:
+                    if item.get('discovery')=='linked_vilect_company_portal':
+                        from vilect_careers import accepted_item
+                        proof=item.get('employer_binding',{})
+                        required=[proof.get('company_link_source'),proof.get('portal_index_source'),proof.get('company_identity_source'),item.get('url')]
+                        selected=[next((s for eid,s in sources.items() if eid in c['evidence_ids'] and s.get('url')==u),None) for u in required]
+                        if not registry or any(s is None for s in selected):errors.append([row['organisation_number'],'Vilect source chain missing'])
+                        else:
+                            parent,index,identity,detail=selected
+                            reconstructed=accepted_item(Page(detail['text'],detail['url']),detail,registry,
+                                Page(parent['text'],parent['url']),Page(index['text'],index['url']),Page(identity['text'],identity['url']))
+                            if reconstructed!=item:errors.append([row['organisation_number'],'Vilect posting not reproduced from literal fields, dates and employer chain'])
+                            else:counts['vilect_company_postings_checked']+=1
+                        continue
                     if item.get('discovery')=='linked_dedicated_nuu_portal':
                         from nuu_careers import accepted_item
                         proof=item.get('employer_binding',{})

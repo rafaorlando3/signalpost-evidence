@@ -1490,6 +1490,9 @@ def research(row, fetcher, previous=None, search=None):
                                 if obj.get('_public_board_item'):
                                     item.update(obj['_public_board_item'])
                                     evidence_responses.extend([entity,locations])
+                                if obj.get('_vilect_item'):
+                                    item.update(obj['_vilect_item'])
+                                    evidence_responses.extend([entity,anchor_response,*rsp.get('vilect_support_responses',[])])
                                 if obj.get('_nuu_item'):
                                     item.update(obj['_nuu_item'])
                                     evidence_responses.extend([entity,anchor_response,*rsp.get('nuu_support_responses',[])])
@@ -1505,7 +1508,7 @@ def research(row, fetcher, previous=None, search=None):
                                     evidence_responses.extend(([ats] if ats else [])+[anchor_response])
                                 if not any(i['url']==item['url'] and str(i['date'])[:10]==str(item['date'])[:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp);positive_responses.append(rsp)
-                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, scoped published time or labelled CMS publication block on editorial detail pages' if field=='activity' else 'JobPosting, explicit first-party named vacancy invitation, or matching linked public ATS deadline; unknown publication/deadline dates stay null'))
+                    add('website.'+field,items or None,positive_responses[0] if positive_responses else anchor_response,excerpt=items[0]['title'] if items else None,state='ambiguous' if not items and limitations else None,pointer=('JSON-LD, article:published_time, scoped published time or labelled CMS publication block on editorial detail pages' if field=='activity' else 'JobPosting, explicit first-party named vacancy invitation, matching linked public ATS deadline, or Vilect labelled fields and publication metadata with a verified company chain; unknown publication/deadline dates stay null'))
                     if limitations:
                         claims[-1]['qualifiers']={'coverage':'partial' if items else 'unresolved',
                             'candidate_limitations':limitations}

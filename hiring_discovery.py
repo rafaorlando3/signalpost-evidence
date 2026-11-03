@@ -240,14 +240,14 @@ def external_career_leads(page):
                 or p.hostname==urlsplit(page.url).hostname):continue
         if re.search(r'login|sign[-_]?in|profile|apply|application',p.path,re.I):continue
         if re.search(r'privacy|personvern|cookies|data-protection',p.path,re.I):continue
-        if not re.search(r'\b(?:careers?|karriere|jobbe?\s+(?:hos|i)|ledige\s+stillinger|vacancies|jobs?)\b',label,re.I):continue
+        if not (re.search(r'\b(?:careers?|karriere|jobbe?\s+(?:hos|i)|ledige\s+stillinger|vacancies|jobs?)\b',label,re.I) or (len(label.strip())<=120 and re.fullmatch(r'\s*(?:work (?:with|for) us|join (?:us|our team))\s*',label,re.I))):continue
         out.append(urlunsplit((p.scheme,p.netloc,p.path,p.query,'')))
     return list(dict.fromkeys(out))
 
 
 def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, units=()):
     seeds=[];seen={rsp['url'] for _,rsp in content_pages};out=[]
-    nuu_contexts={}
+    nuu_contexts={};vilect_contexts={}
     for page,rsp in content_pages:
         career_urls=set(external_career_leads(page))
         application_urls=set(application_links(page))
@@ -282,6 +282,14 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
                 pg.ld.append({'@type':'JobPosting','title':item['title'],'datePosted':None,
                     'validThrough':item['valid_through'],'hiringOrganization':{'name':data['navn']},'_nuu_item':item})
                 rsp={**rsp,'nuu_support_responses':context['support']}
+        if u in vilect_contexts and data:
+            from vilect_careers import accepted_item
+            context=vilect_contexts[u]
+            item=accepted_item(pg,rsp,data,context['parent_page'],context['index_page'],context['identity_page'])
+            if item:
+                pg.ld.append({'@type':'JobPosting','title':item['title'],'datePosted':item['date'],
+                    'hiringOrganization':{'name':data['navn']},'_vilect_item':item})
+                rsp={**rsp,'vilect_support_responses':context['support']}
         # NAV exposes the current ad in inert Next Flight JSON rather than
         # JSON-LD. Reuse the public-ad verifier: a link alone cannot establish
         # employer, publication date, active state or the registered child.
@@ -323,6 +331,14 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
                     and not re.search(r'login|apply|profile',q.path,re.I) and v not in seen
                     and not any(v==entry[0] for entry in details)):
                 details.append((v,rsp['url']))
+        from vilect_careers import index_key,position_key
+        if owner and data and index_key(pg.url):
+            from agent import website_identity
+            exact=next(((p,r) for p,r in content_pages if website_identity(str(data.get('organisasjonsnummer','')),p,data)=='exact'),None)
+            if exact:
+                for target,_ in details:
+                    if position_key(target):vilect_contexts[target]={'parent_page':owner[0],'index_page':pg,'identity_page':exact[0],
+                        'support':[owner[1],rsp,exact[1]]}
         # Specific roles precede duplicate portal indexes or unrelated footer
         # links already queued from another first-party page.
         seeds=details+seeds
