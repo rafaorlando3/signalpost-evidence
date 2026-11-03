@@ -70,17 +70,28 @@ def named_address(obj,data):
     return False
 
 
-def group_site_reason(page, data):
+def group_site_reason(page, data, *, identity_page=False):
     """A subsidiary footer is not proof that a differently branded group is its site.
 
-    Applied to the entry page only; a stray group link or article is insufficient.
+    Collective branding applies to the entry page; an identity page needs
+    explicit group-management or multi-entity directory evidence.
     An explicit scoped WebSite operator is handled separately by the caller.
     """
     description = page.description
     collective = re.search(r'\b(?:the|our|entire|whole)\s+group\b|\b(?:konsernet|konsernets|hele gruppen|vårt konsern)\b|\b(?:group|gruppen)\s+(?:consists|comprises|includes|employs)\b', description, re.I)
     brand = page.meta.get('og:site_name') or (page.content_headings[0] if page.content_headings else page.title)
-    if collective and brand.strip() and not mentions(brand, data.get('navn', '')):
+    if not identity_page and collective and brand.strip() and not mentions(brand, data.get('navn', '')):
         return 'entry page explicitly describes a group under another brand; a subsidiary footer does not establish its own site'
+    content=re.sub(r'\s+',' ',' '.join(page.main_parts or page.body_parts))
+    management=re.search(r'\bledelsen i\s+.{1,80}?\b(?:gruppen|group)\b',content,re.I)
+    target=data.get('navn','')
+    if (management and not re.search(r'\b(?:group|gruppen)\b',target,re.I)
+            and not mentions(brand,target) and not mentions(content,target)):
+        return 'identity page explicitly identifies management of a differently named group, without the target legal entity in its own content'
+    directory=re.search(r'global footprint|locations worldwide|global network',content,re.I)
+    entities=set(re.findall(r'\b(?:Entity|Operating Company|Branch Office|Headquarters?)\s+(.{1,120}?\b(?:AS|ASA|AG|AB|LLC|Ltd\.?|GmbH))\b',content,re.I))
+    if directory and len(entities)>=2:
+        return 'global locations directory names multiple legal entities; a target entry and address do not establish the group directory as its own site'
     return None
 
 

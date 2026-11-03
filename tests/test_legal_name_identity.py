@@ -9,6 +9,11 @@ class LegalNameIdentityTests(unittest.TestCase):
         return legal_name_identity(data,[(p,rsp)],lambda pg:website_identity(data['organisasjonsnummer'],pg,data)!='conflict' and site_operator_identity(data['organisasjonsnummer'],pg,data)['state'] not in {'different','unresolved'})
     def test_scoped_legal_self_description(self):
         self.assertIsNotNone(self.proof('<title>Starina</title><main><p>Starina AS består av to avdelinger som leverer mat.</p></main>'))
+    def test_short_complete_legal_name_with_own_business_statement(self):
+        data={**self.data,'navn':'NORDIK AS'}
+        self.assertIsNotNone(self.proof('<title>Nordik</title><main><p>Nordik AS ble etablert i Norge og leverer byggtjenester.</p></main>',data))
+        self.assertIsNone(self.proof('<title>Nordik</title><main><p>Nordik Industries LLC supplies outdoor equipment.</p></main>',data))
+
     def test_brand_or_registry_link_alone_is_insufficient(self):
         self.assertIsNone(self.proof('<title>Starina</title><main><p>Velkommen til vår nye hjemmeside.</p></main>'))
     def test_customers_quotes_and_web_agency_do_not_establish_identity(self):

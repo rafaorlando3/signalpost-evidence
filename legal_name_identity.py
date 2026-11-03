@@ -39,7 +39,7 @@ def legal_name_identity(data,pages,compatible):
     host=urlsplit(entry).hostname;full=fold(data.get('navn',''))
     stem=re.sub(r' (?:as|asa|sa|nuf|da|ans|sti)$','',full)
     # No shortening of initials, geography or other legal differentiators.
-    if full==stem or len(stem)<7:return None
+    if full==stem or len(stem)<5:return None
     brands=[home.title,home.meta.get('og:site_name',''),*home.content_headings]
     if not any(literal_name(b,stem) for b in brands):return None
     if any(not compatible(pg) for pg,_ in pages):return None

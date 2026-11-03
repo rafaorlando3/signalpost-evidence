@@ -101,3 +101,50 @@ def legal_form_domain_candidates(data):
     match=re.fullmatch(r'\s*([a-z][a-z0-9]{3,44})\s+as\s*',name)
     if not match or match[1] in {'holding','holdings','invest','eiendom'}:return []
     return ['https://'+match[1]+'as.no/']
+
+
+def declared_url_variants(value):
+    """Late scheme/host aliases of a literal registry URL, preserving its path.
+
+    Every alias gets its own robots check, normal TLS verification and identity
+    proof. These do not repair certificates or override a robots prohibition.
+    """
+    url=web_url(value)
+    if not url:return []
+    p=urlsplit(url);host=p.hostname
+    if not host or p.port:return []
+    bare=host[4:] if host.startswith('www.') else host
+    aliases=[urlunsplit((scheme,h,p.path,p.query,'')) for scheme in ['https','http'] for h in [host,('www.'+bare if host==bare else bare)]]
+    return [u for u in dict.fromkeys(aliases) if u!=url]
+
+
+def additional_name_domain_candidates(data):
+    """One late compact .com lead without replacing either established .no lead."""
+    previous=name_domain_candidates(data)
+    if not previous:return []
+    p=urlsplit(previous[0]);host=p.hostname or ''
+    if not host.endswith('.no'):return []
+    url='https://'+host[:-3]+'.com/'
+    return [] if url in previous else [url]
+
+
+def scoped_entity_candidates(data,page):
+    """Observed same-host company paths matching the full legal stem.
+
+    A generic group homepage can lead to its entity's own page. Domain and path
+    together must retain every legal differentiator; the page still needs proof.
+    """
+    import re
+    from legal_name_identity import fold
+    full=fold(data.get('navn',''));stem=re.sub(r' (?:as|asa|sa|nuf|da|ans|sti)$','',full)
+    if len(stem)<8:return []
+    host=urlsplit(page.url).hostname or '';brand=fold(host.removeprefix('www.').split('.')[0]);out=[]
+    for link in page.links:
+        url=web_url(link.get('url'))
+        if not url or link.get('third_party_context'):continue
+        p=urlsplit(url)
+        if p.hostname!=host or p.path in ('','/') or p.query:continue
+        label=fold(link.get('text',''));path=fold(p.path)
+        if len([x for x in p.path.split('/') if x])>=2 and brand+' '+path==stem:
+            if url not in out:out.append(url)
+    return out[:2]

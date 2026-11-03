@@ -247,6 +247,7 @@ def external_career_leads(page):
 
 def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, units=()):
     seeds=[];seen={rsp['url'] for _,rsp in content_pages};out=[]
+    nuu_contexts={}
     for page,rsp in content_pages:
         career_urls=set(external_career_leads(page))
         application_urls=set(application_links(page))
@@ -273,6 +274,14 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
         pg=page_type(rsp.get('text',''),rsp['url'])
         if re.search(r'\b(?:sign in|logg inn|access denied|captcha)\b',pg.title,re.I):continue
         rsp={**rsp,'identity_verified':False,'delegated_from_verified_careers':True,'delegated_from_url':parent}
+        if u in nuu_contexts and data:
+            from nuu_careers import accepted_item
+            context=nuu_contexts[u]
+            item=accepted_item(pg,rsp,data,context['parent_page'],context['index_page'],context['script_response'])
+            if item:
+                pg.ld.append({'@type':'JobPosting','title':item['title'],'datePosted':None,
+                    'validThrough':item['valid_through'],'hiringOrganization':{'name':data['navn']},'_nuu_item':item})
+                rsp={**rsp,'nuu_support_responses':context['support']}
         # NAV exposes the current ad in inert Next Flight JSON rather than
         # JSON-LD. Reuse the public-ad verifier: a link alone cannot establish
         # employer, publication date, active state or the registered child.
@@ -288,6 +297,22 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
         out.append((pg,rsp))
         # Follow only explicit job-detail links within the observed career host.
         details=[]
+        # Nuu's public Angular page renders card titles without hrefs. Read its
+        # inert transfer-state and an explicitly referenced client route; never
+        # execute JavaScript, request private APIs or visit application actions.
+        from nuu_careers import card_leads,route_supported
+        owner=next(((p,r) for p,r in content_pages if r['url']==parent and r.get('identity_verified')),None)
+        observed=card_leads(pg) if owner and data else []
+        if observed and fetcher.requests<=fetcher.limit-2:
+            script=fetcher.get(observed[0]['script_url'],site=True,raw=True)
+            if script.get('status')=='available' and route_supported(script.get('text')):
+                from urllib.parse import urljoin
+                for card in observed[0]['cards']:
+                    target=urljoin(pg.url,'/stilling/'+str(card['id']))
+                    if target not in seen:
+                        details.append((target,rsp['url']))
+                        nuu_contexts[target]={'parent_page':owner[0],'index_page':pg,'script_response':script,
+                            'support':[owner[1],rsp,script]}
         for link in pg.links:
             v=urlunsplit((*urlsplit(link['url'])[:4],''))
             try:q=urlsplit(v);port=q.port

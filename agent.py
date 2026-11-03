@@ -59,6 +59,7 @@ def safe_url(url):
 class Fetcher:
     locks = collections.defaultdict(threading.Lock)
     host_last = {}
+    host_retry_not_before = {}
 
     def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True, public_search=None):
         self.directory = Path(directory); self.directory.mkdir(parents=True, exist_ok=True)
@@ -70,7 +71,20 @@ class Fetcher:
         self.public_jobs=public_jobs
         self.public_search=public_search
 
-    def get(self, url, *, site=False, raw=False):
+    def request_headers(self,url):
+        from transport_policy import request_headers
+        return request_headers(url,UA)
+
+    def store_observation(self,url,result):
+        """Persist failures for replay without treating them as factual evidence."""
+        result.setdefault('requested_url',url)
+        self.retain(result)
+        path=self.directory/(digest(url.encode())+'.json')
+        temporary=path.with_suffix('.'+uuid.uuid4().hex+'.tmp')
+        temporary.write_text(encode(result));temporary.replace(path)
+        return result
+
+    def get(self, url, *, site=False, raw=False, _redirect_depth=0):
         if self.registry_snapshot is not None:
             from frozen_registry import registry_url
             if registry_url(url):
@@ -107,19 +121,23 @@ class Fetcher:
                     'fetch_state':response.get('status'),'policy_state':policy,
                     'retrieved_at':response.get('retrieved_at'),
                     'content_sha256':response.get('content_sha256'),
-                    'error':response.get('error')}
+                    'error':response.get('error'),'error_kind':response.get('error_kind'),
+                    'response_headers':response.get('response_headers'),
+                    'protection':response.get('protection'),
+                    'transport_attempts':response.get('transport_attempts')}
             if not self.robots[origin].can_fetch(UA, url):
                 policy=self.robots_observations.get(origin,{}).get('policy_state')
                 return self.failure(url, 'blocked', 'robots unreachable; complete disallow' if policy=='unreachable_disallow' else 'robots rules disallow requested URL')
         path = self.directory/(digest(url.encode())+'.json')
         if path.exists() and (self.replay or not self.fresh):
-            result = json.loads(path.read_text()); self.hits += 1
-            self.retain(result)
-            self.records.append(result); return result
+            result = json.loads(path.read_text())
+            if self.replay or not result.get('observation_failure'):
+                self.hits += 1;self.retain(result)
+                self.records.append(result); return result
         if self.replay:
             return self.failure(url, 'failed', 'missing replay fixture')
         current = url
-        result = None; retried=False
+        result = None; retried=False;trace=[]
         for _ in range(4):
             if self.requests >= self.limit or time.monotonic() >= self.end:
                 return self.failure(current, 'failed', 'request/time budget exhausted')
@@ -127,33 +145,51 @@ class Fetcher:
             try:
                 p, host, port, address = safe_url(current)
                 with self.locks[host]:
-                    pause = max(0, self.host_last.get(host, 0)+0.25-time.monotonic())
+                    pause = max(0, self.host_last.get(host, 0)+0.25-time.monotonic(),self.host_retry_not_before.get(host,0)-time.monotonic())
+                    if pause>self.end-time.monotonic()-0.1:
+                        result=self.failure(current,'blocked','Retry-After exceeds remaining time budget')
+                        result.update(observation_failure=True,error_kind='retry_after_deferred',transport_attempts=trace)
+                        return self.store_observation(url,result)
                     if pause: time.sleep(pause)
                     self.host_last[host] = time.monotonic()
                 self.requests += 1
-                timeout = max(0.1, min(8, self.end-time.monotonic()))
+                timeout = max(0.1, min(16 if retried and urlsplit(current).path=='/robots.txt' else 8, self.end-time.monotonic()))
                 connection = (http.client.HTTPSConnection(host, port, timeout=timeout, context=ssl.create_default_context())
                     if p.scheme == 'https' else http.client.HTTPConnection(host, port, timeout=timeout))
                 # Pin the validated address while retaining original TLS hostname verification.
                 connection._create_connection = lambda *_args, **_kw: socket.create_connection((address, port), timeout)
                 connection.request('GET', (p.path or '/')+('?' + p.query if p.query else ''),
-                    headers={'User-Agent': UA, 'Accept': 'application/json,text/html,text/plain', 'Accept-Encoding': 'identity'})
+                    headers=self.request_headers(current))
                 response = connection.getresponse(); status = response.status
-                if status in (500,502,503,504) and host=='data.brreg.no' and not retried:
-                    connection.close(); retried=True; continue
+                from transport_policy import retained_headers,retry_delay,protection_markers
+                headers=retained_headers(response)
+                trace.append({'url':current,'status_code':status,'response_headers':headers,'timeout_seconds':timeout})
+                transient=status in (429,503) or (host=='data.brreg.no' and status in (500,502,504))
+                if transient:
+                    delay=retry_delay(headers.get('retry-after'))
+                    self.host_retry_not_before[host]=max(self.host_retry_not_before.get(host,0),time.monotonic()+delay)
+                    if not retried and self.requests<self.limit and delay<self.end-time.monotonic()-0.1:
+                        connection.close();retried=True;trace[-1]['retry']='one bounded retry after host cooldown';continue
+                    trace[-1]['retry']='not retried: retry or time/request budget exhausted'
                 if status in (301, 302, 303, 307, 308):
                     location = response.getheader('Location'); connection.close()
                     if not location: return self.failure(current, 'failed', 'redirect missing location')
                     target = urljoin(current, location)
                     if site and urlsplit(target).netloc != urlsplit(current).netloc:
-                        redirected={**self.get(target,site=True,raw=raw),'requested_url':url}
+                        if _redirect_depth>=3:
+                            result=self.failure(current,'blocked','redirect limit');result.update(observation_failure=True,error_kind='redirect_limit',transport_attempts=trace)
+                            return self.store_observation(url,result)
+                        redirected={**self.get(target,site=True,raw=raw,_redirect_depth=_redirect_depth+1),'requested_url':url}
+                        redirected['transport_attempts']=trace+redirected.get('transport_attempts',[])
                         self.retain(redirected)
                         temporary=path.with_suffix('.'+uuid.uuid4().hex+'.tmp')
                         temporary.write_text(encode(redirected));temporary.replace(path)
                         return redirected
                     current = target; continue
                 data = response.read(2_000_001); connection.close()
-                if len(data) > 2_000_000: return self.failure(current, 'blocked', 'response size limit')
+                if len(data) > 2_000_000:
+                    result=self.failure(current,'blocked','response size limit');result.update(observation_failure=True,error_kind='response_size_limit',response_headers=headers,transport_attempts=trace)
+                    return self.store_observation(url,result)
                 wire_digest=digest(data)
                 coding=response.getheader('Content-Encoding')
                 coding=coding.strip().casefold() if isinstance(coding,str) else 'identity'
@@ -164,12 +200,15 @@ class Fetcher:
                     decoder=zlib.decompressobj();data=decoder.decompress(data,2_000_001)
                 elif coding not in ('identity',''):
                     return self.failure(current,'blocked','unsupported content encoding')
-                if len(data)>2_000_000:return self.failure(current,'blocked','decoded response size limit')
+                if len(data)>2_000_000:
+                    result=self.failure(current,'blocked','decoded response size limit');result.update(observation_failure=True,error_kind='decoded_response_size_limit',response_headers=headers,transport_attempts=trace)
+                    return self.store_observation(url,result)
                 charset = response.headers.get_content_charset() or 'utf-8'
                 text = data.decode(charset, errors='replace')
                 state = 'available' if status == 200 else 'not_available' if status in (404,410) else 'blocked' if status in (401,403,429) else 'failed'
                 result = {'url':current, 'requested_url':url, 'status':state, 'status_code':status,
-                    'retrieved_at':now(), 'content_sha256':wire_digest, 'text':text}
+                    'retrieved_at':now(), 'content_sha256':wire_digest, 'text':text,
+                    'response_headers':headers,'protection':protection_markers(headers,text),'transport_attempts':trace}
                 if coding not in ('identity',''):
                     result.update(content_encoding=coding,decoded_content_sha256=digest(data))
                 if not raw:
@@ -186,10 +225,16 @@ class Fetcher:
             except (OSError, ValueError, EOFError, zlib.error, http.client.HTTPException) as error:
                 if connection is not None: connection.close()
                 result = self.failure(current, 'failed', type(error).__name__)
-                if isinstance(error,(OSError,http.client.HTTPException)) and urlsplit(current).hostname=='data.brreg.no' and not retried:
+                from transport_policy import error_kind
+                kind=error_kind(error);trace.append({'url':current,'status_code':0,'error':type(error).__name__,'error_kind':kind})
+                result.update(observation_failure=True,error_kind=kind,transport_attempts=trace)
+                retryable=(isinstance(error,(OSError,http.client.HTTPException)) and urlsplit(current).hostname=='data.brreg.no') or (urlsplit(current).path=='/robots.txt' and kind in {'timeout','tls','tls_certificate'})
+                if retryable and not retried:
                     retried=True;continue
-                break
-        return result or self.failure(current, 'failed', 'redirect limit')
+                return self.store_observation(url,result)
+        result=self.failure(current,'blocked','redirect limit')
+        result.update(observation_failure=True,error_kind='redirect_limit',transport_attempts=trace)
+        return self.store_observation(url,result)
 
     def retain(self,result):
         if not result.get('content_sha256'): return
@@ -582,9 +627,9 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
     def ingest(page,rsp):
         nonlocal operator_blocked,known_operator
         operator=site_operator_identity(org,page,data,response['url'])
-        if page is home and operator['state']=='absent':
+        if operator['state']=='absent' and (page is home or (not verified and link_family(page.url)=='identity')):
             from attribution import group_site_reason
-            reason=group_site_reason(page,data)
+            reason=group_site_reason(page,data,identity_page=page is not home)
             if reason:operator={'state':'unresolved','reason':reason,'operators':[]}
         if operator['state'] in ('different','unresolved'):
             operator_blocked=True
@@ -703,17 +748,21 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         if verified and has_application_lead():return 5
         # An observed external careers portal needs a robots check, index and
         # job detail. Do not spend every slot on internal auxiliary pages first.
-        if (verified and not any(activity_candidates(pg,rsp)[0] for pg,rsp,_ in pages)
-                and any((urlsplit(u).hostname or '').endswith('.'+host.removeprefix('www.'))
-                        for pg,_,_ in pages for u in external_career_leads(pg))):return 4
+        if (verified and any(u not in seen
+                for pg,_,_ in pages for u in external_career_leads(pg))):return 4
         return 0 if verified else reserve_requests
     while attempted_pages<18 and fetcher.requests<fetcher.limit-crawl_reserve():
         # An already fetched news index provides stronger discovery leads than
         # another map request. XML remains a fallback when those leads run out.
         pending_posts=any(u not in seen and u in queue for u in post_leads)
         pending_roles=any(f=='hiring' and not any(urlsplit(v).path.rstrip('/')==urlsplit(u).path.rstrip('/') and urlsplit(v).query==urlsplit(u).query for v in seen) for u,f in queue.items())
+        # Save map requests for a pending recruiting portal by following an
+        # already observed editorial index first. Refresh keeps its established
+        # source priorities; unrelated sites retain their previous crawl order.
+        pending_index=(not prior_content and any(external_career_leads(pg) for pg,_,_ in pages)
+            and any(f=='activity' and not article_detail(u) and not activity_taxonomy(u) for u,f in queue.items() if u not in seen))
         has_application=has_application_lead()
-        if not discovered and (not queue or (verified and len(seen)>=4 and not pending_posts)) and not (pending_roles and (has_application or portal_child)):
+        if not discovered and (not queue or (verified and len(seen)>=4 and not pending_posts and not pending_index)) and not (pending_roles and (has_application or portal_child)):
             discovered=True;discover()
         if not queue:break
         def rank(item):
@@ -940,7 +989,8 @@ def corroborated_site(data, page, registry_redirect_host=None):
     for kind in ('forretningsadresse','postadresse'):
         address=data.get(kind) or {}
         street=next(iter(address.get('adresse') or []),''); postal=address.get('postnummer','')
-        if street and postal and ' '+normalized(street)+' ' in text and re.search(r'(?<!\d)'+re.escape(postal)+r'(?!\d)',evidence_text):return True
+        if street and postal and ' '+normalized(street)+' ' in text and re.search(r'(?<!\d)'+re.escape(postal)+r'(?!\d)',evidence_text):
+            return True
     return False
 
 def corroboration_evidence(data,page,entry_response):
@@ -1128,7 +1178,7 @@ def research(row, fetcher, previous=None, search=None):
             public_jobs_result=(discover(data,units,fetcher) if getattr(fetcher,'public_jobs',True) else {'records':[],'website_leads':[],'checks':[],'sources':[],'detail_attempts':0})
         return public_jobs_result
     webstate={'url':'','status':'not_available','retrieved_at':now()}
-    attempts=[];operator_limits=[];inspected_observations=set()
+    attempts=[];operator_limits=[];inspected_observations=set();unverified_pages=[]
     def candidates():
         for index,lead in enumerate(leads):
             lead_url=lead['url'];parsed=urlsplit(lead_url)
@@ -1138,6 +1188,9 @@ def research(row, fetcher, previous=None, search=None):
             # Follow only observed links matching generic legal-name domain leads;
             # the child still needs independent legal identity verification.
             if lead['origin']=='entity_website' and webstate.get('status')=='available':
+                from registry_discovery import scoped_entity_candidates
+                for scoped in scoped_entity_candidates(data,Page(webstate.get('text',''),webstate['url'])):
+                    yield scoped,'entity_scoped_page',remaining,[]
                 from registry_discovery import name_domain_candidates,web_url
                 child_hosts={host_key(u) for u in name_domain_candidates(data)}
                 linked=[]
@@ -1171,6 +1224,17 @@ def research(row, fetcher, previous=None, search=None):
         for homepage in legal_form_domain_candidates(data):
             if fetcher.requests<=fetcher.limit-2:
                 yield homepage,'legal_form_domain_heuristic',0,[]
+        # Preserve all earlier discovery paths. Only then try the other normal
+        # schemes/host aliases of the literal registry URL and a compact .com.
+        # These are leads, never proof, and share the same company request cap.
+        from registry_discovery import declared_url_variants,additional_name_domain_candidates
+        already={a['url'] for a in attempts}
+        for alternate in declared_url_variants(data.get('hjemmeside')):
+            if alternate not in already and fetcher.requests<=fetcher.limit-2:
+                yield alternate,'late_declared_url_variant',1,[]
+        for alternate in additional_name_domain_candidates(data):
+            if alternate not in already and fetcher.requests<=fetcher.limit-2:
+                yield alternate,'late_name_com_heuristic',0,[]
         # Optional broad search must not consume the slots that already recover
         # a first-party site or an exact-employer public ad without credentials.
         # A site found earlier closes this lazy generator without a search call.
@@ -1194,11 +1258,14 @@ def research(row, fetcher, previous=None, search=None):
         response=fetcher.get(url,site=True,raw=True); webstate=response
         attempt={'url':url,'origin':origin,'fetch_state':response['status'],'resolved_url':response['url'],
                  'identity':'not_checked','pages_inspected':0,'requests':fetcher.requests-started_requests,
-                 'status_code':response.get('status_code'),'fetch_error':response.get('error')}
+                 'status_code':response.get('status_code'),'fetch_error':response.get('error'),
+                 'error_kind':response.get('error_kind'),'response_headers':response.get('response_headers'),
+                 'protection':response.get('protection'),'transport_attempts':response.get('transport_attempts')}
         origins=list(dict.fromkeys(urlunsplit((*urlsplit(u)[:2],'','','')) for u in (url,response['url'])))
         attempt['robots']=[fetcher.robots_observations[o] for o in origins if o in getattr(fetcher,'robots_observations',{})]
         attempts.append(attempt)
         if response['status']=='available':
+            unverified_pages.append(response)
             # Only an observed redirect from the declared entity URL extends
             # its domain anchor. Search, email and workplace URLs cannot do so.
             redirect_host=host_key(response['url']) if origin=='entity_website' and response.get('requested_url')==url else None
@@ -1206,6 +1273,19 @@ def research(row, fetcher, previous=None, search=None):
             if response.get('content_sha256') and observed in inspected_observations and not hints:
                 attempt.update(identity='not_established',reused_inspection=True,
                                reason='same resolved URL, body hash and identity-anchor context already inspected in this observation')
+                continue
+            # Prefer an observed entity-specific page on a shared host before
+            # spending the crawl budget on its generic root. Explicit org proof
+            # on the entry page always takes precedence over this navigation.
+            from registry_discovery import scoped_entity_candidates
+            entry_page=Page(response.get('text',''),response['url'])
+            from attribution import mentions
+            entry_brand=entry_page.meta.get('og:site_name') or entry_page.title
+            if (origin=='entity_website' and not mentions(entry_brand,data.get('navn',''))
+                    and website_identity(org,entry_page,data)!='exact'
+                    and scoped_entity_candidates(data,entry_page)):
+                attempt.update(identity='not_established',rejection_reason='entity_scoped_link_preferred',
+                               reason='observed complete legal-name company path; inspect that page before the generic entry')
                 continue
             verified,inspected=crawl_company(org,data,response,fetcher,registry_redirect_host=redirect_host,
                                             reserve_requests=6 if remaining_leads or (public_jobs_result is None and getattr(fetcher,'public_jobs',True)) else 0,seed_urls=hints,
@@ -1230,6 +1310,12 @@ def research(row, fetcher, previous=None, search=None):
                 content_pages=[(pg,{**rsp,'identity_verified':True,
                     'site_operator':rsp.get('site_operator',anchor_response.get('site_operator',{}))}) for pg,rsp,identity in inspected
                     if identity!='conflict' and urlsplit(rsp['url']).hostname==urlsplit(anchor_response['url']).hostname]
+                if origin=='entity_scoped_page':
+                    scope=urlsplit(response['url']).path.rstrip('/')
+                    content_pages=[(pg,rsp) for pg,rsp in content_pages
+                        if urlsplit(rsp['url']).path.rstrip('/')==scope
+                        or urlsplit(rsp['url']).path.startswith(scope+'/')
+                        or website_identity(org,pg,data)=='exact']
                 method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
                         'linked_business_self_description_and_registered_address' if anchor_response.get('business_identity_support') else
                         'linked_first_party_legal_name' if anchor_response.get('legal_name_identity_support') else
@@ -1237,6 +1323,8 @@ def research(row, fetcher, previous=None, search=None):
                         'exact_legal_footer_and_registered_address' if legal_footer_identity(data,anchor) else 'registry_domain_name_and_postal_address')
                 add('website.verified_url',response['url'],anchor_response,pointer=method,
                     excerpt=identity_excerpt(org,anchor) if method=='explicit_org_number' else anchor.text[:1500])
+                if origin=='entity_scoped_page':
+                    claims[-1]['qualifiers']={'site_scope':'specific company page on a shared host; ownership of the whole host is not inferred'}
                 if method in {'registry_domain_name_and_postal_address','exact_legal_footer_and_registered_address'}:
                     extra=claim('identity_anchor',org,entity,evidence)
                     claims[-1]['evidence_ids']+=extra['evidence_ids']
@@ -1337,7 +1425,7 @@ def research(row, fetcher, previous=None, search=None):
                                 title=obj.get('title') or obj.get('headline')
                                 date=obj.get('datePublished') if field=='activity' else obj.get('datePosted')
                                 literal_candidate=field=='hiring' and any(obj is candidate for candidate in literal_candidates)
-                                literal_undated=literal_candidate and date is None
+                                literal_undated=(literal_candidate or bool(obj.get('_nuu_item'))) and date is None
                                 if not isinstance(title,str) or (not isinstance(date,str) and not literal_undated):
                                     limitation(rsp,'candidate lacks a literal title and publication date')
                                     continue
@@ -1350,6 +1438,8 @@ def research(row, fetcher, previous=None, search=None):
                                     limitation(rsp,'candidate publication date is not a valid ISO date')
                                     continue
                                 if field=='hiring':
+                                    if re.search(r'åpen\s+søknad|open application|spontan|talent\s+(?:pool|network)',title,re.I):
+                                        limitation(rsp,'spontaneous application or talent pool is not a specific vacancy');continue
                                     expiry=obj.get('validThrough')
                                     if isinstance(expiry,str):
                                         try:
@@ -1384,6 +1474,9 @@ def research(row, fetcher, previous=None, search=None):
                                 if obj.get('_public_board_item'):
                                     item.update(obj['_public_board_item'])
                                     evidence_responses.extend([entity,locations])
+                                if obj.get('_nuu_item'):
+                                    item.update(obj['_nuu_item'])
+                                    evidence_responses.extend([entity,anchor_response,*rsp.get('nuu_support_responses',[])])
                                 if literal_candidate:
                                     ats=obj.get('_ats_response')
                                     item.update(publication_date_state='not_stated' if date is None else 'literal_publication_block',hiring_organisation_basis=obj['_employer_basis'],
@@ -1505,7 +1598,10 @@ def research(row, fetcher, previous=None, search=None):
                 extra=claim('identity_anchor',org,entity,evidence)
                 claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
             else:
-                add(field,None,webstate,state=webstate['status'] if webstate['status']!='available' else 'ambiguous')
+                # A later failed alias cannot erase an earlier page whose legal
+                # identity remained unresolved. This changes diagnostics, not facts.
+                unresolved=unverified_pages[0] if unverified_pages else webstate
+                add(field,None,unresolved,state=unresolved['status'] if unresolved['status']!='available' else 'ambiguous')
     output['evidence']=list(evidence.values())
     output['website_attempts']=attempts
     output['changes']=compare(previous or {},output)
