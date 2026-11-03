@@ -65,6 +65,7 @@ class Fetcher:
         self.replay, self.fresh = replay, fresh
         self.limit = limit; self.end = time.monotonic()+deadline
         self.requests = 0; self.hits = 0; self.robots = {}; self.records = []
+        self.robots_observations = {}
         self.registry_snapshot=registry_snapshot
         self.public_jobs=public_jobs
         self.public_search=public_search
@@ -85,15 +86,31 @@ class Fetcher:
             if origin not in self.robots:
                 response = self.get(origin+'/robots.txt', raw=True)
                 parser = RobotFileParser()
-                if response['status_code'] in (404, 410):
-                    parser.parse([])
-                elif response['status_code'] == 200:
+                code=response.get('status_code',0)
+                if 200<=code<300:
                     parser.parse(response.get('text', '').splitlines())
+                    policy='rules'
+                elif 400<=code<500:
+                    # RFC9309 2.3.1.3: an unavailable robots resource does not
+                    # impose a site-wide ban. Actual pages still undergo the
+                    # ordinary status, URL, TLS, IP and request-budget checks.
+                    parser.parse([])
+                    policy='unavailable_allow'
                 else:
+                    # RFC9309 2.3.1.4: network errors and 5xx stay fail-closed.
                     parser.parse(['User-agent: *', 'Disallow: /'])
+                    policy='unreachable_disallow'
                 self.robots[origin] = parser
+                self.robots_observations[origin]={
+                    'origin':origin,'robots_url':origin+'/robots.txt',
+                    'response_url':response.get('url'),'status_code':code,
+                    'fetch_state':response.get('status'),'policy_state':policy,
+                    'retrieved_at':response.get('retrieved_at'),
+                    'content_sha256':response.get('content_sha256'),
+                    'error':response.get('error')}
             if not self.robots[origin].can_fetch(UA, url):
-                return self.failure(url, 'blocked', 'robots denied or unavailable')
+                policy=self.robots_observations.get(origin,{}).get('policy_state')
+                return self.failure(url, 'blocked', 'robots unreachable; complete disallow' if policy=='unreachable_disallow' else 'robots rules disallow requested URL')
         path = self.directory/(digest(url.encode())+'.json')
         if path.exists() and (self.replay or not self.fresh):
             result = json.loads(path.read_text()); self.hits += 1
@@ -732,6 +749,15 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         seen.add(child['url']);queue.pop(child['url'],None)
         ingest(Page(child.get('text',''),child['url']),child)
         if operator_blocked:break
+    # Late fallback preserves the crawl path and all previously established facts.
+    # A title or a registry domain alone never establishes first-party identity.
+    if not verified and not operator_blocked:
+        from legal_name_identity import legal_name_identity
+        compatible=lambda pg:website_identity(org,pg,data)!='conflict' and site_operator_identity(org,pg,data)['state'] not in {'different','unresolved'}
+        proof=legal_name_identity(data,[(pg,rsp) for pg,rsp,_ in pages],compatible)
+        if proof:
+            pg,rsp=next((pg,rsp) for pg,rsp,_ in pages if rsp['url']==proof['source_url'])
+            verified.append((pg,{**rsp,'legal_name_identity_support':proof}))
     return ([] if operator_blocked else verified),pages
 
 
@@ -1167,7 +1193,10 @@ def research(row, fetcher, previous=None, search=None):
         started_requests=fetcher.requests
         response=fetcher.get(url,site=True,raw=True); webstate=response
         attempt={'url':url,'origin':origin,'fetch_state':response['status'],'resolved_url':response['url'],
-                 'identity':'not_checked','pages_inspected':0,'requests':fetcher.requests-started_requests}
+                 'identity':'not_checked','pages_inspected':0,'requests':fetcher.requests-started_requests,
+                 'status_code':response.get('status_code'),'fetch_error':response.get('error')}
+        origins=list(dict.fromkeys(urlunsplit((*urlsplit(u)[:2],'','','')) for u in (url,response['url'])))
+        attempt['robots']=[fetcher.robots_observations[o] for o in origins if o in getattr(fetcher,'robots_observations',{})]
         attempts.append(attempt)
         if response['status']=='available':
             # Only an observed redirect from the declared entity URL extends
@@ -1189,6 +1218,11 @@ def research(row, fetcher, previous=None, search=None):
             if blockers:
                 operator_limits.extend(blockers)
                 attempt['operator_limitations']=[operator for rsp,operator in blockers]
+            if not verified:
+                direct=website_identity(org,Page(response.get('text',''),response['url']),data,site_url=response['url'])
+                attempt['rejection_reason']=('conflicting_site_operator' if blockers and blockers[0][1].get('state')=='different' else
+                    'group_or_operator_unresolved' if blockers else 'conflicting_org_number' if direct=='conflict' else
+                    'own_entity_evidence_insufficient')
             if verified:
                 verified=[(pg,{**rsp,'identity_verified':True}) for pg,rsp in verified]
                 anchor,anchor_response=verified[0]
@@ -1198,6 +1232,7 @@ def research(row, fetcher, previous=None, search=None):
                     if identity!='conflict' and urlsplit(rsp['url']).hostname==urlsplit(anchor_response['url']).hostname]
                 method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
                         'linked_business_self_description_and_registered_address' if anchor_response.get('business_identity_support') else
+                        'linked_first_party_legal_name' if anchor_response.get('legal_name_identity_support') else
                         'explicit_org_number' if website_identity(org,anchor,data)=='exact' else
                         'exact_legal_footer_and_registered_address' if legal_footer_identity(data,anchor) else 'registry_domain_name_and_postal_address')
                 add('website.verified_url',response['url'],anchor_response,pointer=method,
@@ -1207,6 +1242,17 @@ def research(row, fetcher, previous=None, search=None):
                     claims[-1]['evidence_ids']+=extra['evidence_ids']
                     claims[-1]['identity_support']=corroboration_evidence(data,anchor,response)
                     claims[-1]['evidence_excerpt']=None
+                elif method=='linked_first_party_legal_name':
+                    proof=anchor_response['legal_name_identity_support'];claims[-1]['identity_support']=proof;claims[-1]['evidence_excerpt']=None
+                    wanted={proof['entry_url'],proof['source_url']}
+                    for link in proof['links']:wanted.update([link['source_url'],link['target_url']])
+                    from business_identity import canonical
+                    for pg,rsp,_ in inspected:
+                        if canonical(rsp['url']) in {canonical(u) for u in wanted}:
+                            extra=claim('identity_bundle',None,rsp,evidence)
+                            claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
+                    extra=claim('identity_anchor',org,entity,evidence)
+                    claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 elif method=='explicit_site_operator':
                     claims[-1]['identity_support']=anchor_response['site_operator']
                     claims[-1]['evidence_excerpt']=None

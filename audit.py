@@ -51,6 +51,16 @@ def audit(rows, cache):
                     if not registry or business_identity(registry,bundles,compatible)!=support:
                         errors.append([row['organisation_number'],'linked business identity proof not reproduced from retained first-party pages and registry'])
                     else:counts['linked_business_identity_bundles_checked']+=1
+                elif support and pointer=='linked_first_party_legal_name':
+                    from legal_name_identity import legal_name_identity
+                    from business_identity import canonical
+                    from agent import site_operator_identity
+                    bundles=[(Page(s.get('text',''),s['url']),s) for s in web]
+                    bundles.sort(key=lambda pair:canonical(pair[0].url)!=canonical(support.get('entry_url','')))
+                    compatible=lambda pg:website_identity(row['organisation_number'],pg,registry_identity)!='conflict' and site_operator_identity(row['organisation_number'],pg,registry_identity)['state'] not in {'different','unresolved'}
+                    if not registry_identity or legal_name_identity(registry_identity,bundles,compatible)!=support:
+                        errors.append([row['organisation_number'],'first-party legal name proof not reproduced'])
+                    else:counts['first_party_legal_name_proofs_checked']+=1
                 elif support and pointer=='explicit_site_operator':
                     from agent import site_operator_identity
                     name=next((x.get('value') for x in row['claims'] if x.get('field')=='legal_name'),None)
