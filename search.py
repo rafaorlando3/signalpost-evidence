@@ -15,6 +15,12 @@ PRIMARY_EXCLUSIONS = {'proff.no','purehelp.no','1881.no','gulesider.no','brreg.n
                'firmalisten.no','yra.no','b2bprospect.no','finn.no','haandverkere.no','nol.no'}
 ADDITIONAL_DIRECTORIES = {'northdata.com','northdata.de','northdata.no','kompass.com',
                          'ceginformacio.hu','mappy.com','norgeguide.com','renholdsoversikten.no','verif.com'}
+ADDITIONAL_DIRECTORIES |= {'largestcompanies.com','rocketreach.co','creditsafe.com',
+    'zavia.ai','roaring.io','preqin.com','firmabasen.no','orgi.no','pitchbook.com',
+    'wikidata.org','simplywall.st','aeroleads.com','yelp.com','barnehagefakta.no',
+    'moovitapp.com','efobasen.no','efobasen.efo.no','legelisten.no','maritime-database.com',
+    'europages.co.hu','europages.com','vilbli.no','vilbli.com','finansavisen.no',
+    'rosa.no','b2bhint.com','youtube.com','youtu.be'}
 DIRECTORIES = PRIMARY_EXCLUSIONS | {
                'byndle.no','nabonytt.no','asdata.no','firmadatabasen.no','norgelei.no',
                'nor47business.com','regnskapstall.no','byggsikt.no','sokfirma.no',
@@ -24,6 +30,23 @@ DIRECTORIES = PRIMARY_EXCLUSIONS | {
                'visitnorway.com','fjordnorway.com','visitvestlandet.no','mapcarta.com',
                'northdata.com','northdata.de','northdata.no','kompass.com',
                'ceginformacio.hu','mappy.com','norgeguide.com','renholdsoversikten.no','verif.com'}
+
+DIRECTORIES |= ADDITIONAL_DIRECTORIES
+
+
+def scoped_identity_url(url,name):
+    """A shared host must carry a distinctive legal brand, not a directory name.
+
+    URL relation is a lead filter only. Legal identity still needs the fetched
+    company page. Apply to cached leads too; no search text becomes evidence.
+    """
+    from legal_name_identity import fold
+    try:p=urlsplit(url);host=(p.hostname or '').removeprefix('www.').split('.')[0]
+    except ValueError:return False
+    generic={'as','asa','sti','stiftelsen','norge','norway','services','service','barnehage','holding','group','gruppen','company','transport','handel','bygg','eiendom'}
+    terms=set(fold(name).split())-generic;brand=fold(host).replace(' ','')
+    return any(len(t)>=3 and t in brand for t in terms)
+
 
 def identity_candidates(results, org, name):
     """Rank discovery only; snippets never become evidence or survive retention."""
@@ -40,11 +63,14 @@ def identity_candidates(results, org, name):
         if any(host==d or host.endswith('.'+d) for d in DIRECTORIES):continue
         # Search-result titles/snippets affect ordering only, never attribution.
         text=str(r.get('title',''))+' '+str(r.get('content',''))
-        score=(10 if org in re.sub(r'\D','',text) else 0)+len(terms & set(re.findall(r'\w+',text.casefold())))
+        from legal_name_identity import fold
+        brand=fold(host.removeprefix('www.').split('.')[0]).replace(' ','')
+        domain_matches=sum(1 for term in terms if len(term)>=3 and fold(term).replace(' ','') in brand)
+        score=(10 if org in re.sub(r'\D','',text) else 0)+len(terms & set(re.findall(r'\w+',text.casefold())))+2*domain_matches
         if not score:continue
         root=urlunsplit((p.scheme,p.netloc,'/','',''))
         key=host.removeprefix('www.')
-        item=domains.setdefault(key,{'url':root,'hints':[],'score':score,'position':position})
+        item=domains.setdefault(key,{'url':root,'hints':[],'scoped_pages':[],'score':score,'position':position})
         item['score']=max(item['score'],score)
         # Only shallow, explicitly legal/contact paths; never vendor case studies
         # or directory entries quoting someone else's organisation number.
@@ -53,7 +79,20 @@ def identity_candidates(results, org, name):
             and not re.search(r'customer|kunde|case|portfolio|partner|sponsor|company|companies|bedrift',p.path,re.I)):
             hint=urlunsplit((p.scheme,p.netloc,p.path,p.query,''))
             if hint not in item['hints']:item['hints'].append(hint)
-    return [{'url':i['url'],'hints':i['hints'][:2]} for i in sorted(domains.values(),key=lambda i:(-i['score'],i['position']))[:3]]
+        # Retain an observed entity page instead of erasing it to a group root.
+        # This is a URL lead only; the fetched page must independently identify
+        # the legal entity, and its eventual content stays within that path.
+        from site_discovery import excluded_content_url
+        distinctive=[fold(t) for t in terms if len(fold(t))>=4 and t not in {'barnehage','norge','norway','services','service'}]
+        words=set(fold(p.path).split())
+        if (1<=len(parts)<=3 and not p.query and not excluded_content_url(url) and scoped_identity_url(url,name)
+                and words.intersection(distinctive)
+                and not re.search(r'(?:^|[/_-])(?:customers?|clients?|testimonials?|kunde[rn]?|case[s]?|portfolio|references?|partners?|sponsors?|compan(?:y|ies)|bedrift|foretak|referans(?:e|er)|referenser|maerker|products?|produkter|news|nyheter|blog|articles?|jobs?|karriere|stilling(?:er)?)(?:/|$|[_-])',p.path,re.I)):
+            scoped=urlunsplit((p.scheme,p.netloc,p.path,'',''))
+            if scoped not in item['scoped_pages']:item['scoped_pages'].append(scoped)
+    return [{'url':i['url'],'hints':i['hints'][:2],
+             **({'scoped_pages':sorted(i['scoped_pages'],key=lambda u:len(urlsplit(u).path))[:1]} if i['scoped_pages'] else {})}
+            for i in sorted(domains.values(),key=lambda i:(-i['score'],i['position']))[:3]]
 
 
 def candidate_urls(results):
@@ -207,11 +246,16 @@ class TavilySearch:
                     'credits_reported':None if any(s['credits_reported'] is None for s in stages) else sum(s['credits_reported'] for s in stages),
                     'paid_cost_usd':None if any(s['paid_cost_usd'] is None for s in stages) else 0}
             hints={c['url']:c['hints'] for c in stage.get('candidates',[])}
+            scoped={c['url']:c.get('scoped_pages',[]) for c in stage.get('candidates',[])}
             for index,url in enumerate(urls):
                 key=(urlsplit(url).hostname or '').removeprefix('www.')
-                if key in seen and not hints.get(url):continue
-                seen.add(key)
-                yield url,len(urls)-index-1+(mode!=modes[-1]),hints.get(url,[])
+                if key not in seen or hints.get(url):
+                    seen.add(key)
+                    yield url,len(urls)-index-1+(mode!=modes[-1])+len(scoped.get(url,[])),hints.get(url,[])
+                for leaf in scoped.get(url,[]):
+                    if leaf not in seen and scoped_identity_url(leaf,name):
+                        seen.add(leaf)
+                        yield leaf,len(urls)-index-1+(mode!=modes[-1]),[]
 
 
 class FreeTavilySearch(TavilySearch):

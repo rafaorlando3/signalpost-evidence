@@ -38,4 +38,24 @@ class LegalNameIdentityTests(unittest.TestCase):
         unlinked=Page('<title>Starina</title>','https://example.no/')
         self.assertIsNone(legal_name_identity(self.data,[(unlinked,{'url':unlinked.url}),pairs[1]],lambda p:True))
 
+class CopyrightOwnerTests(unittest.TestCase):
+    data=LegalNameIdentityTests.data
+    proof=LegalNameIdentityTests.proof
+    def test_full_copyright_owner_plus_own_business_introduction(self):
+        html='<title>Starina</title><main><p>Vi tilbyr servering og catering for bedrifter over hele landet.</p></main><footer>All Rights Reserved. Starina AS © 2026</footer>'
+        p=self.proof(html)
+        self.assertIsNotNone(p);self.assertIn('copyright',p['scope']);self.assertEqual(p['copyright_statement'],'All Rights Reserved. Starina AS © 2026')
+    def test_copyright_without_own_business_or_with_partial_name_is_insufficient(self):
+        self.assertIsNone(self.proof('<title>Starina</title><main>Welcome</main><footer>Starina AS © 2026</footer>'))
+        self.assertIsNone(self.proof('<title>Starina</title><main><p>Vi tilbyr servering og catering for bedrifter over hele landet.</p></main><footer>Starina © 2026</footer>'))
+    def test_customer_and_agency_copyright_cannot_supply_an_own_introduction(self):
+        self.assertIsNone(self.proof('<title>Starina</title><div class="customer"><p>Vi tilbyr servering og catering for bedrifter over hele landet.</p></div><footer>Starina AS © 2026</footer>'))
+    def test_parent_brand_is_not_proof_of_a_subsidiary_copyright(self):
+        self.assertIsNone(self.proof('<title>Parent Group</title><main><h1>Starina</h1><p>Vi tilbyr servering og catering for bedrifter over hele landet.</p></main><footer>Starina AS © 2026</footer>'))
+    def test_duplicate_document_titles_are_not_concatenated(self):
+        p=Page('<title>Starina</title><title>Another organisation</title>','https://example.no/')
+        self.assertEqual(p.title,'Starina')
+    def test_conflicting_operator_overrides_copyright(self):
+        self.assertIsNone(self.proof('<title>Starina</title><main><p>Vi tilbyr servering og catering for bedrifter over hele landet.</p>Org.nr 913 884 213</main><footer>Starina AS © 2026</footer>'))
+
 if __name__=='__main__':unittest.main()

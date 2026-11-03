@@ -314,7 +314,7 @@ class Page(HTMLParser):
         if tag=='p':
             self.paragraph=''
             self.paragraph_is_content=not self.skip and not third_party and self.content_scope()
-        if tag=='title': self.in_title=True
+        if tag=='title': self.in_title=not bool(self.title)  # first document title; never concatenate distinct title nodes
         if tag=='h1':
             self.heading=''
             self.heading_is_content=self.content_scope()
@@ -553,6 +553,12 @@ def website_identity(org, page, data=None, *, site_url=None):
     # Explicit labels with dotted groups or an optional period after the label.
     # Do not interpret phone/order numbers or arbitrary nine digits as identity.
     for value in re.findall(r'\b(?:organisasjons\s*(?:nummer|nr)|org\.?\s*(?:nr|no|nummer)|foretaksnummer|company\s+registration\s+(?:number|no))[.\s:\-]*(?:NO\s*)?([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})(?![0-9])',page.text,re.I):
+        number=re.sub(r'\D','',value)
+        if valid_org(number):numbers.add(number)
+    # Legal footers can insert the owner's name between the corporate label
+    # and number ("Organisasjonsnummer Example AS: ..."). Do not miss that
+    # conflicting owner merely because the digits do not follow the label.
+    for value in re.findall(r'\b(?:organisasjonsnummer|organisasjonsnr\.?|org\.?\s*nr\.?)\s+[^:;\n]{3,100}?\b(?:AS|ASA|SA|NUF|STI)\s*[:\-]\s*(?:NO\s*)?([0-9]{3}[.\s]?[0-9]{3}[.\s]?[0-9]{3})(?![0-9])',page.text,re.I):
         number=re.sub(r'\D','',value)
         if valid_org(number):numbers.add(number)
     # A literal "Org." label with a valid Norwegian checksum is also explicit
@@ -1232,6 +1238,15 @@ def research(row, fetcher, previous=None, search=None):
         for alternate in declared_url_variants(data.get('hjemmeside')):
             if alternate not in already and fetcher.requests<=fetcher.limit-2:
                 yield alternate,'late_declared_url_variant',1,[]
+        # The corporate email domain is only a lead. Some such domains serve
+        # the site on www while the bare host has no reachable robots resource.
+        # One late normal alias still needs its own robots and legal proof.
+        for lead in leads:
+            parsed=urlsplit(lead['url'])
+            if lead['origin']=='email_domain' and parsed.hostname and not parsed.hostname.startswith('www.'):
+                alternate=urlunsplit((parsed.scheme,'www.'+parsed.netloc,parsed.path,parsed.query,''))
+                if alternate not in already and fetcher.requests<=fetcher.limit-2:
+                    yield alternate,'late_email_domain_www_variant',1,[]
         for alternate in additional_name_domain_candidates(data):
             if alternate not in already and fetcher.requests<=fetcher.limit-2:
                 yield alternate,'late_name_com_heuristic',0,[]
@@ -1240,7 +1255,8 @@ def research(row, fetcher, previous=None, search=None):
         # A site found earlier closes this lazy generator without a search call.
         if search and data.get('navn') and fetcher.requests<=fetcher.limit-3:
             if hasattr(search,'iter_candidates'):
-                for url,remaining,hints in search.iter_candidates(org,data['navn'],fetcher):yield url,'search',remaining,hints
+                for url,remaining,hints in search.iter_candidates(org,data['navn'],fetcher):
+                    yield url,'search_scoped_page' if urlsplit(url).path not in ('','/') else 'search',remaining,hints
             else:
                 urls=search.discover(org,data['navn'],fetcher)
                 for i,url in enumerate(urls):yield url,'search',len(urls)-i-1,[]
@@ -1310,7 +1326,7 @@ def research(row, fetcher, previous=None, search=None):
                 content_pages=[(pg,{**rsp,'identity_verified':True,
                     'site_operator':rsp.get('site_operator',anchor_response.get('site_operator',{}))}) for pg,rsp,identity in inspected
                     if identity!='conflict' and urlsplit(rsp['url']).hostname==urlsplit(anchor_response['url']).hostname]
-                if origin=='entity_scoped_page':
+                if origin in {'entity_scoped_page','search_scoped_page'}:
                     scope=urlsplit(response['url']).path.rstrip('/')
                     content_pages=[(pg,rsp) for pg,rsp in content_pages
                         if urlsplit(rsp['url']).path.rstrip('/')==scope
@@ -1323,7 +1339,7 @@ def research(row, fetcher, previous=None, search=None):
                         'exact_legal_footer_and_registered_address' if legal_footer_identity(data,anchor) else 'registry_domain_name_and_postal_address')
                 add('website.verified_url',response['url'],anchor_response,pointer=method,
                     excerpt=identity_excerpt(org,anchor) if method=='explicit_org_number' else anchor.text[:1500])
-                if origin=='entity_scoped_page':
+                if origin in {'entity_scoped_page','search_scoped_page'}:
                     claims[-1]['qualifiers']={'site_scope':'specific company page on a shared host; ownership of the whole host is not inferred'}
                 if method in {'registry_domain_name_and_postal_address','exact_legal_footer_and_registered_address'}:
                     extra=claim('identity_anchor',org,entity,evidence)

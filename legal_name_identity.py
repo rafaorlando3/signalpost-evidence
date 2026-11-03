@@ -72,4 +72,27 @@ def legal_name_identity(data,pages,compatible):
                 'self_identification':block,'literal_spans':[span],'links':paths[key],
                 'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
                 'scope':'matching homepage brand plus linked scoped visible legal self-identification; domain alone is not identity'}
+    # Some sites put the complete legal owner in a copyright line rather than
+    # repeating it in a grammatical company introduction. Require that explicit
+    # owner role, the unchanged full brand and an own-business introduction.
+    footer=re.sub(r'\s+',' ',' '.join(home.footer_parts)).strip()
+    owner=literal_name(footer,data.get('navn',''))
+    statement=None
+    copyright_brand=fold(home.meta.get('og:site_name') or re.split(r'\s+[|–—]\s*|\s+-\s*|\|',home.title)[0])
+    if owner and len(footer)<=1200 and copyright_brand in {stem,full}:
+        before=footer[max(0,owner['start']-45):owner['start']]
+        after=footer[owner['end']:owner['end']+35]
+        copyright_role=(bool(re.search(r'©\s*(?:(?:Copyright|20[0-9]{2})\s*)?$',before,re.I))
+                        or bool(re.match(r'\s*©\s*20[0-9]{2}\b',after)))
+        if copyright_role:
+            statement=next((b for b in self_description_blocks(home) if 45<=len(b)<=900 and re.match(
+                r'^(?:vi (?:er|har|tilbyr|leverer|driver|utvikler|produserer|legger|arbeider|jobber|kan)|we (?:are|have|offer|provide|develop|speciali[sz]e|focus))\b',fold(b))),None)
+    span=literal_name(home.text,data.get('navn',''))
+    if statement and span:
+        return {'method':'linked_first_party_legal_name','organisation_number':data.get('organisasjonsnummer'),
+            'registered_name':data.get('navn'),'entry_url':home.url,'source_url':home.url,
+            'self_identification':footer,'literal_spans':[span],'links':[],
+            'copyright_statement':footer,'business_self_description':statement,
+            'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
+            'scope':'matching complete brand, full legal owner in copyright line and scoped own-business introduction; organisation number is not asserted as printed on site'}
     return None
