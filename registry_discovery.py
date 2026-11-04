@@ -69,6 +69,17 @@ def name_domain_candidates(data):
     return list(dict.fromkeys('https://'+h+'/' for h in hosts))[:2]
 
 
+def conjunction_name_candidates(data):
+    """Late Norwegian spelling of a literal ampersand, never website proof."""
+    import re
+    name=data.get('navn')
+    if not isinstance(name,str) or name.count('&')!=1 or not re.search(r'\w\s*&\s*\w',name):return []
+    # Preserve every word and legal differentiator; do not shorten a company
+    # into the brand of its group. The normal independent identity checks and
+    # remaining request budget apply to both untrusted host candidates.
+    return name_domain_candidates({**data,'navn':name.replace('&',' og ')})
+
+
 def industry_city_candidates(data):
     """Two untrusted category/locality URL leads, never ownership evidence.
 

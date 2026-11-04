@@ -156,7 +156,8 @@ def legal_name_identity(data,pages,compatible):
             'literal_same_host_mailbox':own_mail or obfuscated_mail,
             'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
             'scope':'semantic homepage footer starts with full legal contact owner; complete brand plus immediate labelled telephone and literal same-host mailbox; no registry contacts or printed corporate number inferred'}
-    return registered_email_brand_address(data,pages,compatible)
+    return (registered_email_brand_address(data,pages,compatible)
+            or scoped_legal_contact_address(data,pages,compatible))
 
 
 def registered_email_brand_address(data,pages,compatible):
@@ -205,6 +206,60 @@ def registered_email_brand_address(data,pages,compatible):
             'address_kind':kind,'registered_street':street,'registered_postcode':postal,
             'name_normalization':'casefold; full legal form and locality retained; æ=ae, ø=o; combining accents removed',
             'scope':'full legal OpenGraph brand and title plus registry email domain and exact registered labelled visiting address in semantic homepage footer; registry email itself is not a website contact'}
+    return None
+
+
+def scoped_legal_contact_address(data,pages,compatible):
+    """Full legal contact owner and street, with a separately qualified postcode.
+
+    A company can print a wrong/stale postcode without losing its explicitly
+    stated legal identity. Never turn that discrepancy into address verification.
+    """
+    from contacts import _contact_scopes
+    from agent import group_description
+    if not pages:return None
+    home=pages[0][0];entry=canonical(home.url)
+    if not entry or urlsplit(entry).path not in ('','/home','/hjem','/index.html','/index.php'):return None
+    full=fold(data.get('navn',''));stem=re.sub(r' (?:as|asa|sa|sti|da|ans|nuf)$','',full)
+    if len(stem)<6 or full==stem:return None
+    brand=fold(home.meta.get('og:site_name') or re.split(r'\s+[|–—]\s*|\s+-\s*|\|',home.title)[0])
+    if brand not in {full,stem} or any(not compatible(pg) for pg,_ in pages):return None
+    if any(group_description(v) for v in [home.description,*home.paragraphs]):return None
+    host=(urlsplit(entry).hostname or '').removeprefix('www.')
+    _,blocks=_contact_scopes(home,include_blocks=True)
+    own_visible_blocks=set(self_description_blocks(home))
+    for node in sorted(blocks,key=lambda n:len(n['text'])):
+        if node['tag'] not in {'section','div','address'} or node.get('excluded') or node.get('in_form'):continue
+        block=re.sub(r'\s+',' ',node['text']).strip()
+        if not 40<=len(block)<=1600 or block not in own_visible_blocks:continue
+        owner=literal_name(block,data.get('navn',''))
+        if not owner or owner['start']>90:continue
+        prefix=fold(block[:owner['start']])
+        if prefix and not re.fullmatch(r'(?:kontakt(?: oss)?|contact(?: us)?)(?: for et tilbud| for a quote)?',prefix):continue
+        if re.search(r'ekstern aktør|our partners|våre partnere|forhandlere|distributors',block,re.I):continue
+        email=next((m.group(0) for m in re.finditer(r'[A-Za-z0-9._%+\-]+@([A-Za-z0-9.\-]+\.[A-Za-z]{2,})',block)
+                    if m[1].casefold().removeprefix('www.')==host),None)
+        phone=re.search(r'\b(?:tlf|telefon|phone|tel)\s*:?\s*(\+?[0-9 ().-]{7,25})',block,re.I)
+        if not email or not phone or not 8<=len(re.sub(r'\D','',phone[1]))<=15:continue
+        for kind in ('forretningsadresse','postadresse'):
+            address=data.get(kind) or {}
+            for street in address.get('adresse') or []:
+                local=literal_name(block,street)
+                if not local or not owner['end']<=local['start']<=owner['end']+6:continue
+                if not re.fullmatch(r'\W*',block[owner['end']:local['start']]):continue
+                postal=re.match(r'\W*(\d{4})(?!\d)',block[local['end']:])
+                if not postal:continue
+                name_span=literal_name(home.text,data.get('navn',''));street_span=literal_name(home.text,street)
+                if not name_span or not street_span:continue
+                registered_postal=address.get('postnummer');published_postal=postal[1]
+                return {'method':'linked_first_party_legal_name','organisation_number':data.get('organisasjonsnummer'),
+                    'registered_name':data.get('navn'),'entry_url':home.url,'source_url':home.url,
+                    'self_identification':block,'literal_spans':[name_span,street_span],'links':[],
+                    'scoped_legal_contact_statement':block,'registered_street':street,'address_kind':kind,
+                    'published_postcode':published_postal,'registered_postcode':registered_postal,
+                    'postcode_state':'matches_registry' if published_postal==registered_postal else 'conflicts_with_registry; address not verified',
+                    'name_normalization':'casefold; full legal form and locality retained; æ=ae, ø=o; combining accents removed',
+                    'scope':'complete own homepage brand; explicit full legal contact owner immediately followed by registered street; scoped literal same-host email and labelled phone; postcode kept as a separate qualified observation'}
     return None
 
 

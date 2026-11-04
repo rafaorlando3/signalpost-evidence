@@ -365,3 +365,13 @@ The report distinguishes frozen-source gains from live TLS failures and keeps
 remaining independently found misses. These are diagnostics, not the private
 official reference union or evidence of a 90-point score. See the dated report
 in the Claude handoff folder; no new submission is authorized by these checks.
+
+Literal ampersands can nominate two late Norwegian `og` domain variants after
+all established discovery paths. All company words stay intact and the URLs
+remain untrusted leads. There are no company-specific domains or IDs in the
+rule. A separate late identity proof can use a scoped first-party contact
+section with the complete legal owner immediately followed by its registered
+street, the unchanged homepage brand, a same-domain literal email and a labelled
+telephone. Customer, quotation, aside, form and group content cannot provide
+that proof. A differing published postcode is retained explicitly as a conflict;
+it does not become a verified operating address.

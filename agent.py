@@ -1357,6 +1357,10 @@ def research(row, fetcher, previous=None, search=None):
         for candidate in short_legal_name_candidates(data):
             if candidate not in {a['url'] for a in attempts} and fetcher.requests<=fetcher.limit-2:
                 yield candidate,'late_short_legal_name_heuristic',0,[]
+        from registry_discovery import conjunction_name_candidates
+        for candidate in conjunction_name_candidates(data):
+            if candidate not in {a['url'] for a in attempts} and fetcher.requests<=fetcher.limit-2:
+                yield candidate,'late_literal_conjunction_spelling',0,[]
     for url,origin,remaining_leads,hints in candidates():
         # Redirect aliases and a final unverified site must not consume the
         # reserve left for a current exact-employer public posting. No prior
