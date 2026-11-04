@@ -337,3 +337,31 @@ an observed parent homepage. In that case, the collector uses its existing
 visible company-paragraph fallback on the scoped page; unique own metadata
 continues to be accepted. A scoped site does not imply ownership of the parent
 portal or its generic description.
+
+## Coverage27: legal brand, address lines and rolling phone vacancies (local)
+
+The existing identity proofs retain priority. A late alternative accepts an
+exact full legal OpenGraph name and title, the corporate email domain recorded
+for the same registry entity, and an exact labelled visiting address in the
+semantic homepage footer. It preserves the complete name and legal form,
+including short names, and rejects contradictory operators, groups and IDs.
+The registry mailbox is a discovery/binding input, never a website contact.
+
+A declared-domain address check can use a subsequent street line after a
+building name. That line must contain a house number and the complete own
+brand must match; the evidence retains the actual matched street and postcode.
+
+Specific first-party role pages with an exact printed corporate ID, full legal
+name, an explicit rolling deadline, qualifications and a job-specific literal
+telephone can retain a vacancy without decoding an obfuscated email. The role
+must occur in the employer's recruiting sentence. Publication date and calendar
+deadline stay null; a mixed rolling/numeric deadline, closed notice, generic
+application, customer recruitment or footer-only phone does not qualify.
+
+Local validation includes paired sources for 20 new companies, 40 further
+proportionally sampled operating employers, the previous 900 unique profiles
+including the short-name source override, and dedicated historical controls.
+The report distinguishes frozen-source gains from live TLS failures and keeps
+remaining independently found misses. These are diagnostics, not the private
+official reference union or evidence of a 90-point score. See the dated report
+in the Claude handoff folder; no new submission is authorized by these checks.

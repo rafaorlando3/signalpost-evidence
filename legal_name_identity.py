@@ -39,7 +39,7 @@ def legal_name_identity(data,pages,compatible):
     host=urlsplit(entry).hostname;full=fold(data.get('navn',''))
     stem=re.sub(r' (?:as|asa|sa|nuf|da|ans|sti)$','',full)
     # No shortening of initials, geography or other legal differentiators.
-    if full==stem or len(stem)<5:return None
+    if full==stem or len(stem)<5:return registered_email_brand_address(data,pages,compatible)
     brands=[home.title,home.meta.get('og:site_name',''),*home.content_headings]
     if not any(literal_name(b,stem) for b in brands):return None
     if any(not compatible(pg) for pg,_ in pages):return None
@@ -156,6 +156,55 @@ def legal_name_identity(data,pages,compatible):
             'literal_same_host_mailbox':own_mail or obfuscated_mail,
             'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
             'scope':'semantic homepage footer starts with full legal contact owner; complete brand plus immediate labelled telephone and literal same-host mailbox; no registry contacts or printed corporate number inferred'}
+    return registered_email_brand_address(data,pages,compatible)
+
+
+def registered_email_brand_address(data,pages,compatible):
+    """Legal homepage brand + registry email domain + own contact address.
+
+    The registry mailbox nominates a domain; it is not published as a contact.
+    The page must independently display the full legal name in its own brand
+    and the exact registered street/postcode in a labelled semantic footer.
+    """
+    from registry_discovery import FREE_EMAIL
+    from agent import group_description
+    if not pages:return None
+    home=pages[0][0];entry=canonical(home.url)
+    if not entry or urlsplit(entry).path not in ('','/home','/hjem','/index.html','/index.php'):return None
+    full=fold(data.get('navn',''));stem=re.sub(r' (?:as|asa|sa|sti|da|ans|nuf)$','',full)
+    if not 3<=len(stem)<=120 or full==stem:return None
+    mailbox=data.get('epostadresse');domain=mailbox.rsplit('@',1)[1].strip().casefold() if isinstance(mailbox,str) and mailbox.count('@')==1 else ''
+    host=(urlsplit(entry).hostname or '').removeprefix('www.')
+    if not domain or domain in FREE_EMAIL or domain.removeprefix('www.')!=host:return None
+    # Keep the entire legal name, including the suffix and locality. A brand
+    # stem or mention in a customer list cannot replace these two owner labels.
+    if fold(home.meta.get('og:site_name',''))!=full or not literal_name(home.title,data.get('navn','')):return None
+    if any(not compatible(pg) for pg,_ in pages):return None
+    if any(group_description(v) for v in [home.description,*home.paragraphs]):return None
+    footer=re.sub(r'\s+',' ',' '.join(home.footer_parts)).strip()
+    if not footer or len(footer)>1800 or not re.search(r'\b(?:besøksadresse|visiting address|office address|hovedkontor)\b',footer,re.I):return None
+    name_span=literal_name(home.text,data.get('navn',''))
+    if not name_span:return None
+    # The contact address is adjacent to its owner-role label, rather than a
+    # postcode elsewhere in the page or a partner's separately labelled block.
+    for kind in ('forretningsadresse','postadresse'):
+        a=data.get(kind) or {};street=next(iter(a.get('adresse') or []),'');postal=str(a.get('postnummer') or '')
+        if not street or not re.fullmatch(r'\d{4}',postal):continue
+        street_local=literal_name(footer,street)
+        if not street_local:continue
+        prefix=footer[max(0,street_local['start']-100):street_local['start']]
+        if not re.search(r'(?:besøksadresse|visiting address|office address|hovedkontor)\s*(?::|–|-)?\s*(?:'+re.escape(data.get('navn',''))+r'\s*,?\s*)?$',prefix,re.I):continue
+        tail=footer[street_local['end']:street_local['end']+35]
+        if not re.match(r'\W*(?:NO\W*)?'+re.escape(postal)+r'(?!\d)',tail,re.I):continue
+        street_span=literal_name(home.text,street);postal_span=literal_name(home.text,postal)
+        if not street_span or not postal_span:continue
+        return {'method':'linked_first_party_legal_name','organisation_number':data.get('organisasjonsnummer'),
+            'registered_name':data.get('navn'),'entry_url':home.url,'source_url':home.url,
+            'self_identification':home.title,'literal_spans':[name_span,street_span,postal_span],'links':[],
+            'registry_email_domain_binding':domain,'contact_address_statement':footer,
+            'address_kind':kind,'registered_street':street,'registered_postcode':postal,
+            'name_normalization':'casefold; full legal form and locality retained; æ=ae, ø=o; combining accents removed',
+            'scope':'full legal OpenGraph brand and title plus registry email domain and exact registered labelled visiting address in semantic homepage footer; registry email itself is not a website contact'}
     return None
 
 

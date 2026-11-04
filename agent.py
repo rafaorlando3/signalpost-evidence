@@ -1056,9 +1056,16 @@ def corroborated_site(data, page, registry_redirect_host=None):
     if len(name)<8 and ' '+normalized(data.get('navn',''))+' ' not in text:return False
     for kind in ('forretningsadresse','postadresse'):
         address=data.get(kind) or {}
-        street=next(iter(address.get('adresse') or []),''); postal=address.get('postnummer','')
-        if street and postal and ' '+normalized(street)+' ' in text and re.search(r'(?<!\d)'+re.escape(postal)+r'(?!\d)',evidence_text):
-            return True
+        postal=address.get('postnummer','')
+        for line,street in enumerate(address.get('adresse') or []):
+            if not isinstance(street,str) or not street:continue
+            if line:
+                # A building/care-of line can precede the actual street. The
+                # alternative needs a complete own brand and a real house
+                # number; a subsidiary mentioned in group content is not proof.
+                brand=normalized(page.meta.get('og:site_name') or page.title)
+                if brand not in {name,normalized(data.get('navn',''))} or not re.search(r'\d+[A-Za-z]?\s*$',street):continue
+            if postal and ' '+normalized(street)+' ' in text and re.search(r'(?<!\d)'+re.escape(postal)+r'(?!\d)',evidence_text):return True
     return False
 
 def corroboration_evidence(data,page,entry_response):
@@ -1070,9 +1077,14 @@ def corroboration_evidence(data,page,entry_response):
         return {'start':match.start(),'end':match.end(),'text':page.text[match.start():match.end()]} if match else None
     name_span=span(stem)
     for kind in ('forretningsadresse','postadresse'):
-        address=data.get(kind) or {};street=next(iter(address.get('adresse') or []),'');postal=address.get('postnummer','')
-        street_span=span(street);postal_span=span(postal)
-        if name_span and street_span and postal_span:
+        address=data.get(kind) or {};postal=address.get('postnummer','')
+        for line,street in enumerate(address.get('adresse') or []):
+            if not isinstance(street,str):continue
+            if line:
+                brand=normalized(page.meta.get('og:site_name') or page.title)
+                if brand not in {stem,normalized(data.get('navn',''))} or not re.search(r'\d+[A-Za-z]?\s*$',street):continue
+            street_span=span(street);postal_span=span(postal)
+            if not (name_span and street_span and postal_span):continue
             return {'registered_name':data.get('navn'),'registered_website':data.get('hjemmeside'),
                     'domain_origin':('exact first-party legal footer, matching homepage brand and official postal address; URL may originate as an untrusted lead' if legal_footer_identity(data,page) else 'entity website declaration' if data.get('hjemmeside') else 'corporate email domain lead plus full legal footer and registered address; registry email not published'),
                     'requested_entry_url':entry_response.get('requested_url'),
@@ -1608,7 +1620,9 @@ def research(row, fetcher, previous=None, search=None):
                                     if obj.get('_application_contact'):item['application_contact']=obj['_application_contact']
                                     if obj.get('_deadline_text'):
                                         item['deadline_text']=obj['_deadline_text']
-                                        item['status']='published first-party vacancy invitation; rolling ASAP, no calendar deadline; application acceptance not tested'
+                                        item['status']=('published first-party vacancy invitation; rolling deadline, no calendar date; application acceptance not tested'
+                                                        if str(obj.get('_application_contact','')).startswith('tel:') else
+                                                        'published first-party vacancy invitation; rolling ASAP, no calendar deadline; application acceptance not tested')
                                     evidence_responses.extend(([ats] if ats else [])+[anchor_response])
                                 if not any(i['url']==item['url'] and str(i['date'])[:10]==str(item['date'])[:10] for i in items): items.append(item)
                                 evidence_responses.append(rsp);positive_responses.append(rsp)

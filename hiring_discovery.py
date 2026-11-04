@@ -77,6 +77,8 @@ def continuous_first_party_vacancy(page,response,data):
     """
     from agent import website_identity,normalized
     from attribution import legal_stem
+    phone_notice=rolling_phone_vacancy(page,response,data)
+    if phone_notice:return phone_notice
     if not response.get('identity_verified') or response.get('delegated_from_verified_careers'):return []
     if website_identity(str(data.get('organisasjonsnummer','')),page,data)!='exact':return []
     heads=page.semantic_headings or page.main_headings or page.content_headings
@@ -137,6 +139,51 @@ def continuous_first_party_vacancy(page,response,data):
         '_application_url':application,**({'_application_contact':contact} if contact else {}),
         '_employer_basis':'exact corporate ID on verified first-party page plus named employer in recruiting content',
         '_deadline_basis':'explicit first-party deadline' if deadline else 'rolling ASAP invitation; calendar deadline not stated' if deadline_text else 'not stated; explicit job-specific application invitation on first-party page'}]
+
+
+def rolling_phone_vacancy(page,response,data):
+    """A named role with a literal rolling deadline and scoped phone contact.
+
+    Some employers publish the vacancy and a telephone contact while keeping
+    email obfuscated. Preserve that literal telephone; do not decode a mailbox,
+    infer a publication date or claim the application form was tested.
+    """
+    from agent import website_identity
+    from legal_name_identity import fold,literal_name
+    if (not response.get('identity_verified') or response.get('delegated_from_verified_careers')
+            or website_identity(str(data.get('organisasjonsnummer','')),page,data)!='exact'):return []
+    path=urlsplit(page.url).path
+    if not re.search(r'/(?:karriere|careers?|jobb|jobs?|ledige-stillinger|stillinger)/[^/]+/?$',path,re.I):return []
+    heads=page.semantic_headings or page.main_headings or page.content_headings
+    if len(heads)!=1:return []
+    title=heads[0].strip();body=re.sub(r'\s+',' ',' '.join(page.article_parts)).strip()
+    if not 3<=len(title)<=120 or re.fullmatch(r'ledige stillinger|karriere|careers?|jobs?|vacancies',title,re.I):return []
+    if re.search(r'åpen\s+søknad|spontan|open application|talent pool|på vegne av|for vår kunde|on behalf of|our client',body+' '+title,re.I) or closed_hiring_page(page):return []
+    if not literal_name(body,data.get('navn','')):return []
+    # The named role must occur in the employer's actual recruiting sentence.
+    stem=re.sub(r' (?:as|asa|sa|sti|da|ans)$','',fold(data.get('navn','')))
+    intro=fold(body[:1000]);role=fold(title)
+    if len(stem)<5 or not re.search(r'\bvi(?: i '+re.escape(stem)+r')? soker\b.{0,110}(?<!\w)'+re.escape(role)+r'(?!\w)',intro):return []
+    deadlines=re.findall(r'søknadsfrist\s*:\s*([^.;\n]{1,65})',body,re.I)
+    if (len(deadlines)!=1 or not re.match(r'^(?:løpende|fortløpende)(?:\s|$)',deadlines[0],re.I)
+            or re.search(r'\d',deadlines[0])):return []
+    if not re.search(r'\b(?:fagbrev|kvalifikasjoner|qualifications|forerkort|førerkort)\b',body,re.I) or not re.search(r'\bvi tilbyr\s*:',body,re.I):return []
+    for link in page.links:
+        u=link.get('url','')
+        if (not u.startswith('tel:') or link.get('third_party_context') or link.get('in_navigation')):continue
+        number=u[4:];digits=re.sub(r'\D','',number)
+        if not re.fullmatch(r'\+?[0-9 ().-]+',number) or not 8<=len(digits)<=15:continue
+        visible=re.search(r'(?<!\d)'+r'[ ().-]*'.join(re.escape(c) for c in digits)+r'(?!\d)',body)
+        if not visible:continue
+        context=body[max(0,visible.start()-300):visible.start()]
+        if not re.search(r'(?:spørsmål|vite mer|kontakt).{0,100}\bstillingen\b|\bstillingen\b.{0,100}(?:spørsmål|kontakt)',context,re.I):continue
+        return [{'@type':'JobPosting','title':title,'datePosted':None,
+            'hiringOrganization':{'name':data['navn']},'validThrough':None,
+            '_literal_first_party':True,'_application_url':page.url,'_application_contact':u,
+            '_deadline_text':re.match(r'^(løpende|fortløpende)',deadlines[0],re.I)[1],
+            '_employer_basis':'exact corporate ID on first-party page; full legal name and matching named role in recruiting content; literal job-specific telephone',
+            '_deadline_basis':'explicit rolling Søknadsfrist; no publication date or calendar deadline stated'}]
+    return []
 
 
 def literal_hiring_candidates(page, response, data, hiring_pages):
