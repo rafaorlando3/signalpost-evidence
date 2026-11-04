@@ -5,7 +5,60 @@ import http.client
 import re
 import socket
 import ssl
+import collections
+import copy
+import threading
+import time
 from urllib.parse import urlsplit
+
+
+class RunRobotsCache:
+    """Short run-local reuse of successful/unavailable robots responses only.
+
+    Policy parsing/enforcement remains in Fetcher. Failed, protected and
+    rate-limited responses are never cached here. No cross-run/disk trust.
+    """
+    def __init__(self, ttl=300, clock=None, max_entries=512):
+        self.ttl=ttl;self.clock=clock or time.monotonic;self.max_entries=max_entries
+        self.lock=threading.Lock();self.host_locks=collections.defaultdict(threading.Lock)
+        self.entries={};self.hits=0;self.loads=0
+
+    def get(self, origin, load, deadline):
+        with self.lock:guard=self.host_locks[origin]
+        if not guard.acquire(timeout=max(0,deadline-self.clock())):
+            raise TimeoutError('shared robots lookup exceeds remaining company deadline')
+        try:
+            if self.clock()>=deadline:
+                raise TimeoutError('shared robots lookup exceeds remaining company deadline')
+            with self.lock:
+                cached=self.entries.get(origin)
+                if cached and cached[0]>self.clock():
+                    self.hits+=1
+                    return copy.deepcopy(cached[1]),True
+                self.loads+=1
+            response=load()
+            code=response.get('status_code')
+            reusable=(code==200 and response.get('status')=='available') or code in (404,410)
+            ttl=self.ttl
+            headers=response.get('response_headers') or {}
+            control=headers.get('cache-control','')
+            if re.search(r'(?:^|,)\s*(?:no-cache|no-store|private)(?:[=,\s]|$)',control,re.I):ttl=0
+            age=headers.get('age','0')
+            age=int(age) if isinstance(age,str) and re.fullmatch(r'\d+',age) else 0
+            max_age=re.search(r'(?:^|,)\s*max-age\s*=\s*"?(\d+)"?(?:\s*,|\s*$)',control,re.I)
+            if max_age:ttl=min(ttl,max(0,int(max_age[1])-age))
+            if reusable and ttl>0 and isinstance(response.get('text',''),str) and len(response.get('text',''))<=256_000:
+                with self.lock:
+                    if len(self.entries)>=self.max_entries:
+                        self.entries={k:v for k,v in self.entries.items() if v[0]>self.clock()}
+                        if len(self.entries)>=self.max_entries:self.entries.pop(next(iter(self.entries)))
+                    self.entries[origin]=(self.clock()+ttl,copy.deepcopy(response))
+            return response,False
+        finally:guard.release()
+
+    def summary(self):
+        with self.lock:return {'policy_cache_hits':self.hits,'policy_loads':self.loads,'ttl_seconds':self.ttl,
+                              'scope':'run-local same-origin robots200/404/410 only; policy remains enforced'}
 
 
 def request_headers(url,ua):
@@ -16,7 +69,7 @@ def request_headers(url,ua):
 
 def retained_headers(response):
     # Never retain cookies, authentication or arbitrary response headers.
-    names=['Server','Retry-After','CF-Ray','CF-Mitigated','Content-Type','Content-Length']
+    names=['Server','Retry-After','CF-Ray','CF-Mitigated','Content-Type','Content-Length','Cache-Control','Age']
     return {k.casefold():v[:250] for k in names if isinstance((v:=response.getheader(k)),str)}
 
 

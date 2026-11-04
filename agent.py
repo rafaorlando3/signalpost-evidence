@@ -62,7 +62,7 @@ class Fetcher:
     host_last = {}
     host_retry_not_before = {}
 
-    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True, public_search=None, resolver=None):
+    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True, public_search=None, resolver=None, robots_cache=None):
         self.directory = Path(directory); self.directory.mkdir(parents=True, exist_ok=True)
         self.replay, self.fresh = replay, fresh
         self.limit = limit; self.end = time.monotonic()+deadline
@@ -72,6 +72,7 @@ class Fetcher:
         self.public_jobs=public_jobs
         self.public_search=public_search
         self.resolver=resolver
+        self.robots_cache=robots_cache;self.robots_reuse_hits=0
 
     def request_headers(self,url):
         from transport_policy import request_headers
@@ -100,7 +101,14 @@ class Fetcher:
         if site:
             origin = urlunsplit((*urlsplit(url)[:2], '', '', ''))
             if origin not in self.robots:
-                response = self.get(origin+'/robots.txt', raw=True)
+                if self.robots_cache is not None and not self.replay:
+                    try:
+                        response,reused=self.robots_cache.get(origin,lambda:self.get(origin+'/robots.txt',raw=True),self.end)
+                        if reused:
+                            self.hits+=1;self.robots_reuse_hits+=1;self.retain(response);self.records.append(response)
+                    except TimeoutError:
+                        response=self.failure(origin+'/robots.txt','blocked','shared robots lookup exceeds remaining company deadline')
+                else:response = self.get(origin+'/robots.txt', raw=True)
                 parser = RobotFileParser()
                 code=response.get('status_code',0)
                 if 200<=code<300:
@@ -828,6 +836,18 @@ def group_description(text):
         text, re.I))
 
 
+def foreign_group_description(data,text):
+    """A German parent-group subject does not describe its local legal entity.
+
+    Only description attribution uses this guard; the crawler and portal
+    checks keep their earlier behavior and budgets.
+    """
+    match=re.match(r'^\s*(?:die|unsere)\s+([\w&. -]{1,100}?\b(?:group|gruppe))\s+(?:ist|besteht|umfasst|zählt)\b',text or '',re.I)
+    if not match:return False
+    from attribution import legal_stem
+    return legal_stem(match[1])!=legal_stem(data.get('navn',''))
+
+
 def activity_candidates(page, response):
     """Return article candidates tied to this page, plus bounded limitations.
 
@@ -1180,6 +1200,7 @@ def research(row, fetcher, previous=None, search=None):
                             and sum(p['family']==family for p in previous_urls)<8):
                         previous_urls.append({'url':url,'family':family})
     public_jobs_result=None
+    verified_content_pages=[]
     def public_jobs():
         nonlocal public_jobs_result
         if public_jobs_result is None:
@@ -1341,6 +1362,7 @@ def research(row, fetcher, previous=None, search=None):
                         if urlsplit(rsp['url']).path.rstrip('/')==scope
                         or urlsplit(rsp['url']).path.startswith(scope+'/')
                         or website_identity(org,pg,data)=='exact']
+                verified_content_pages=content_pages
                 method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
                         'linked_business_self_description_and_registered_address' if anchor_response.get('business_identity_support') else
                         'linked_first_party_legal_name' if anchor_response.get('legal_name_identity_support') else
@@ -1399,7 +1421,7 @@ def research(row, fetcher, previous=None, search=None):
                     description_pointer='literal visible own-business introduction corroborated by OpenGraph; first sentence only; homepage news excluded'
                 if description and re.search(r'lorem ipsum|dolor sit amet|(?:web\s*site|nettside).{0,45}(?:under construction|coming soon|underveis|under arbeid)|^(?:under construction|coming soon)[.! ]*$',description,re.I):description=None
                 if description:description=description[:700]
-                collective=group_description(description or '')
+                collective=group_description(description or '') or foreign_group_description(data,description or '')
                 add('website.description',description or None,description_response,
                     state='ambiguous' if collective else None,
                     pointer=description_pointer,excerpt=description)
@@ -1655,6 +1677,29 @@ def research(row, fetcher, previous=None, search=None):
         for rsp in [entity,*[s for record in additions for s in [record['response'],*record['support']]]]:
             supporting=claim('recruitment_identity_support',None,rsp,evidence,pointer='retained primary ad or company/index/detail identity chain')
             current_hiring['evidence_ids']=list(dict.fromkeys(current_hiring['evidence_ids']+supporting['evidence_ids']))
+    # Augment only after every existing network/discovery path. These literal
+    # own-site role blocks cannot alter the crawl order or late request budget.
+    if verified_content_pages:
+        from inline_recruiting import candidates as inline_candidates,role_key
+        inline=inline_candidates(verified_content_pages,data)
+        existing=(current_hiring.get('value') or []) if current_hiring and current_hiring.get('availability')=='available' else []
+        known_titles={role_key(item)[1] for item in existing}
+        novel=[]
+        for record in inline:
+            key=role_key(record['item'])[1]
+            if key not in known_titles:novel.append(record);known_titles.add(key)
+        if novel:
+            items=existing+[record['item'] for record in novel]
+            added=claim('website.hiring',items,novel[0]['response'],evidence,
+                pointer='literal named own-career role blocks with directly linked exact legal owner; dates not inferred',excerpt=novel[0]['item']['title'])
+            if current_hiring:
+                ids=current_hiring['evidence_ids'];qualifiers=current_hiring.get('qualifiers',{})
+                current_hiring.update(added);current_hiring['evidence_ids']=list(dict.fromkeys(ids+added['evidence_ids']));current_hiring['qualifiers']=qualifiers
+            else:current_hiring=added;claims.append(current_hiring)
+            for record in novel:
+                for rsp in (entity,record['response'],record['identity_response']):
+                    extra=claim('recruitment_identity_support',None,rsp,evidence,pointer='retained literal role and directly linked exact legal owner')
+                    current_hiring['evidence_ids']=list(dict.fromkeys(current_hiring['evidence_ids']+extra['evidence_ids']))
     for field in ('website.verified_url','website.description','website.social_links','website.hiring','website.activity','website.contact_channels'):
         if not any(c['field']==field for c in claims):
             if operator_limits:
@@ -1693,7 +1738,7 @@ def research(row, fetcher, previous=None, search=None):
     output['summary']={'name':data.get('navn'), 'supported_fields':[c['field'] for c in claims if c['availability']=='available'],
         'unknown_fields':[c['field'] for c in claims if c['availability']!='available'], 'material_changes':len(output['changes'])}
     output['run']={'started_at':started,'completed_at':now(),'terminal_status':'completed','version':VERSION}
-    output['operations']={'requests':fetcher.requests,'cache_hits':fetcher.hits,'runtime_ms':round((time.monotonic()-tic)*1000),'third_party_cost_usd':getattr(fetcher,'discovery',{}).get('paid_cost_usd',0)}
+    output['operations']={'requests':fetcher.requests,'cache_hits':fetcher.hits,'robots_policy_reuse_hits':getattr(fetcher,'robots_reuse_hits',0),'runtime_ms':round((time.monotonic()-tic)*1000),'third_party_cost_usd':getattr(fetcher,'discovery',{}).get('paid_cost_usd',0)}
     if hasattr(fetcher,'discovery'): output['discovery']=fetcher.discovery
     if hasattr(fetcher,'public_search_discovery'):output['public_search_discovery']=fetcher.public_search_discovery
     from output_contract import complete_envelope
@@ -1736,8 +1781,10 @@ def main():
     output=Path(args.output); output.parent.mkdir(parents=True,exist_ok=True); start=time.monotonic()
     from dns_policy import RunResolver
     resolver=RunResolver()
+    from transport_policy import RunRobotsCache
+    robots_cache=None if args.replay else RunRobotsCache()
     def work(row):
-        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot,public_jobs=args.public_jobs!='off',public_search=anonymous_search,resolver=resolver)
+        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot,public_jobs=args.public_jobs!='off',public_search=anonymous_search,resolver=resolver,robots_cache=robots_cache)
         try: return research(row,fetcher,prior.get(str(row.get('organisation_number',''))),search)
         except Exception as error:
             return {'organisation_number':str(row.get('organisation_number','')),'run':{'terminal_status':'failed','completed_at':now()},
@@ -1750,7 +1797,7 @@ def main():
         for i,result in enumerate(pool.map(work,rows),1):
             results.append(result); target.write(encode(result)+'\n'); target.flush()
             if i%10==0: print(encode({'completed':i,'total':len(rows)}),flush=True)
-    report={'dns':resolver.summary(),'inputs':len(rows),'outputs':len(results),'failed':sum(r['run']['terminal_status']=='failed' for r in results),
+    report={'dns':resolver.summary(),'robots_policy_reuse':robots_cache.summary() if robots_cache else None,'inputs':len(rows),'outputs':len(results),'failed':sum(r['run']['terminal_status']=='failed' for r in results),
         'requests':sum(r['operations']['requests'] for r in results),'runtime_seconds':round(time.monotonic()-start,2),
         'third_party_cost_usd':None if search and search.attempts else 0,
         'public_search_request_attempts':anonymous_search.attempts if anonymous_search else 0,

@@ -95,6 +95,15 @@ def audit(rows, cache):
                 from hiring_discovery import continuous_first_party_vacancy
                 registry=next((s.get('json') for s in sources.values() if isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
                 for item in c['value']:
+                    if item.get('discovery')=='linked_inline_first_party_roles':
+                        from inline_recruiting import candidates as inline_candidates
+                        pages=[(Page(s['text'],s['url']),{**s,'identity_verified':True}) for eid,s in sources.items()
+                               if eid in c['evidence_ids'] and 'text' in s and 'json' not in s]
+                        reconstructed=inline_candidates(pages,registry or {})
+                        if not any(record['item']==item for record in reconstructed):
+                            errors.append([row['organisation_number'],'inline role not reproduced from literal section and directly linked legal owner'])
+                        else:counts['inline_first_party_role_chains_checked']+=1
+                        continue
                     if item.get('discovery')=='linked_schema_company_portal':
                         from portal_expansion import schema_item
                         proof=item.get('employer_binding',{})

@@ -265,6 +265,7 @@ def run(args):
                 'claim_status_counts': statuses,
                 'claim_counts_include_duplicate_entries': True,
                 'requests': sum(op['requests'] for op in operations),
+                'robots_policy_reuse_hits': sum(op.get('robots_policy_reuse_hits',0) for op in operations),
                 'requests_include_upper_bounds': any(op.get('requests_are_upper_bound', False)
                                                       for op in operations),
                 'request_budget_per_unique_company': 24,

@@ -108,7 +108,17 @@ def foreign_contact_bindings(pages,data):
         value=re.sub(r'^(?:Bedrift|Company|Om|About)\s*:?\s+','',value.strip(),flags=re.I)
         value=re.sub(r'^(?:CEO|CFO|COO|CTO|EVP|Director|Officer)\b[^,\n]{0,110},\s*','',value,flags=re.I)
         return _normal(''.join(c for c in unicodedata.normalize('NFKD',value) if not unicodedata.combining(c)))
-    own=namekey(data.get('navn',''));blocked={}
+    own=namekey(data.get('navn',''));blocked={};regional_domains={}
+    # A regional group site can omit the corporate suffix on staff cards.
+    # Require both an explicit other-region entity label and its country
+    # mailbox, rather than treating every foreign email/phone as another owner.
+    regions={'norway':'no','norge':'no','sweden':'se','sverige':'se',
+             'denmark':'dk','danmark':'dk','finland':'fi','germany':'de',
+             'deutschland':'de','uk':'uk','united kingdom':'uk'}
+    regional_own=re.fullmatch(r'(.{3,100}?) ('+'|'.join(regions)+r')(?: as| asa)?',own)
+    regional_label=None
+    if regional_own:
+        regional_label=re.compile(r'(?im)(?:^|,)[ \t]*('+re.escape(regional_own[1])+r' ('+'|'.join(regions)+r'))[ \t]*(?=\n|$)')
     legal=re.compile(r'(?:^|\n)[ \t]*(?:©\s*(?:[0-9]{4}\s*)?)?([^\n]{2,120}?\b(?:ASA|AS|AB|GmbH|Ltd\.?|Limited|LLC|Inc\.?|SIA))\s*(?=\n|$)')
     email=re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
     phone=re.compile(r'\b(?:Tel(?:efon)?|Tlf|Phone|Mobil)(?:[ \t]*:)?[ \t]*(\+?[0-9 () .-]{7,25})',re.I)
@@ -118,6 +128,30 @@ def foreign_contact_bindings(pages,data):
         for node in blocks:
             text=node['text']
             if node.get('excluded') or len(text)>2000:continue
+            if regional_own:
+                group_label=re.search(r'(?im)^(?:CEO|Managing Director)[ \t]*,[ \t]*('+re.escape(regional_own[1])+r' (?:Group|Global))[ \t]*(?=\n|$)',text)
+                if group_label:
+                    channels=[{'type':'email','value':m.group(0)} for m in email.finditer(text)
+                              if group_label.end()<=m.start()<group_label.end()+350]
+                    channels += [{'type':'email','value':unquote(urlsplit(u).path).strip()} for u,pos in node.get('contact_offsets',[])
+                                 if urlsplit(u).scheme.casefold()=='mailto' and group_label.end()<=pos<group_label.end()+350]
+                    if channels:bindings.append((node,group_label[1].strip(),channels))
+            if regional_label and own not in namekey(text):
+                labels=list(regional_label.finditer(text))
+                other=[m for m in labels if regions[m[2].casefold()]!=regions[regional_own[2]]]
+                if len(labels)==1 and len(other)==1:
+                    match=other[0];suffix=regions[match[2].casefold()]
+                    channels=[{'type':'email','value':m.group(0)} for m in email.finditer(text)
+                              if m.start()>=match.end() and m.start()-match.end()<350 and m.group(0).casefold().endswith('.'+suffix)]
+                    channels += [{'type':'email','value':unquote(urlsplit(u).path).strip()} for u,pos in node.get('contact_offsets',[])
+                                 if urlsplit(u).scheme.casefold()=='mailto' and match.end()<=pos<match.end()+350
+                                 and unquote(urlsplit(u).path).strip().casefold().endswith('.'+suffix)]
+                    if channels:
+                        bindings.append((node,match[1].strip(),channels))
+                        for channel in channels:
+                            domain=channel['value'].rsplit('@',1)[-1].casefold()
+                            regional_domains.setdefault(domain,{'reason':'same country mailbox domain is explicitly assigned to another regional entity',
+                                'other_legal_name':match[1].strip(),'source_url':page.url,'evidence_excerpt':text.strip()[:2000]})
             # A legal name can wrap between DOM nodes. It remains the target's
             # imprint, not a new entity named only by its last line.
             if own and re.search(r'(?im)^[ \t]*(?:©\s*(?:[0-9]{4}\s*)?)?'+r'\s+'.join(re.escape(w) for w in own.split())+r'[ \t]*(?=\n|$)',text):continue
@@ -141,6 +175,28 @@ def foreign_contact_bindings(pages,data):
             for channel in channels:
                 blocked.setdefault(contact_key(channel),{'reason':'same channel is explicitly published for another legal entity',
                     'other_legal_name':name,'source_url':page.url,'evidence_excerpt':node['text'].strip()[:2000]})
+    if regional_domains:
+        # On mixed regional staff lists, a short repeated employee card may
+        # omit the regional entity name. Propagate only country-domain proof
+        # established above, and preserve an explicit target-named card.
+        for page,response in pages:
+            _,blocks=_contact_scopes(page,include_blocks=True)
+            own_channels=set();cards=[]
+            for node in blocks:
+                text=node['text']
+                if node.get('excluded') or len(text)>800:continue
+                channels=[{'type':'email','value':m.group(0)} for m in email.finditer(text)]
+                channels += [{'type':'email' if urlsplit(u).scheme.casefold()=='mailto' else 'phone','value':unquote(urlsplit(u).path).strip()}
+                             for u in node.get('contact_hrefs',[]) if urlsplit(u).scheme.casefold() in {'mailto','tel'}]
+                if regional_own and namekey(regional_own[0].removesuffix(' as').removesuffix(' asa')) in namekey(text):
+                    own_channels.update(contact_key(c) for c in channels)
+                mailboxes={c['value'].casefold() for c in channels if c['type']=='email'}
+                if 1<=len(mailboxes)<=2:
+                    proof=next((regional_domains[m.rsplit('@',1)[-1]] for m in mailboxes if m.rsplit('@',1)[-1] in regional_domains),None)
+                    if proof:cards.append((channels,proof))
+            for channels,proof in cards:
+                for channel in channels:
+                    if contact_key(channel) not in own_channels:blocked.setdefault(contact_key(channel),proof)
     return blocked
 
 
@@ -248,7 +304,7 @@ def entity_contacts(page,data,units=(),conflicts=None):
             for ancestry in literal_scopes.get(id(item),scopes.get(item['source_href'],[])):
                 for node in reversed(ancestry):
                     if node['tag'] in {'a','span','strong','b','i','svg','path'}:continue
-                    found=set(re.findall(r'(?<!\d)([0-9]{4})[ \t]+[A-ZÆØÅ][A-Za-zÆØÅæøåéü-]+',node['text']))
+                    found=set(re.findall(r'(?<!\d)([0-9]{4,6})[ \t]+[A-ZÆØÅ][A-Za-zÆØÅæøåéü-]+',node['text']))
                     if found:
                         observations.append(found);postal_nodes.append(node);break
             if codes and observations and not any(v and v<=codes for v in observations):
@@ -269,7 +325,16 @@ def entity_contacts(page,data,units=(),conflicts=None):
     # mailbox or switchboard belongs to someone else. Cross-scope propagation
     # requires a different business domain as well as the conflicting address.
     def different_domain(item):
-        if item['type']!='email':return False
+        if item['type']!='email':
+            # An explicitly conflicting foreign-office phone must not leak
+            # back through an unscoped footer copy. A foreign code alone is
+            # insufficient; this is used only for already observed address
+            # conflicts, with a target explicitly named Norway/Norge.
+            value=item['value'].strip()
+            digits=re.sub(r'\D','',value)
+            return (bool(re.search(r' (?:norway|norge)(?: as| asa)?$',full_name))
+                    and (value.startswith('+') or digits.startswith('00'))
+                    and not digits.removeprefix('00').startswith('47'))
         domain=item['value'].rsplit('@',1)[-1].casefold().removeprefix('www.')
         current=own_host.casefold()
         return domain!=current and domain.split('.')[0]!=current.split('.')[0]
