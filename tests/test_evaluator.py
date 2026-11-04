@@ -41,7 +41,7 @@ class Deadline(unittest.TestCase):
         self.assertLess(report['runtime_seconds'],7)
         self.assertEqual(rows[0],envelope)
         self.assertEqual(rows[1]['run']['terminal_status'],'failed')
-        self.assertEqual(rows[1]['operations']['requests'],20)
+        self.assertEqual(rows[1]['operations']['requests'],24)
         self.assertTrue(rows[1]['operations']['requests_are_upper_bound'])
 
     def test_wrong_company_output_is_not_accepted(self):

@@ -1106,6 +1106,7 @@ def synthesis(claims, changes=()):
 def research(row, fetcher, previous=None, search=None):
     started=now(); tic=time.monotonic(); org=str(row.get('organisation_number','')); evidence={}; claims=[]; errors=[]
     output={'organisation_number':org,'claims':claims,'evidence':[], 'changes':[], 'errors':errors}
+    portal_content=[];portal_pages=[]
     def add(field, value, response, **kwargs): claims.append(claim(field,value,response,evidence,**kwargs))
     if not valid_org(org):
         raise ValueError('invalid organisation number checksum')
@@ -1410,6 +1411,7 @@ def research(row, fetcher, previous=None, search=None):
                     claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 from hiring_discovery import delegated_hiring_pages, literal_hiring_candidates
                 hiring_pages=content_pages+delegated_hiring_pages(content_pages,fetcher,Page,data=data,units=units)
+                portal_content=content_pages;portal_pages=hiring_pages
                 for field,types in [('hiring',{'JobPosting'}),('activity',{'NewsArticle','Article','BlogPosting'})]:
                     items=[]; evidence_responses=[];positive_responses=[];limitations=[]
                     def limitation(response,reason):
@@ -1603,6 +1605,25 @@ def research(row, fetcher, previous=None, search=None):
         output['public_recruitment_discovery']={'checks':public_jobs_result['checks'],'detail_attempts':public_jobs_result['detail_attempts'],
             'verified_ads':len(records),'website_leads':public_jobs_result['website_leads'],
             'source_mode':'anonymous public FINN/NAV pages, robots/TLS/IP checks on; URLs are leads only; same20-request cap'}
+    # Spend only genuinely unused requests after all established modules.
+    if portal_content:
+        from portal_expansion import extra_postings,posting_key
+        extra_records,portal_diagnostics=extra_postings(portal_content,portal_pages,fetcher,Page,data,request_allowance=4)
+        output['portal_expansion']=portal_diagnostics
+        if extra_records:
+            current_hiring=next((c for c in claims if c['field']=='website.hiring'),None)
+            existing=(current_hiring.get('value') or []) if current_hiring and current_hiring.get('availability')=='available' else []
+            items=list(existing);keys={posting_key(i) for i in items}
+            for record in extra_records:
+                if posting_key(record['item']) not in keys:items.append(record['item']);keys.add(posting_key(record['item']))
+            added=claim('website.hiring',items,extra_records[0]['response'],evidence,pointer='bounded linked portal details; exact legal employer and literal publication/date state',excerpt=extra_records[0]['item']['title'])
+            if current_hiring:
+                ids=current_hiring['evidence_ids'];qualifiers=current_hiring.get('qualifiers',{})
+                current_hiring.update(added);current_hiring['evidence_ids']=list(dict.fromkeys(ids+added['evidence_ids']));current_hiring['qualifiers']=qualifiers
+            else:current_hiring=added;claims.append(current_hiring)
+            for rsp in [entity,*[s for record in extra_records for s in [record['response'],*record['support']]]]:
+                supporting=claim('portal_posting_support',None,rsp,evidence,pointer='retained company/index/detail source chain')
+                current_hiring['evidence_ids']=list(dict.fromkeys(current_hiring['evidence_ids']+supporting['evidence_ids']))
     for field in ('website.verified_url','website.description','website.social_links','website.hiring','website.activity','website.contact_channels'):
         if not any(c['field']==field for c in claims):
             if operator_limits:

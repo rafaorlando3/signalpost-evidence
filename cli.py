@@ -34,7 +34,7 @@ def failed(org, reason, previous=None, interrupted=False):
         'synthesis': [],
         'run': {'terminal_status': 'failed',
                 'completed_at': dt.datetime.now(dt.timezone.utc).isoformat()},
-        'operations': {'requests': 20 if interrupted else 0,
+        'operations': {'requests': 24 if interrupted else 0,
                        'requests_are_upper_bound': interrupted,
                        'cache_hits': 0, 'third_party_cost_usd': 0},
     }
@@ -92,8 +92,8 @@ def previous_rows(path):
 
 
 def execute(items, args, folder, previous):
-    # One observation per distinct valid number avoids multiplying the 20-request
-    # company budget for duplicate input lines. Every line is expanded afterwards.
+    # One observation per distinct valid number avoids multiplying the bounded
+    # per-company budget for duplicate input lines. Every line is expanded afterwards.
     numbers = list(dict.fromkeys(item['org'] for item in items if item['valid']))
     rows = [{'organisation_number': org} for org in numbers]
     if not rows:
@@ -267,8 +267,10 @@ def run(args):
                 'requests': sum(op['requests'] for op in operations),
                 'requests_include_upper_bounds': any(op.get('requests_are_upper_bound', False)
                                                       for op in operations),
-                'request_budget_per_unique_company': 20,
-                'request_budget_total': 20 * len(unique),
+                'request_budget_per_unique_company': 24,
+                'request_budget_total': 24 * len(unique),
+                'base_request_budget_per_unique_company': 20,
+                'late_verified_portal_request_allowance': 4,
                 'third_party_cost_usd': (None if any(op.get('third_party_cost_usd') is None for op in operations)
                                          else sum(op.get('third_party_cost_usd', 0) for op in operations)),
                 'public_search_request_attempts':sum(r.get('public_search_discovery',{}).get('request_attempts',0) for r in final if not r.get('_cli',{}).get('duplicate_of')),
@@ -313,7 +315,7 @@ def main(argv=None):
     parser.add_argument('--cache', type=Path, required=True, help='retained source cache/snapshots')
     parser.add_argument('--timeout-seconds', type=float, default=2400)
     parser.add_argument('--public-search',choices=['auto','off'],default='off',help='last-resort free anonymous search; no signup or payment')
-    parser.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; shared20-request budget')
+    parser.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; shared20-request base budget;4 late verified-portal requests')
     parser.add_argument('--workers', type=int, default=4)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--replay', action='store_true', help='cache only; never make HTTP requests')

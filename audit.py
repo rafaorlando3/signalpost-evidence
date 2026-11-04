@@ -95,6 +95,18 @@ def audit(rows, cache):
                 from hiring_discovery import continuous_first_party_vacancy
                 registry=next((s.get('json') for s in sources.values() if isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
                 for item in c['value']:
+                    if item.get('discovery')=='linked_schema_company_portal':
+                        from portal_expansion import schema_item
+                        proof=item.get('employer_binding',{})
+                        required=[proof.get('company_link_source'),proof.get('portal_index_source'),proof.get('company_identity_source'),item.get('url')]
+                        selected=[next((s for eid,s in sources.items() if eid in c['evidence_ids'] and s.get('url')==u),None) for u in required]
+                        if not registry or any(s is None for s in selected):errors.append([row['organisation_number'],'schema portal source chain missing'])
+                        else:
+                            parent,index,identity,detail=selected
+                            reconstructed=schema_item(Page(detail['text'],detail['url']),detail,registry,Page(parent['text'],parent['url']),Page(index['text'],index['url']),Page(identity['text'],identity['url']),index)
+                            if reconstructed!=item:errors.append([row['organisation_number'],'schema portal posting not reproduced'])
+                            else:counts['linked_schema_portal_postings_checked']+=1
+                        continue
                     if item.get('discovery')=='linked_vilect_company_portal':
                         from vilect_careers import accepted_item
                         proof=item.get('employer_binding',{})

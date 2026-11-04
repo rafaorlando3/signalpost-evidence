@@ -80,6 +80,13 @@ def continuous_first_party_vacancy(page,response,data):
     if not response.get('identity_verified') or response.get('delegated_from_verified_careers'):return []
     if website_identity(str(data.get('organisasjonsnummer','')),page,data)!='exact':return []
     heads=page.semantic_headings or page.main_headings or page.content_headings
+    # Some first-party job pages have a lone H1 outside main/article wrappers.
+    # Keep the fallback restricted to an explicit named-vacancy H1 and role route.
+    unwrapped_role=False
+    if (not heads and len(page.headings)==1
+            and re.match(r'^(?:stilling ledig|ledig stilling)\s+som\s+\S',page.headings[0],re.I)
+            and re.search(r'/(?:jobs?|jobb|karriere|careers?|ledige-stillinger)/[^/]+/?$',urlsplit(page.url).path,re.I)):
+        heads=page.headings;unwrapped_role=True
     if len(heads)!=1 or not urlsplit(page.url).path.rstrip('/'):return []
     title=heads[0].strip();body=re.sub(r'\s+',' ',' '.join(page.article_parts)).strip()
     page_title=re.split(r'\s+[|–—]\s*|\s+-\s+',page.title)[0].strip()
@@ -92,6 +99,7 @@ def continuous_first_party_vacancy(page,response,data):
     if not named_role and not re.search(r'\b(?:vi (?:søker|ser etter)|er du vår nye|we are (?:hiring|looking for))\b',body,re.I):return []
     rolling=bool(re.search(r'\b(?:søknad(?:er|ene) vurderes fortløpende|applications (?:are )?reviewed (?:on a )?rolling basis)\b',body,re.I))
     sections=re.findall(r'\b(?:ønskede kvalifikasjoner|hvem er du|hva du vil jobbe med|vi tilbyr)\b',body,re.I)
+    if unwrapped_role:sections+=re.findall(r'\b(?:vi ser etter deg|vi forventer)\b',body,re.I)
     if not rolling and not (named_role and len(set(x.casefold() for x in sections))>=2):return []
     # A partly stated or expired deadline must not become "unknown but open".
     deadline=None;deadline_text=None
@@ -265,7 +273,7 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
             if p.hostname==urlsplit(rsp['url']).hostname:continue
             u=urlunsplit((p.scheme,p.netloc,p.path,p.query,''))
             if not any(x[0]==u for x in seeds):seeds.append((u,rsp['url']))
-    # Three public career endpoints total, within the shared company request cap.
+    # Existing three-page path is preserved; extra detail visits run last.
     while seeds and len(out)<3 and fetcher.requests<fetcher.limit:
         u,parent=seeds.pop(0)
         if u in seen:continue

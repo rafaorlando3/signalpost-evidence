@@ -62,7 +62,9 @@ class ListCli(unittest.TestCase):
         self.assertEqual(rows[1]['_cli']['observation_input_index'], 1)
         summary = json.loads(self.output.with_suffix('.summary.json').read_text())
         self.assertEqual(summary['unique_valid_companies'], 1)
-        self.assertEqual(summary['request_budget_total'], 20)
+        self.assertEqual(summary['request_budget_total'], 24)
+        self.assertEqual(summary['base_request_budget_per_unique_company'],20)
+        self.assertEqual(summary['late_verified_portal_request_allowance'],4)
         self.assertTrue(self.cache.is_dir())
 
     def test_invalid_ascii_checksum_unicode_blank_each_get_failure(self):
@@ -199,7 +201,7 @@ class ListCli(unittest.TestCase):
         self.assertTrue(all(row['run']['terminal_status'] == 'failed' for row in rows))
         self.assertNotIn('sensitive upstream detail', self.output.read_text() + error)
         summary = json.loads(self.output.with_suffix('.summary.json').read_text())
-        self.assertEqual(summary['requests'], 20)
+        self.assertEqual(summary['requests'], 24)
         self.assertTrue(summary['requests_include_upper_bounds'])
 
     def test_wrong_company_and_exceeded_budget_are_terminal_failures(self):
@@ -216,7 +218,7 @@ class ListCli(unittest.TestCase):
                 self.assertEqual(code, 2)
                 self.assertEqual(rows[0]['organisation_number'], ORG)
                 self.assertEqual(rows[0]['run']['terminal_status'], 'failed')
-                self.assertEqual(rows[0]['operations']['requests'], 20)
+                self.assertEqual(rows[0]['operations']['requests'], 24)
 
     def test_partial_or_timeout_guard_preserves_matching_prefix(self):
         first = self.complete()

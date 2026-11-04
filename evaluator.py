@@ -61,7 +61,7 @@ def collect(command, staged_output, rows, timeout, log, previous=None, paid_sear
                         'refresh':{'mode':'collector_failed', 'changed_fields':[], 'cache_declared':True},
                         'synthesis':[], 'run':{'terminal_status':'failed',
                         'completed_at':dt.datetime.now(dt.timezone.utc).isoformat()},
-                        'operations':{'requests':20, 'requests_are_upper_bound':True,
+                        'operations':{'requests':24, 'requests_are_upper_bound':True,
                                       'cache_hits':0, 'cache_hits_unavailable':True,
                                       'third_party_cost_usd':None if paid_search else 0}})
     report = {'wall_clock_timeout':timed_out, 'collector_exit':process.returncode,

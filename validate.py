@@ -45,7 +45,20 @@ def validate(rows, expected):
             if not all(e.get(k) for k in ('source_url','retrieved_at','content_sha256')):errors.append(f'{org}: incomplete evidence')
         requests=row['operations'].get('requests')
         if type(requests) is not int or requests<0:errors.append(f'{org}: invalid request count')
-        elif requests>20:errors.append(f'{org}: request budget exceeded')
+        else:
+            budget=20
+            extension=row.get('portal_expansion')
+            extension=extension if isinstance(extension,dict) else {}
+            if (extension.get('base_request_cap')==20 and type(extension.get('additional_request_allowance')) is int
+                    and 0<=extension['additional_request_allowance']<=4
+                    and extension.get('shared_request_cap')==20+extension['additional_request_allowance']
+                    and type(extension.get('initial_requests')) is int and 0<=extension['initial_requests']<=20
+                    and type(extension.get('late_requests')) is int and extension['late_requests']>=0
+                    and requests==extension['initial_requests']+extension['late_requests']
+                    and type(extension.get('detail_attempts')) is int and 0<=extension['detail_attempts']<=4):
+                budget=extension['shared_request_cap']
+            if row.get('run',{}).get('terminal_status')=='failed' and row['operations'].get('requests_are_upper_bound') is True:budget=24
+            if requests>budget:errors.append(f'{org}: request budget exceeded')
         try:
             if compare(row,row):errors.append(f'{org}: non-idempotent self comparison')
         except (TypeError,ValueError,KeyError,AttributeError):
