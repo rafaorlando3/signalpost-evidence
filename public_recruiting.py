@@ -81,6 +81,28 @@ def _homepage(value):
     return urlunsplit((p.scheme,p.netloc,'/','',''))
 
 
+def separate_venture_recruitment(page, description, data):
+    """A publisher's corporate label cannot resolve a new venture's employer.
+
+    Only an explicit, visible opening introduction for a newly formed jointly
+    owned company triggers this ambiguity. Mentioning a customer/project/joint
+    venture elsewhere does not veto a direct job. An explicit statement of
+    employment by the exact target legal name resolves the contract question.
+    """
+    from agent import Page
+    from legal_name_identity import fold
+    if not isinstance(description,str) or not 80<=len(description)<=100_000:return False
+    body=' '.join(Page(description,page.url).text.split())
+    opening=body[:1600]
+    visible=' '.join(page.text.split())
+    new_company=re.search(r'\b(?:et|eit) nytt felleseid selskap\b|\b(?:a )?new(?:ly formed)? jointly[ -]owned company\b|\b(?:a )?new(?:ly formed)? joint venture\b',opening,re.I)
+    invitation=re.search(r'\bn[åa] s[øo]ker vi\b|\b(?:now|currently) (?:seeking|hiring|recruiting)\b',opening,re.I)
+    if not new_company or not invitation or opening[:min(160,len(opening))] not in visible:return False
+    full=fold(data.get('navn',''))
+    contract=bool(full and re.search(r'\b(?:ansatt (?:hos|i)|ansettelse (?:hos|i)|employed by|employment (?:with|by)) '+re.escape(full)+r'(?!\w)',fold(body)))
+    return not contract
+
+
 def finn_postings(page,response,data,units):
     from agent import objects,schema_types
     from hiring_discovery import closed_hiring_page
@@ -96,6 +118,7 @@ def finn_postings(page,response,data,units):
         if not isinstance(employer,dict) or not isinstance(title,str) or not 3<=len(title)<=250:continue
         if title.casefold() not in page.text.casefold():continue
         if re.search(r'åpen\s+søknad|open application|talent (?:pool|network)|spontan',title,re.I):continue
+        if separate_venture_recruitment(page,obj.get('description'),data):continue
         source_url=obj.get('url')
         if source_url:
             if not isinstance(source_url,str) or job_key({'url':source_url})!=job_key({'url':response['url']}):continue
@@ -155,6 +178,7 @@ def nav_postings(page,response,data,units):
     today=_current_date(response.get('retrieved_at','')[:10])
     for obj in _nav_objects(page.raw_html):
         if str(obj.get('id','')).casefold()!=identifier or obj.get('status')!='ACTIVE':continue
+        if separate_venture_recruitment(page,obj.get('adTextHtml'),data):continue
         employer=obj['employer'];binding=_binding(employer.get('orgnr'),employer.get('name'),data,units)
         application=obj.get('application')
         if application is not None and not isinstance(application,dict):continue
@@ -283,6 +307,12 @@ def discover(data,units,fetcher,*,max_details=2,resume=None,query_override=None,
             if urlsplit(detail['url']).hostname in FINN and closed_hiring_page(pg):
                 closed_keys.add(job_key({'url':detail['url']}))
             records=parse_postings(pg,detail,data,units)
+            if not records and urlsplit(detail['url']).hostname in FINN:
+                from agent import objects,schema_types
+                if any('JobPosting' in schema_types(obj) and separate_venture_recruitment(pg,obj.get('description'),data)
+                       for obj in objects(pg.ld)):
+                    out['checks'].append({'provider':'finn','url':detail['url'],'state':'ambiguous',
+                        'reason':'visible recruiting introduction names a newly formed jointly owned company; publisher corporate ID does not establish the hiring entity'})
             for record in records:
                 if job_key(record['item']) in closed_keys:continue
                 if any(job_key(r['item'])==job_key(record['item']) for r in out['records']):continue

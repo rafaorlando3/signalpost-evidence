@@ -1024,6 +1024,16 @@ def corroborated_site(data, page, registry_redirect_host=None):
         return False
     name=normalized(data.get('navn',''))
     name=re.sub(r' (as|asa|sti)$','',name)
+    # A network article may list many subsidiaries while its footer prints the
+    # postal address shared by the whole group. A mention in that article is
+    # not the page owner's self-identification. Keep a complete own site brand
+    # or full legal footer owner as the independent corroborating context.
+    if article_detail(page.url):
+        full=normalized(data.get('navn',''))
+        footer=' '+normalized(' '.join(page.footer_parts))+' '
+        brand=normalized(page.meta.get('og:site_name',''))
+        if brand not in {name,full} and (not full or ' '+full+' ' not in footer):
+            return False
     # A group root can mention a subsidiary in its menu while publishing the
     # parent's contact address, shared by both legal entities. That address
     # cannot corroborate the menu label. Entity-specific pages have a separate
@@ -1328,6 +1338,13 @@ def research(row, fetcher, previous=None, search=None):
         for alias in unresolved_name_host_aliases(attempts):
             if fetcher.requests<=fetcher.limit-2:
                 yield alias,'late_name_www_alias',0,[]
+        # The established lead generator skipped complete short brand names.
+        # Keep those collision-prone URLs last, without shortening names or
+        # changing a single legal-identity, TLS, robots or request-budget rule.
+        from registry_discovery import short_legal_name_candidates
+        for candidate in short_legal_name_candidates(data):
+            if candidate not in {a['url'] for a in attempts} and fetcher.requests<=fetcher.limit-2:
+                yield candidate,'late_short_legal_name_heuristic',0,[]
     for url,origin,remaining_leads,hints in candidates():
         # Redirect aliases and a final unverified site must not consume the
         # reserve left for a current exact-employer public posting. No prior
@@ -1518,6 +1535,11 @@ def research(row, fetcher, previous=None, search=None):
                             candidates=list(objects(pg.ld))+literal_candidates
                         for obj in candidates:
                             if schema_types(obj) & types:
+                                if field=='hiring':
+                                    from public_recruiting import separate_venture_recruitment
+                                    if separate_venture_recruitment(pg,obj.get('description'),data):
+                                        limitation(rsp,'recruiting text names a newly formed jointly owned company; the publisher label does not resolve the hiring entity')
+                                        continue
                                 if field=='activity' and not (schema_types(obj)&{'NewsArticle','BlogPosting'}) and not article_detail(rsp['url']) and not pg.post_container:
                                     continue
                                 title=obj.get('title') or obj.get('headline')
@@ -1787,6 +1809,11 @@ def research(row, fetcher, previous=None, search=None):
     output['summary']={'name':data.get('navn'), 'supported_fields':[c['field'] for c in claims if c['availability']=='available'],
         'unknown_fields':[c['field'] for c in claims if c['availability']!='available'], 'material_changes':len(output['changes'])}
     output['run']={'started_at':started,'completed_at':now(),'terminal_status':'completed','version':VERSION}
+    # Own-career fallback visits happen after the late portal diagnostics are
+    # first assembled. Finalise their shared budget only after the last GET;
+    # otherwise a valid <=24-request profile can fail the CLI's envelope check.
+    if 'portal_expansion' in output:
+        output['portal_expansion']['late_requests']=fetcher.requests-phase_start
     output['operations']={'requests':fetcher.requests,'cache_hits':fetcher.hits,'robots_policy_reuse_hits':getattr(fetcher,'robots_reuse_hits',0),'runtime_ms':round((time.monotonic()-tic)*1000),'third_party_cost_usd':getattr(fetcher,'discovery',{}).get('paid_cost_usd',0)}
     if hasattr(fetcher,'discovery'): output['discovery']=fetcher.discovery
     if hasattr(fetcher,'public_search_discovery'):output['public_search_discovery']=fetcher.public_search_discovery

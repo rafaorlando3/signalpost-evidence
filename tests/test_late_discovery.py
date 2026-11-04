@@ -72,3 +72,40 @@ class LateDiscovery(unittest.TestCase):
         f=self.fetcher(h,'')
         def redirected(u,**kw):f.requests+=1;return h.page(h.job(),'https://external.example/team')[1]
         f.get=redirected;self.assertFalse(visit_observed_role_pages(pages,h.data,f,Page)[0])
+
+    def test_last_own_career_get_is_included_in_final_envelope_budget(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from agent import Fetcher,research,crawl_company,digest,encode
+        from validate import validate
+        import test_pipeline as base
+        own='https://example.test/'
+        with tempfile.TemporaryDirectory() as directory:
+            base.Pipeline().fixture(directory)
+            base.save(directory,base.BASE,{'organisasjonsnummer':base.ORG,
+                      'navn':'Example Engineering AS','hjemmeside':own})
+            for url,text in [(own+'robots.txt','User-agent: *\nAllow: /'),
+                             (own,'<title>Example Engineering</title><footer>Example Engineering AS Org.nr '+base.ORG+'</footer><a href="mailto:office@example.test">Email</a>')]:
+                Path(directory,digest(url.encode())+'.json').write_text(encode({
+                    'url':url,'status':'available','status_code':200,'text':text,
+                    'retrieved_at':'2026-11-04T12:00:00Z','content_sha256':digest(text.encode())}))
+            def base_budget(*args,**kwargs):
+                result=crawl_company(*args,**kwargs)
+                if result[0]:args[3].requests=20
+                return result
+            def late(data,units,fetcher,previous):
+                fetcher.limit=24;fetcher.requests=23
+                return {'records':[],'checks':[],'detail_attempts':0,'identity_sources':[]}
+            def own_visit(pages,data,fetcher,page_type):
+                fetcher.requests+=1
+                return [],[{'url':own+'careers/closed','status':'not_available'}]
+            with patch('agent.crawl_company',side_effect=base_budget), \
+                    patch('uncovered_recruiting.discover_uncovered',side_effect=late), \
+                    patch('inline_recruiting.visit_observed_role_pages',side_effect=own_visit):
+                row=research({'organisation_number':base.ORG},Fetcher(directory,replay=True))
+            self.assertEqual(row['operations']['requests'],24)
+            self.assertEqual(row['portal_expansion']['late_requests'],4)
+            self.assertTrue(validate([row],[base.ORG])['structurally_valid'])
+            self.assertTrue(any(c['field']=='website.verified_url' and c['availability']=='available'
+                                for c in row['claims']))

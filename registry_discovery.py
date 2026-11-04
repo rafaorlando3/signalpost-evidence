@@ -191,3 +191,22 @@ def unresolved_name_host_aliases(attempts):
         if candidate not in seen and candidate not in out:out.append(candidate)
         if len(out)==2:break
     return out
+
+
+def short_legal_name_candidates(data):
+    """Two late full-name leads for short brands skipped by the older heuristic.
+
+    This does not abbreviate long legal names or infer a trading name. A short
+    hostname is unusually collision-prone, so it supplies no identity evidence:
+    the ordinary independent legal-owner checks still decide publication.
+    """
+    import re, unicodedata
+    name = data.get('navn')
+    if not isinstance(name, str):return []
+    name = name.casefold().translate(str.maketrans({'ø':'o','æ':'ae','å':'a'}))
+    name = ''.join(c for c in unicodedata.normalize('NFKD',name)
+                   if not unicodedata.combining(c))
+    match = re.fullmatch(r'\s*([a-z][a-z0-9]{2,4})\s+(?:as|asa)\s*', name)
+    if not match:return []
+    stem = match[1]
+    return ['https://'+stem+suffix+'/' for suffix in ('.no','.com')]
