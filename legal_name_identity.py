@@ -72,6 +72,30 @@ def legal_name_identity(data,pages,compatible):
                 'self_identification':block,'literal_spans':[span],'links':paths[key],
                 'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
                 'scope':'matching homepage brand plus linked scoped visible legal self-identification; domain alone is not identity'}
+    # A compact contact-owner line need not have a /contact URL or a semantic
+    # footer element. Require the declared domain, complete brand/legal name,
+    # an immediate contact separator and a labelled literal telephone.
+    declared=data.get('hjemmeside')
+    if isinstance(declared,str):
+        declared=canonical(declared if '://' in declared else 'https://'+declared)
+    declared_host=(urlsplit(declared).hostname or '').removeprefix('www.') if declared else ''
+    if declared_host and declared_host==host.removeprefix('www.'):
+        for block in sorted(self_description_blocks(home),key=len):
+            if len(block)>350:continue
+            local=literal_name(block,data.get('navn',''))
+            if not local or block[:local['start']].strip():continue
+            if not re.match(r'\s*[•|;–—]',block[local['end']:]):continue
+            phone=re.search(r'\b(?:tel(?:efon)?|tlf|phone)\s*:\s*(\+?[0-9 () .-]{7,25})',block,re.I)
+            if not phone or not 8<=len(re.sub(r'\D','',phone[1]))<=15:continue
+            span=literal_name(home.text,data.get('navn',''))
+            if not span:continue
+            return {'method':'linked_first_party_legal_name','organisation_number':data.get('organisasjonsnummer'),
+                'registered_name':data.get('navn'),'entry_url':home.url,'source_url':home.url,
+                'self_identification':block,'literal_spans':[span],'links':[],
+                'contact_footer_statement':block,'literal_contact_phone':phone[1].strip(),
+                'registered_domain_match':declared_host,
+                'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
+                'scope':'declared domain and matching complete brand; full legal owner starts a scoped contact line with an immediate separator and labelled telephone; no corporate number asserted as printed'}
     # Some sites put the complete legal owner in a copyright line rather than
     # repeating it in a grammatical company introduction. Require that explicit
     # owner role, the unchanged full brand and an own-business introduction.

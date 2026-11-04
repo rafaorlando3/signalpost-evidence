@@ -137,8 +137,8 @@ def exclusive_file(path):
 def run(args):
     if not math.isfinite(args.timeout_seconds) or not 0 < args.timeout_seconds <= 2600:
         raise ValueError('timeout must be finite, positive and <=2600 seconds')
-    if not 1 <= args.workers <= 32:
-        raise ValueError('workers must be between 1 and 32')
+    if not 1 <= args.workers <= 40:
+        raise ValueError('workers must be between 1 and 40')
     if (type(args.search_credit_limit) is not int or not 1 <= args.search_credit_limit <= 1000
             or type(args.search_free_credit_limit) is not int or not 0 <= args.search_free_credit_limit <= 1000):
         raise ValueError('search limits must be integers within 1..1000 and 0..1000')

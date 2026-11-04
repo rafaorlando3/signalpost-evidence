@@ -298,3 +298,12 @@ After every established network/discovery path, already fetched first-party care
 Successful robots200 and unavailable404/410 policies may be reused for at most five minutes within the same run and exact origin. The ordinary parser still enforces their allow/disallow rules. No-store, no-cache, private and shorter max-age/Age constraints are respected. Failures,403,429and5xx are not cached by this mechanism. Per-company HTTP/time budgets, identified UA, shared host pacing, TLS and public-destination validation remain enforced; policy-cache hits are declared separately in operations and the CLI summary. The official RFC9309section2.4 allows robots caching; the short reuse here does not waive an access restriction. Cold source runs and resource measurements remain necessary before recommending a command or an official score.
 
 A directed primary-source review found a Norwegian subsidiary page carrying German parent-group description metadata. A description-only guard now withholds a German group subject when it differs from the target legal stem. The local company's exact-ID website and contacts stay available. This does not change crawling, portal checks or request allocation. The observed withdrawal is recorded explicitly rather than counted as a lost correct fact.
+
+
+## Explicit contact-owner line and larger bounded concurrency (final18, local)
+
+A registry-declared domain may establish its complete legal owner through a short scoped homepage contact line. The line must start with the exact full legal name, immediately followed by a separator and a labelled literal telephone; the unchanged homepage brand must match. A bare title, bare commercial name, other domain, customer/provider block or conflicting corporate number remains insufficient. This does not publish registry phones or invent an organisation number printed on a page. The source auditor reconstructs the proof.
+
+Observed Unicode paths and query values are UTF-8 percent encoded for HTTP while retaining the original observed source URL and existing percent escapes. Public-IP, TLS, robots, redirect, identified-UA and request-budget checks remain unchanged.
+
+An explicit `--workers 40` is available for the larger local resource validation; the default remains four. The twenty-request base, eligible four-request late margin, per-host pacing and company deadline are unchanged. This is a candidate concurrency option, not an assertion about the organizer's unspecified resource budget or an official score. The dated report records whether a full cold run actually completed.

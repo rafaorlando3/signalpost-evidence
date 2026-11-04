@@ -248,7 +248,7 @@ class ListCli(unittest.TestCase):
     def test_non_finite_or_out_of_range_timeout_and_workers_refused(self):
         for flags in (['--timeout-seconds', 'nan'], ['--timeout-seconds', 'inf'],
                       ['--timeout-seconds', '0'], ['--timeout-seconds', '2601'],
-                      ['--workers', '0'], ['--workers', '33']):
+                      ['--workers', '0'], ['--workers', '41']):
             with self.subTest(flags=flags), patch('cli.execute', side_effect=AssertionError('no execution')):
                 code, _, _ = self.call(['--orgs', ORG, *flags])
             self.assertEqual(code, 1)
@@ -269,6 +269,14 @@ class ListCli(unittest.TestCase):
         self.assertEqual(len(rows),2)
         self.assertEqual([r['organisation_number'] for r in rows],[ORG,ORG])
         self.assertEqual(execute.call_args.args[1].workers,32)
+
+    def test_forty_workers_preserve_order_and_explicit_duplicate_outputs(self):
+        with patch('cli.execute', return_value=([self.complete()], {'collector_exit':0})) as execute:
+            code,rows,_=self.call(['--orgs',ORG,ORG,'--workers','40'])
+        self.assertEqual(code,0)
+        self.assertEqual(len(rows),2)
+        self.assertEqual([r['organisation_number'] for r in rows],[ORG,ORG])
+        self.assertEqual(execute.call_args.args[1].workers,40)
 
     def test_empty_or_invalid_utf8_file_is_configuration_error(self):
         source = self.root / 'input.txt'
