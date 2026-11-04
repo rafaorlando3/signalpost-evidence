@@ -1746,7 +1746,7 @@ def main():
                 'refresh':{'mode':'collector_failed','changed_fields':[],'cache_declared':True}, 'synthesis':[],
                 'operations':{'requests':fetcher.requests,'cache_hits':fetcher.hits,'third_party_cost_usd':getattr(fetcher,'discovery',{}).get('paid_cost_usd',0)}}
     results=[]
-    with output.open('w') as target, concurrent.futures.ThreadPoolExecutor(max_workers=max(1,min(8,args.workers))) as pool:
+    with output.open('w') as target, concurrent.futures.ThreadPoolExecutor(max_workers=max(1,min(32,args.workers))) as pool:
         for i,result in enumerate(pool.map(work,rows),1):
             results.append(result); target.write(encode(result)+'\n'); target.flush()
             if i%10==0: print(encode({'completed':i,'total':len(rows)}),flush=True)
