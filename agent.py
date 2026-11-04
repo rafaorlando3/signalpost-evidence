@@ -1440,6 +1440,16 @@ def research(row, fetcher, previous=None, search=None):
                 description_page,description_response=content_pages[0]
                 description=description_page.description
                 description_pointer='meta[name=description] or scoped visible homepage paragraph; navigation and footer excluded'
+                if origin in {'entity_scoped_page','search_scoped_page'} and description:
+                    # Shared parent metadata cannot describe the selected subsidiary.
+                    for unverified in unverified_pages:
+                        root_url=urlsplit(unverified['url'])
+                        if (root_url.hostname==urlsplit(description_page.url).hostname
+                                and root_url.path.rstrip('/') in ('','/home','/hjem','/index.html','/index.php')
+                                and Page(unverified.get('text',''),unverified['url']).description==description):
+                            description=None
+                            description_pointer='scoped visible company paragraph; identical parent-root metadata excluded'
+                            break
                 if method=='linked_business_self_description_and_registered_address' and (not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4 or re.match(r'^(?:\d{1,2}[./-]){2}\d{2,4}\s*[:–-]',description.strip())):
                     own_description=anchor_response['business_identity_support']['legal_name_source']
                     description=own_description['self_description']

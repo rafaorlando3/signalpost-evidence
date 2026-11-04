@@ -327,3 +327,9 @@ the article. Numeric dot dates retain their literal source text. A generic
 Article with an explicitly minimal word count cannot borrow shared contact or
 sidebar boilerplate to turn an empty reference gallery into dated activity;
 actual short project narratives remain eligible.
+
+A dedicated subsidiary page must not inherit description metadata copied from
+an observed parent homepage. In that case, the collector uses its existing
+visible company-paragraph fallback on the scoped page; unique own metadata
+continues to be accepted. A scoped site does not imply ownership of the parent
+portal or its generic description.
