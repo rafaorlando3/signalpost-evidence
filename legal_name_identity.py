@@ -133,6 +133,29 @@ def legal_name_identity(data,pages,compatible):
             'contact_footer_statement':footer,'same_host_contact_email':own_mail,
             'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
             'scope':'complete own brand and full legal owner in explicit homepage contact footer with same-host email; org number is not asserted as printed'}
+    # A semantic footer can identify its full legal contact owner without a
+    # separate "Contact" heading. The complete brand, immediate labelled phone
+    # and same-host mailbox remain required; neither a bare title nor a group
+    # label is sufficient. Keep obfuscated mailbox text literal in the proof.
+    from contacts import _contact_scopes
+    _,scoped_nodes=_contact_scopes(home,include_text=True)
+    footer=re.sub(r'\s+',' ',' '.join(n['text'] for n in scoped_nodes if n['tag']=='footer' and not n.get('excluded'))).strip()
+    owner=literal_name(footer,data.get('navn',''))
+    own_mail=next((m.group(0) for m in re.finditer(r'[a-zA-Z0-9._%+\-]+@([a-zA-Z0-9.\-]+\.[A-Za-z]{2,})',footer)
+                   if m.group(1).casefold().removeprefix('www.')==(host or '').casefold().removeprefix('www.')),None)
+    owner_phone=(re.match(r'\s+(?:tlf|tel(?:efon)?|phone)[.:]?\s*:?\s*(\+?[0-9 () .-]{7,25})',footer[owner['end']:],re.I)
+                 if owner and not footer[:owner['start']].strip() else None)
+    obfuscated_mail=next((m.group(0) for m in re.finditer(r'[a-zA-Z0-9._%+\-]+\s*\(at\)\s*([a-zA-Z0-9.\-]+\.[A-Za-z]{2,})',footer)
+                          if m.group(1).casefold().removeprefix('www.')==(host or '').casefold().removeprefix('www.')),None)
+    if (owner_phone and 8<=len(re.sub(r'\D','',owner_phone[1]))<=15 and len(footer)<=650
+            and copyright_brand in {stem,full} and (own_mail or obfuscated_mail) and span):
+        return {'method':'linked_first_party_legal_name','organisation_number':data.get('organisasjonsnummer'),
+            'registered_name':data.get('navn'),'entry_url':home.url,'source_url':home.url,
+            'self_identification':footer,'literal_spans':[span],'links':[],
+            'contact_footer_statement':footer,'literal_contact_phone':owner_phone[1].strip(),
+            'literal_same_host_mailbox':own_mail or obfuscated_mail,
+            'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
+            'scope':'semantic homepage footer starts with full legal contact owner; complete brand plus immediate labelled telephone and literal same-host mailbox; no registry contacts or printed corporate number inferred'}
     return None
 
 

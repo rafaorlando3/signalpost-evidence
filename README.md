@@ -307,3 +307,8 @@ A registry-declared domain may establish its complete legal owner through a shor
 Observed Unicode paths and query values are UTF-8 percent encoded for HTTP while retaining the original observed source URL and existing percent escapes. Public-IP, TLS, robots, redirect, identified-UA and request-budget checks remain unchanged.
 
 An explicit `--workers 40` is available for the larger local resource validation; the default remains four. The twenty-request base, eligible four-request late margin, per-host pacing and company deadline are unchanged. This is a candidate concurrency option, not an assertion about the organizer's unspecified resource budget or an official score. The dated report records whether a full cold run actually completed.
+
+
+## Semantic full legal contact footer (footer19, local)
+
+After the earlier legal identity proofs, a semantic homepage footer may establish an owner without a separate Contact heading or a registry website hint. It must start with the complete legal name, match the complete homepage brand, immediately label a literal telephone and publish a mailbox on the same host. Plain `(at)` notation may corroborate the mailbox domain; it is retained literally in the proof and is not silently turned into a contact email fact. Customer/provider blocks and conflicting legal identifiers remain excluded. Bare/group/region-incomplete brand names do not qualify. No company domains, IDs or application URLs are stored in the runtime rule.
