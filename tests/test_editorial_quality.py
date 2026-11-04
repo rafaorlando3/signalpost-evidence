@@ -24,4 +24,9 @@ class EditorialQuality(unittest.TestCase):
         ld={'@type':'Article','headline':'Completed new staircase','datePublished':'2026-10-01','wordCount':17,'url':self.url}
         body='<body class="single-post"><h1>Completed new staircase</h1><p>We completed a staircase for a local customer. The installed staircase is now open to visitors at the shopping centre.</p><script type="application/ld+json">'+json.dumps(ld)+'</script></body>'
         self.assertTrue(activity_candidates(Page(body,self.url),{'url':self.url})[0])
+    def test_declared_wordcount_equal_to_long_title_has_no_narrative(self):
+        title='Lifting certified frames made from steel'
+        ld={'@type':'Article','headline':title,'datePublished':'2026-10-01','wordCount':6,'url':self.url}
+        body='<body class="single-post"><h1>'+title+'</h1><img src="frame.jpg"><p>Interested in working together? Contact our team for information about our services.</p><script type="application/ld+json">'+json.dumps(ld)+'</script></body>'
+        self.assertFalse(activity_candidates(Page(body,self.url),{'url':self.url})[0])
 if __name__=='__main__':unittest.main()

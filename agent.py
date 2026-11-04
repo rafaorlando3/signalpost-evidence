@@ -921,7 +921,8 @@ def activity_candidates(page, response):
             obj={**obj,'datePublished':visible_times[0]}
         word_count=obj.get('wordCount')
         if (types=={'Article'} and isinstance(word_count,(int,str)) and str(word_count).isdigit()
-                and int(word_count)<=5 and len(' '.join(page.post_parts).strip())<80
+                and int(word_count)<=max(5,len(re.findall(r'\w+',str(obj.get('headline','')))))
+                and len(' '.join(page.post_parts).strip())<80
                 and not (isinstance(obj.get('articleBody'),str) and len(obj['articleBody'].strip())>=80)
                 and not any(len(p.split())>=25 for p in page.paragraphs)):
             gallery_only=True
