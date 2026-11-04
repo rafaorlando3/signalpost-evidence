@@ -1011,6 +1011,22 @@ def corroborated_site(data, page, registry_redirect_host=None):
         return False
     name=normalized(data.get('navn',''))
     name=re.sub(r' (as|asa|sti)$','',name)
+    # A group root can mention a subsidiary in its menu while publishing the
+    # parent's contact address, shared by both legal entities. That address
+    # cannot corroborate the menu label. Entity-specific pages have a separate
+    # scope and must still pass their own ordinary identity checks.
+    if urlsplit(page.url).path.rstrip('/') in ('','/home','/hjem','/index.html','/index.php'):
+        footer=' '.join(page.footer_parts)
+        full=normalized(data.get('navn',''))
+        if full and ' '+full+' ' not in ' '+normalized(footer)+' ':
+            for kind in ('forretningsadresse','postadresse'):
+                address=data.get(kind) or {}
+                street=next(iter(address.get('adresse') or []),'');postal=address.get('postnummer')
+                street_pattern=r'\W+'.join(re.escape(t) for t in normalized(street).split())
+                if not street_pattern or not postal:continue
+                owner=re.search(r'(?P<owner>[^\d.!?©@]{3,100}\b(?:AS|ASA|SA|ANS|NUF))\s*[,|–—-]?\s*'+street_pattern+r'\W*'+re.escape(str(postal))+r'(?!\d)',footer,re.I)
+                if owner and not re.search(r'(?<!\w)'+re.escape(full)+r'(?!\w)',normalized(owner['owner'])):
+                    return False
     evidence_text=' '.join(page.footer_parts) if footer_only else page.text
     text=' '+normalized(evidence_text)+' '
     if len(name)<3 or ' '+name+' ' not in text:return False
@@ -1328,7 +1344,9 @@ def research(row, fetcher, previous=None, search=None):
             entry_page=Page(response.get('text',''),response['url'])
             from attribution import mentions
             entry_brand=entry_page.meta.get('og:site_name') or entry_page.title
-            if (origin=='entity_website' and not mentions(entry_brand,data.get('navn',''))
+            from legal_name_identity import literal_name,fold
+            legal_stem=re.sub(r' (?:as|asa|sa|nuf|da|ans|sti)$','',fold(data.get('navn','')))
+            if (origin=='entity_website' and not literal_name(entry_brand,legal_stem)
                     and website_identity(org,entry_page,data)!='exact'
                     and scoped_entity_candidates(data,entry_page)):
                 attempt.update(identity='not_established',rejection_reason='entity_scoped_link_preferred',

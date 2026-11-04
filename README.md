@@ -312,3 +312,11 @@ An explicit `--workers 40` is available for the larger local resource validation
 ## Semantic full legal contact footer (footer19, local)
 
 After the earlier legal identity proofs, a semantic homepage footer may establish an owner without a separate Contact heading or a registry website hint. It must start with the complete legal name, match the complete homepage brand, immediately label a literal telephone and publish a mailbox on the same host. Plain `(at)` notation may corroborate the mailbox domain; it is retained literally in the proof and is not silently turned into a contact email fact. Customer/provider blocks and conflicting legal identifiers remain excluded. Bare/group/region-incomplete brand names do not qualify. No company domains, IDs or application URLs are stored in the runtime rule.
+
+On a shared corporate portal, an observed path and link label containing the
+complete legal stem can nominate a dedicated company page. A subsidiary menu
+label cannot corroborate a generic root by borrowing an explicitly differently
+named legal contact owner's shared address. Dedicated pages retain their own
+scope; they still require ordinary legal identity proof, and never confer
+ownership of the whole portal. Existing robots/TLS, budgets and explicit org
+number checks remain in force.

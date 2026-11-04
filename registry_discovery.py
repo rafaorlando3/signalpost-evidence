@@ -145,7 +145,9 @@ def scoped_entity_candidates(data,page):
         p=urlsplit(url)
         if p.hostname!=host or p.path in ('','/') or p.query:continue
         label=fold(link.get('text',''));path=fold(p.path)
-        if len([x for x in p.path.split('/') if x])>=2 and brand+' '+path==stem:
+        segments=[x for x in p.path.split('/') if x]
+        explicit_scope=(1<=len(segments)<=3 and path==stem and label in {stem,full})
+        if explicit_scope or (len(segments)>=2 and brand+' '+path==stem):
             if url not in out:out.append(url)
     return out[:2]
 
