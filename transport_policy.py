@@ -9,7 +9,21 @@ import collections
 import copy
 import threading
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,quote
+
+
+def request_target(url):
+    """Encode an observed internationalized path/query for an HTTP request.
+
+    Preserve existing percent escapes and reserved separators. Destination,
+    TLS, redirect, robots and request-budget checks stay with Fetcher.
+    """
+    p=urlsplit(url)
+    if any(ord(c)<32 or ord(c)==127 for c in p.path+p.query):
+        raise ValueError('Control character in HTTP request target')
+    path=quote(p.path or '/',safe="/:@!$&'()*+,;=-._~%")
+    query=quote(p.query,safe="/?:@!$&'()*+,;=-._~%[]")
+    return path+('?' +query if query else '')
 
 
 class RunRobotsCache:

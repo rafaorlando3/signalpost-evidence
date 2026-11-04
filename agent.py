@@ -168,7 +168,8 @@ class Fetcher:
                     if p.scheme == 'https' else http.client.HTTPConnection(host, port, timeout=timeout))
                 # Pin the validated address while retaining original TLS hostname verification.
                 connection._create_connection = lambda *_args, **_kw: socket.create_connection((address, port), timeout)
-                connection.request('GET', (p.path or '/')+('?' + p.query if p.query else ''),
+                from transport_policy import request_target
+                connection.request('GET', request_target(current),
                     headers=self.request_headers(current))
                 response = connection.getresponse(); status = response.status
                 from transport_policy import retained_headers,retry_delay,protection_markers
