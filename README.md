@@ -320,3 +320,10 @@ named legal contact owner's shared address. Dedicated pages retain their own
 scope; they still require ordinary legal identity proof, and never confer
 ownership of the whole portal. Existing robots/TLS, budgets and explicit org
 number checks remain in force.
+
+Publication dates in an individual news page's main header take precedence over
+conflicting CMS import metadata when the visible date is unique and scoped to
+the article. Numeric dot dates retain their literal source text. A generic
+Article with an explicitly minimal word count cannot borrow shared contact or
+sidebar boilerplate to turn an empty reference gallery into dated activity;
+actual short project narratives remain eligible.

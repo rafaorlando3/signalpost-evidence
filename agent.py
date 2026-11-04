@@ -293,7 +293,7 @@ class Page(HTMLParser):
             classes=set((a.get('class') or '').split())
             self.publication_marker=bool(
                 (tag=='span' and ({'meta-date','date','published'}<=classes or 'meta-text' in classes)) or
-                (tag=='div' and 'publish-date--article' in classes) or
+                (tag=='div' and bool(classes & {'publish-date--article','tag-date-container'})) or
                 (tag=='p' and 'postInfoText' in classes))
         context=' '.join((a.get(k) or '') for k in ('class','id','aria-label','title','data-sentry-component','data-sentry-source-file'))
         from site_discovery import scoped_context
@@ -856,7 +856,7 @@ def activity_candidates(page, response):
     promoted to published news. One uncertain item never removes valid siblings.
     """
     if page.editorial_listing:return [],['editorial index or archive is a discovery source, not an individual dated post']
-    candidates=[];limitations=[]
+    candidates=[];limitations=[];gallery_only=False
     def limit(reason):
         if reason not in limitations:limitations.append(reason)
     def same_page(value):
@@ -912,17 +912,29 @@ def activity_candidates(page, response):
         # SEO titles frequently append the publisher brand to unrelated posts.
         # The actual single visible heading governs title and subject matching.
         if len(headings)==1:obj={**obj,'headline':headings[0]}
-        visible_times=page.main_times or page.content_times or ([literal['date']] if literal and editorial_view else [])
+        # Individual editorial CMS paths can expose their own header date
+        # without Article OpenGraph type. Do not prefer an import timestamp.
+        visible_times=page.main_times or page.content_times or ([literal['date']] if literal and (editorial_view or article_detail(response['url'])) else [])
         visible_headings=page.semantic_headings or page.main_headings or page.content_headings
         if len(visible_headings)==1 and len(set(visible_times))==1 and isinstance(obj.get('datePublished'),str) and obj['datePublished'][:10]!=visible_times[0][:10]:
             limit('visible publication date differs from structured article; visible date retained')
             obj={**obj,'datePublished':visible_times[0]}
+        word_count=obj.get('wordCount')
+        if (types=={'Article'} and isinstance(word_count,(int,str)) and str(word_count).isdigit()
+                and int(word_count)<=5 and len(' '.join(page.post_parts).strip())<80
+                and not (isinstance(obj.get('articleBody'),str) and len(obj['articleBody'].strip())>=80)
+                and not any(len(p.split())>=25 for p in page.paragraphs)):
+            gallery_only=True
+            limit('minimal gallery metadata has no own article narrative; shared contact/sidebar text is insufficient')
+            continue
         candidates.append(obj)
     detail=article_detail(response['url']) or editorial_view
     headings=page.semantic_headings or page.main_headings or page.content_headings
     publication_times=page.main_times or page.content_times
     if not publication_times and literal:publication_times=[literal['date']]
-    if detail and product_or_index:
+    if detail and gallery_only:
+        pass  # Do not recreate the same empty gallery from its header metadata.
+    elif detail and product_or_index:
         limit('product or collection page metadata is not publication evidence')
     elif detail and len(headings)==1 and len(' '.join(page.article_parts).strip())>=80:
         # The visible, semantically published date governs the post. CMS

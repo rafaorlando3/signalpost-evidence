@@ -21,16 +21,16 @@ def literal_date(text):
         m=re.fullmatch(r'(\d{1,2})\.?\s+([A-Za-z]+)\s+(\d{4})',text,re.I)
         if m:parts=(int(m[3]),MONTHS.get(m[2].casefold(),0),int(m[1]))
         else:
-            m=re.fullmatch(r'(\d{1,2})/(\d{1,2})/(\d{4})',text)
+            m=re.fullmatch(r'(\d{1,2})([/.])(\d{1,2})\2(\d{4})',text)
             if not m:return None
-            parts=(int(m[3]),int(m[2]),int(m[1]))
+            parts=(int(m[4]),int(m[3]),int(m[1]))
     try:return dt.date(*parts).isoformat()
     except ValueError:return None
 
 
 class Markup(HTMLParser):
     def __init__(self,text):
-        super().__init__(convert_charrefs=True);self.stack=[];self.blocks=[];self.skip=0
+        super().__init__(convert_charrefs=True);self.stack=[];self.blocks=[];self.skip=0;self.heading_seen=False
         self.feed(text)
 
     def handle_starttag(self,tag,attrs):
@@ -43,6 +43,10 @@ class Markup(HTMLParser):
             elif tag=='div' and 'publish-date--article' in classes:kind='div.publish-date--article; Published on'
             elif tag=='p' and 'postInfoText' in classes:kind='p.postInfoText'
             elif tag=='span' and 'meta-text' in classes and any('post-date' in n['classes'] for n in self.stack):kind='li.post-date span.meta-text'
+            elif (tag=='div' and 'tag-date-container' in classes and not self.heading_seen
+                  and any(n['tag']=='main' for n in self.stack)):
+                kind='main div.tag-date-container before article heading'
+        if tag=='h1' and not excluded:self.heading_seen=True
         node={'tag':tag,'classes':classes,'excluded':excluded,'text':'','kind':kind}
         if tag not in VOID:self.stack.append(node)
         if kind:self.blocks.append(node)
@@ -71,6 +75,12 @@ def publication_block(page):
         return None
     blocks=[]
     for node in Markup(page.raw_html).blocks:
+        if node['kind'].startswith('main div.tag-date-container'):
+            from urllib.parse import urlsplit
+            path=urlsplit(page.url).path
+            if (len(page.semantic_headings or page.main_headings or page.content_headings)!=1
+                    or not re.search(r'/(?:news|nyheter|blogs?|articles?|aktuelt)/[^/]+',path,re.I)):
+                continue
         text=re.sub(r'\s+',' ',node['text']).strip()
         if node['kind'].startswith('div.publish-date') and not re.match(r'^Published on\s+',text,re.I):continue
         value=literal_date(text)
