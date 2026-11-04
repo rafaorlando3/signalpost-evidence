@@ -225,7 +225,7 @@ def ranked_search_links(page,provider,data,units):
     return preferred+[u for u in links if u not in preferred],len(preferred)
 
 
-def discover(data,units,fetcher,*,max_details=2):
+def discover(data,units,fetcher,*,max_details=2,resume=None,query_override=None,stop_after_first=False,matching_labels_only=False):
     """Both boards before a second detail; one bounded registered-trade fallback."""
     from agent import Page
     out={'records':[],'website_leads':[],'checks':[],'sources':[],'detail_attempts':0}
@@ -238,12 +238,35 @@ def discover(data,units,fetcher,*,max_details=2):
     # the other board remains a fallback and exact-employer checks are unchanged.
     if fetcher.limit-fetcher.requests<=6:
         queries.reverse()
-    seen=set();deferred=[];preferred_deferred=[];closed_keys=set()
+    previous_sources=list((resume or {}).get('sources',[]))
+    reused={source['url']:source for source in previous_sources if isinstance(source,dict) and isinstance(source.get('url'),str)}
+    def read(url):
+        if url in reused:return reused[url]
+        return fetcher.get(url,site=True,raw=True)
+    seen={source['url'] for source in previous_sources if detail_url(source.get('url',''),'nav') or detail_url(source.get('url',''),'finn')}
+    deferred=[];preferred_deferred=[];closed_keys=set()
+    from hiring_discovery import closed_hiring_page
+    for source in previous_sources:
+        if detail_url(source.get('url',''),'finn') and source.get('status')=='available' and closed_hiring_page(Page(source.get('text',''),source['url'])):
+            closed_keys.add(job_key({'url':source['url']}))
+    out['resumed_sources']=len(previous_sources)
+    out['prior_detail_attempts']=(resume or {}).get('detail_attempts',0)
+    def available_links(page,provider):
+        links,preferred=ranked_search_links(page,provider,data,units)
+        if query_override:
+            from attribution import legal_stem
+            labels=search_employers(page,provider);extra=[u for u in links[preferred:] if legal_stem(labels.get(u,''))==legal_stem(query_override)]
+            links=links[:preferred]+extra+[u for u in links[preferred:] if u not in extra];preferred+=len(extra)
+        if matching_labels_only:links=links[:preferred]
+        if resume:
+            matching=set(links[:preferred]);links=[url for url in links if url not in seen]
+            preferred=sum(url in matching for url in links)
+        return links,preferred
     def inspect(links):
         for u in links:
-            if out['detail_attempts']>=max_details or fetcher.requests>=fetcher.limit:break
+            if out['detail_attempts']>=max_details or fetcher.requests>=fetcher.limit or (stop_after_first and out['records']):break
             if u in seen:continue
-            seen.add(u);out['detail_attempts']+=1;detail=fetcher.get(u,site=True,raw=True);out['sources'].append(detail)
+            seen.add(u);out['detail_attempts']+=1;detail=read(u);out['sources'].append(detail)
             if detail['status']!='available':continue
             pg=Page(detail.get('text',''),detail['url'])
             from hiring_discovery import closed_hiring_page
@@ -257,10 +280,15 @@ def discover(data,units,fetcher,*,max_details=2):
                 if record['homepage'] and record['homepage'] not in out['website_leads']:out['website_leads'].append(record['homepage'])
     for provider,url in queries:
         if fetcher.requests>=fetcher.limit-1:break
-        rsp=fetcher.get(url,site=True,raw=True)
+        rsp=read(url)
         out['sources'].append(rsp);check={'provider':provider,'url':url,'state':rsp['status'],'detail_candidates':0};out['checks'].append(check)
         if rsp['status']!='available':continue
-        pg=Page(rsp.get('text',''),rsp['url']);links,preferred=ranked_search_links(pg,provider,data,units)
+        old_check=next((c for c in (resume or {}).get('checks',[]) if c.get('url')==url),None)
+        if (matching_labels_only and not query_override and old_check
+                and old_check.get('matching_employer_labels')==0):
+            check.update(matching_employer_labels=0,reused_empty_employer_match=True)
+            continue
+        pg=Page(rsp.get('text',''),rsp['url']);links,preferred=available_links(pg,provider)
         check['detail_candidates']=len(links)
         check['matching_employer_labels']=preferred
         # Ambiguous broad results do not consume both detail slots before the
@@ -278,16 +306,16 @@ def discover(data,units,fetcher,*,max_details=2):
         trade=registered_trade_query(data,units)
         from attribution import legal_stem
         brand=legal_stem(name)
-        query=trade or (brand if 3<=len(brand)<=200 and brand!=name.casefold().strip() else None)
+        query=query_override or trade or (brand if 3<=len(brand)<=200 and brand!=name.casefold().strip() else None)
         if query:
             url='https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':query})
-            rsp=fetcher.get(url,site=True,raw=True);out['sources'].append(rsp)
+            rsp=read(url);out['sources'].append(rsp)
             check={'provider':'nav','url':url,'state':rsp['status'],'detail_candidates':0,
-                   'query_basis':('unique current registered child trade name; URL discovery only' if trade else
+                   'query_basis':('literal shared business prefix in current registered children; URL discovery only' if query_override else 'unique current registered child trade name; URL discovery only' if trade else
                                   'registered legal name without legal-form suffix; URL discovery only')}
             out['checks'].append(check)
             if rsp['status']=='available':
-                links,preferred=ranked_search_links(Page(rsp.get('text',''),rsp['url']),'nav',data,units)
+                links,preferred=available_links(Page(rsp.get('text',''),rsp['url']),'nav')
                 check.update(detail_candidates=len(links),matching_employer_labels=preferred)
                 inspect(links[:preferred])
                 if not out['records']:inspect(links[preferred:])

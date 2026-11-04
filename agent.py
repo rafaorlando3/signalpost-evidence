@@ -1605,25 +1605,44 @@ def research(row, fetcher, previous=None, search=None):
         output['public_recruitment_discovery']={'checks':public_jobs_result['checks'],'detail_attempts':public_jobs_result['detail_attempts'],
             'verified_ads':len(records),'website_leads':public_jobs_result['website_leads'],
             'source_mode':'anonymous public FINN/NAV pages, robots/TLS/IP checks on; URLs are leads only; same20-request cap'}
-    # Spend only genuinely unused requests after all established modules.
-    if portal_content:
-        from portal_expansion import extra_postings,posting_key
-        extra_records,portal_diagnostics=extra_postings(portal_content,portal_pages,fetcher,Page,data,request_allowance=4)
-        output['portal_expansion']=portal_diagnostics
-        if extra_records:
-            current_hiring=next((c for c in claims if c['field']=='website.hiring'),None)
-            existing=(current_hiring.get('value') or []) if current_hiring and current_hiring.get('availability')=='available' else []
-            items=list(existing);keys={posting_key(i) for i in items}
-            for record in extra_records:
-                if posting_key(record['item']) not in keys:items.append(record['item']);keys.add(posting_key(record['item']))
-            added=claim('website.hiring',items,extra_records[0]['response'],evidence,pointer='bounded linked portal details; exact legal employer and literal publication/date state',excerpt=extra_records[0]['item']['title'])
-            if current_hiring:
-                ids=current_hiring['evidence_ids'];qualifiers=current_hiring.get('qualifiers',{})
-                current_hiring.update(added);current_hiring['evidence_ids']=list(dict.fromkeys(ids+added['evidence_ids']));current_hiring['qualifiers']=qualifiers
-            else:current_hiring=added;claims.append(current_hiring)
-            for rsp in [entity,*[s for record in extra_records for s in [record['response'],*record['support']]]]:
-                supporting=claim('portal_posting_support',None,rsp,evidence,pointer='retained company/index/detail source chain')
-                current_hiring['evidence_ids']=list(dict.fromkeys(current_hiring['evidence_ids']+supporting['evidence_ids']))
+    # Preserve all established modules, then prioritise an uncovered employer.
+    phase_start=fetcher.requests;phase_base=fetcher.limit;late_records=[];late_attempts=0
+    current_hiring=next((c for c in claims if c['field']=='website.hiring'),None)
+    if not current_hiring or current_hiring.get('availability')!='available':
+        from uncovered_recruiting import discover_uncovered
+        late=discover_uncovered(data,units,fetcher,public_jobs_result)
+        late_records=list(late['records']);late_attempts=late.get('detail_attempts',0)
+        output['late_employer_discovery']={k:late.get(k) for k in ['checks','detail_attempts','resumed_sources','prior_detail_attempts']}
+        output['late_employer_discovery']['verified_ads']=len(late_records)
+        for record in late_records:record['support']=[entity,locations,*late.get('identity_sources',[])]
+    portal_diagnostics={};extra_records=[]
+    if portal_content and not late_records:
+        from portal_expansion import extra_postings
+        extra_records,portal_diagnostics=extra_postings(portal_content,portal_pages,fetcher,Page,data,
+            max_details=max(0,4-late_attempts),request_allowance=(4 if fetcher.limit==phase_base else 0))
+    if portal_content or fetcher.limit>phase_base:
+        output['portal_expansion']={**portal_diagnostics,
+            'phase':'after established website/news/contacts/social/public-board paths',
+            'priority':'previously uncovered legal employer before additional posts at covered employers',
+            'base_request_cap':phase_base,'shared_request_cap':fetcher.limit,
+            'additional_request_allowance':fetcher.limit-phase_base,'initial_requests':phase_start,
+            'late_requests':fetcher.requests-phase_start,'detail_attempts':late_attempts+portal_diagnostics.get('detail_attempts',0),
+            'max_additional_details':4}
+    additions=late_records+extra_records
+    if additions:
+        from portal_expansion import posting_key
+        existing=(current_hiring.get('value') or []) if current_hiring and current_hiring.get('availability')=='available' else []
+        items=list(existing);keys={posting_key(i) for i in items}
+        for record in additions:
+            if posting_key(record['item']) not in keys:items.append(record['item']);keys.add(posting_key(record['item']))
+        added=claim('website.hiring',items,additions[0]['response'],evidence,pointer='current primary recruitment detail; exact legal employer or registered child and literal date/state; bounded late discovery',excerpt=additions[0]['item']['title'])
+        if current_hiring:
+            ids=current_hiring['evidence_ids'];qualifiers=current_hiring.get('qualifiers',{})
+            current_hiring.update(added);current_hiring['evidence_ids']=list(dict.fromkeys(ids+added['evidence_ids']));current_hiring['qualifiers']=qualifiers
+        else:current_hiring=added;claims.append(current_hiring)
+        for rsp in [entity,*[s for record in additions for s in [record['response'],*record['support']]]]:
+            supporting=claim('recruitment_identity_support',None,rsp,evidence,pointer='retained primary ad or company/index/detail identity chain')
+            current_hiring['evidence_ids']=list(dict.fromkeys(current_hiring['evidence_ids']+supporting['evidence_ids']))
     for field in ('website.verified_url','website.description','website.social_links','website.hiring','website.activity','website.contact_channels'):
         if not any(c['field']==field for c in claims):
             if operator_limits:
