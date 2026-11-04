@@ -148,3 +148,20 @@ def scoped_entity_candidates(data,page):
         if len([x for x in p.path.split('/') if x])>=2 and brand+' '+path==stem:
             if url not in out:out.append(url)
     return out[:2]
+
+
+def alternate_norwegian_domain_candidates(data):
+    """One compact aa/oe spelling and its normal www alias, as late URL leads.
+
+    Existing a/o guesses keep priority. No foreign ID, parent ownership, robots
+    prohibition or certificate error is waived by trying a separate hostname.
+    """
+    name=data.get('navn')
+    if not isinstance(name,str) or not any(c in name.casefold() for c in 'åø'):return []
+    alternate=name.casefold().translate(str.maketrans({'å':'aa','ø':'oe','æ':'ae'}))
+    leads=name_domain_candidates({**data,'navn':alternate})
+    if not leads:return []
+    root=leads[0]
+    if root in name_domain_candidates(data):return []
+    parsed=urlsplit(root)
+    return [root,urlunsplit((parsed.scheme,'www.'+parsed.netloc,parsed.path,'',''))]

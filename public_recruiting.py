@@ -302,7 +302,11 @@ def discover(data,units,fetcher,*,max_details=2,resume=None,query_override=None,
         if out['records'] or out['detail_attempts']>=max_details:break
     if not out['records']:inspect(preferred_deferred)
     if not out['records']:inspect(deferred)
-    if not out['records'] and out['detail_attempts']<max_details and fetcher.requests<=fetcher.limit-3:
+    # In the late matching-label pass an already checked NAV robots policy
+    # leaves exactly two calls for an index and one detail. Keep the ordinary
+    # three-call reserve when that policy has not been observed or in base discovery.
+    fallback_reserve=2 if matching_labels_only and 'https://arbeidsplassen.nav.no' in getattr(fetcher,'robots',{}) else 3
+    if not out['records'] and out['detail_attempts']<max_details and fetcher.requests<=fetcher.limit-fallback_reserve:
         trade=registered_trade_query(data,units)
         from attribution import legal_stem
         brand=legal_stem(name)

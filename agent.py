@@ -43,7 +43,7 @@ def valid_org(value):
     check = (11 - sum(int(n)*w for n,w in zip(value[:8], [3,2,7,6,5,4,3,2])) % 11) % 11
     return check != 10 and check == int(value[-1])
 
-def safe_url(url):
+def safe_url(url, *, resolver=None, deadline=None):
     p = urlsplit(url)
     if p.scheme not in ('http', 'https') or not p.hostname or p.username or p.password:
         raise ValueError('Only public HTTP(S) URLs without credentials are supported')
@@ -51,7 +51,8 @@ def safe_url(url):
         raise ValueError('Port not permitted')
     host = p.hostname.encode('idna').decode()
     port = p.port or (443 if p.scheme == 'https' else 80)
-    addresses = {a[4][0] for a in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
+    answers=resolver.resolve(host,port,deadline) if resolver is not None else socket.getaddrinfo(host,port,type=socket.SOCK_STREAM)
+    addresses = {a[4][0] for a in answers}
     if not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses):
         raise ValueError('Non-public destination blocked')
     return p, host, port, sorted(addresses,key=lambda a:(ipaddress.ip_address(a).version,a))[0]
@@ -61,7 +62,7 @@ class Fetcher:
     host_last = {}
     host_retry_not_before = {}
 
-    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True, public_search=None):
+    def __init__(self, directory, *, replay=False, fresh=False, limit=20, deadline=90, registry_snapshot=None, public_jobs=True, public_search=None, resolver=None):
         self.directory = Path(directory); self.directory.mkdir(parents=True, exist_ok=True)
         self.replay, self.fresh = replay, fresh
         self.limit = limit; self.end = time.monotonic()+deadline
@@ -70,6 +71,7 @@ class Fetcher:
         self.registry_snapshot=registry_snapshot
         self.public_jobs=public_jobs
         self.public_search=public_search
+        self.resolver=resolver
 
     def request_headers(self,url):
         from transport_policy import request_headers
@@ -143,7 +145,7 @@ class Fetcher:
                 return self.failure(current, 'failed', 'request/time budget exhausted')
             connection=None
             try:
-                p, host, port, address = safe_url(current)
+                p, host, port, address = safe_url(current,resolver=self.resolver,deadline=self.end) if self.resolver is not None else safe_url(current)
                 with self.locks[host]:
                     pause = max(0, self.host_last.get(host, 0)+0.25-time.monotonic(),self.host_retry_not_before.get(host,0)-time.monotonic())
                     if pause>self.end-time.monotonic()-0.1:
@@ -226,7 +228,7 @@ class Fetcher:
                 if connection is not None: connection.close()
                 result = self.failure(current, 'failed', type(error).__name__)
                 from transport_policy import error_kind
-                kind=error_kind(error);trace.append({'url':current,'status_code':0,'error':type(error).__name__,'error_kind':kind})
+                kind=error_kind(error);trace.append({'url':current,'status_code':0,'error':type(error).__name__,'error_kind':kind,'error_errno':getattr(error,'errno',None)})
                 result.update(observation_failure=True,error_kind=kind,transport_attempts=trace)
                 retryable=(isinstance(error,(OSError,http.client.HTTPException)) and urlsplit(current).hostname=='data.brreg.no') or (urlsplit(current).path=='/robots.txt' and kind in {'timeout','tls','tls_certificate'})
                 if retryable and not retried:
@@ -1251,6 +1253,12 @@ def research(row, fetcher, previous=None, search=None):
         for alternate in additional_name_domain_candidates(data):
             if alternate not in already and fetcher.requests<=fetcher.limit-2:
                 yield alternate,'late_name_com_heuristic',0,[]
+        # Normal alternative Norwegian commercial spellings are URL leads only.
+        # Preserve all established candidates before spending on aa/oe aliases.
+        from registry_discovery import alternate_norwegian_domain_candidates
+        for alternate in alternate_norwegian_domain_candidates(data):
+            if alternate not in already and fetcher.requests<=fetcher.limit-2:
+                yield alternate,'late_norwegian_spelling_variant',0,[]
         # Optional broad search must not consume the slots that already recover
         # a first-party site or an exact-employer public ad without credentials.
         # A site found earlier closes this lazy generator without a search call.
@@ -1385,6 +1393,10 @@ def research(row, fetcher, previous=None, search=None):
                     description_pointer='literal scoped own-company self-description from the linked legal identity source'
                 if not isinstance(description,str) or len(description.strip())<20 or len(description.split())<4:
                     description=next((v for v in description_page.paragraphs if 70<=len(v)<=2000 or (len(v)>=20 and group_description(v))),None)
+                if method=='linked_first_party_legal_name' and anchor_response.get('legal_name_identity_support',{}).get('contact_footer_statement'):
+                    from legal_name_identity import contact_footer_business_description
+                    description=contact_footer_business_description(data,description_page)
+                    description_pointer='literal visible own-business introduction corroborated by OpenGraph; first sentence only; homepage news excluded'
                 if description and re.search(r'lorem ipsum|dolor sit amet|(?:web\s*site|nettside).{0,45}(?:under construction|coming soon|underveis|under arbeid)|^(?:under construction|coming soon)[.! ]*$',description,re.I):description=None
                 if description:description=description[:700]
                 collective=group_description(description or '')
@@ -1722,8 +1734,10 @@ def main():
         p.error('--search-free-credit-limit is valid only with --search tavily-free')
     prior={r['organisation_number']:r for r in (json.loads(x) for x in Path(args.previous).read_text().split('\n') if x.strip())} if args.previous else {}
     output=Path(args.output); output.parent.mkdir(parents=True,exist_ok=True); start=time.monotonic()
+    from dns_policy import RunResolver
+    resolver=RunResolver()
     def work(row):
-        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot,public_jobs=args.public_jobs!='off',public_search=anonymous_search)
+        fetcher=Fetcher(args.cache,replay=args.replay,fresh=args.fresh,registry_snapshot=registry_snapshot,public_jobs=args.public_jobs!='off',public_search=anonymous_search,resolver=resolver)
         try: return research(row,fetcher,prior.get(str(row.get('organisation_number',''))),search)
         except Exception as error:
             return {'organisation_number':str(row.get('organisation_number','')),'run':{'terminal_status':'failed','completed_at':now()},
@@ -1736,7 +1750,7 @@ def main():
         for i,result in enumerate(pool.map(work,rows),1):
             results.append(result); target.write(encode(result)+'\n'); target.flush()
             if i%10==0: print(encode({'completed':i,'total':len(rows)}),flush=True)
-    report={'inputs':len(rows),'outputs':len(results),'failed':sum(r['run']['terminal_status']=='failed' for r in results),
+    report={'dns':resolver.summary(),'inputs':len(rows),'outputs':len(results),'failed':sum(r['run']['terminal_status']=='failed' for r in results),
         'requests':sum(r['operations']['requests'] for r in results),'runtime_seconds':round(time.monotonic()-start,2),
         'third_party_cost_usd':None if search and search.attempts else 0,
         'public_search_request_attempts':anonymous_search.attempts if anonymous_search else 0,

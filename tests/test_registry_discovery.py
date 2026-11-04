@@ -85,3 +85,28 @@ class HeuristicLeads(unittest.TestCase):
         self.assertFalse(legal_footer_identity(data,Page(good.replace('Example Business</title>','Other Group</title>'),'https://new.test/')))
         self.assertFalse(legal_footer_identity(data,Page(good.replace('1234','9999'),'https://new.test/')))
         self.assertFalse(legal_footer_identity(data,Page(good.replace('<footer>','<div>').replace('</footer>','</div>'),'https://new.test/')))
+
+
+from pathlib import Path
+
+class AlternateNorwegianDomains(unittest.TestCase):
+    def test_alternative_letters_keep_complete_legal_brand_and_only_normal_alias(self):
+        from registry_discovery import alternate_norwegian_domain_candidates as candidates
+        self.assertEqual(candidates({'navn':'Blå Verksted AS'}),['https://blaaverksted.no/','https://www.blaaverksted.no/'])
+        self.assertEqual(candidates({'navn':'Østre Fjord AS'}),['https://oestrefjord.no/','https://www.oestrefjord.no/'])
+        self.assertEqual(candidates({'navn':'Blå Eiendom AS'}),[])
+        self.assertEqual(candidates({'navn':'Ordinary Brand AS'}),[])
+    def test_alternative_hostname_still_needs_its_own_robots_and_legal_entity(self):
+        from unittest.mock import patch
+        from agent import Fetcher,research,digest,encode
+        import tempfile
+        import test_pipeline as base
+        own='https://blaaverksted.no/'
+        for body,robots,expected in [('<footer>Blå Verksted AS Org.nr '+base.ORG+'</footer>','User-agent: *\nAllow: /',True),('<footer>Other AS Org.nr 913884213</footer>','User-agent: *\nAllow: /',False),('<footer>Blå Verksted AS Org.nr '+base.ORG+'</footer>','User-agent: *\nDisallow: /',False)]:
+            with self.subTest(body=body,robots=robots),tempfile.TemporaryDirectory() as d:
+                base.Pipeline().fixture(d);base.save(d,base.BASE,{'organisasjonsnummer':base.ORG,'navn':'Blå Verksted AS'})
+                for u,t in [(own+'robots.txt',robots),(own,'<title>Blå Verksted</title>'+body)]:
+                    Path(d,digest(u.encode())+'.json').write_text(encode({'url':u,'status':'available','status_code':200,'text':t,'retrieved_at':'2026-11-04T00:00:00Z','content_sha256':digest(t.encode())}))
+                row=research({'organisation_number':base.ORG},Fetcher(d,replay=True,public_jobs=False))
+                claim=next(c for c in row['claims'] if c['field']=='website.verified_url')
+                self.assertEqual(claim['availability']=='available',expected)

@@ -95,4 +95,37 @@ def legal_name_identity(data,pages,compatible):
             'copyright_statement':footer,'business_self_description':statement,
             'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
             'scope':'matching complete brand, full legal owner in copyright line and scoped own-business introduction; organisation number is not asserted as printed on site'}
+    # A homepage may put the same full legal contact owner in its semantic
+    # footer instead of a /contact route. Require an explicit contact label,
+    # unchanged full legal name, complete own brand and a same-host email.
+    contact_footer=bool(owner and len(footer)<=650 and copyright_brand in {stem,full}
+        and re.match(r'^(?:kontakt(?: oss)?|contact(?: us)?) '+re.escape(full)+r'(?: |$)',fold(footer)))
+    own_mail=next((m.group(0) for m in re.finditer(r'[a-zA-Z0-9._%+\-]+@([a-zA-Z0-9.\-]+\.[A-Za-z]{2,})',footer)
+                   if m.group(1).casefold().removeprefix('www.')==(host or '').casefold().removeprefix('www.')),None)
+    if contact_footer and own_mail and span:
+        return {'method':'linked_first_party_legal_name','organisation_number':data.get('organisasjonsnummer'),
+            'registered_name':data.get('navn'),'entry_url':home.url,'source_url':home.url,
+            'self_identification':footer,'literal_spans':[span],'links':[],
+            'contact_footer_statement':footer,'same_host_contact_email':own_mail,
+            'name_normalization':'casefold; ae/oe are not inferred; æ=ae, ø=o, combining accents removed; legal differentiators retained',
+            'scope':'complete own brand and full legal owner in explicit homepage contact footer with same-host email; org number is not asserted as printed'}
     return None
+
+
+def contact_footer_business_description(data,page):
+    """A supported business introduction, never a homepage news paragraph.
+
+    Used only for the explicit full-legal-owner contact-footer proof. Metadata
+    nominates a sentence; that identical sentence must be visible in the body.
+    """
+    import html
+    value=page.meta.get('og:description')
+    if not isinstance(value,str):return None
+    value=re.sub(r'\s+',' ',html.unescape(value)).strip()
+    sentence=re.split(r'(?<=[.!?])\s+',value,maxsplit=1)[0]
+    full=fold(data.get('navn',''));stem=re.sub(r' (?:as|asa|sa|nuf|da|ans|sti)$','',full)
+    normal=fold(sentence)
+    if not 45<=len(sentence)<=700 or not re.match(r'^'+re.escape(stem)+r' (?:.{0,110} )?(?:er|is|are|tilbyr|offers|leverer|provides|driver|produserer|develops)\b',normal):return None
+    body=re.sub(r'\s+',' ',' '.join(page.body_parts)).strip()
+    if sentence not in body:return None
+    return sentence

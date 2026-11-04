@@ -56,6 +56,26 @@ class UncoveredRecruiting(unittest.TestCase):
                 if u==nav['url']:raise AssertionError('unlabelled detail is not a late employer lead')
                 return rsp(u,'No results')
         out=discover_uncovered(DATA,[],F(),previous);self.assertFalse(out['records']);self.assertEqual(out['detail_attempts'],0)
+    def test_two_remaining_late_calls_can_query_and_fetch_when_nav_robots_already_checked(self):
+        nav=fixtures.NAVPrimary().source(sourceUrl=None)
+        from attribution import legal_stem
+        search_url='https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':legal_stem(DATA['navn'])})
+        legal_nav='https://arbeidsplassen.nav.no/stillinger?'+urlencode({'q':DATA['navn']})
+        legal_finn='https://www.finn.no/job/search?'+urlencode({'q':DATA['navn']})
+        prior={'sources':[rsp(u,'No matching employer') for u in [legal_nav,legal_finn]],
+               'checks':[{'url':u,'matching_employer_labels':0} for u in [legal_nav,legal_finn]]}
+        class F:
+            requests=22;limit=24;robots={'https://arbeidsplassen.nav.no':object()}
+            def __init__(self):self.urls=[]
+            def get(self,u,**kw):
+                self.urls.append(u);self.requests+=1
+                if u==search_url:return rsp(u,'<article><p>Arbeidsgiver</p><p>'+DATA['navn']+'</p><a href="'+nav['url']+'">Engineer</a></article>')
+                if u==nav['url']:return nav
+                raise AssertionError('unexpected call: '+u)
+        f=F();out=discover(DATA,[],f,resume=prior,max_details=2,stop_after_first=True,matching_labels_only=True)
+        self.assertEqual(f.urls,[search_url,nav['url']]);self.assertEqual(f.requests,24);self.assertEqual(len(out['records']),1)
+        f=F();f.robots={};out=discover(DATA,[],f,resume=prior,max_details=2,stop_after_first=True,matching_labels_only=True)
+        self.assertFalse(out['records']);self.assertFalse(f.urls)
     def test_disabled_board_and_unverified_registry_never_grant_a_late_allowance(self):
         class F:
             requests=20;limit=20;public_jobs=False

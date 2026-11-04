@@ -59,3 +59,32 @@ class CopyrightOwnerTests(unittest.TestCase):
         self.assertIsNone(self.proof('<title>Starina</title><main><p>Vi tilbyr servering og catering for bedrifter over hele landet.</p>Org.nr 913 884 213</main><footer>Starina AS © 2026</footer>'))
 
 if __name__=='__main__':unittest.main()
+
+
+class ContactFooterOwner(unittest.TestCase):
+    data=LegalNameIdentityTests.data
+    proof=LegalNameIdentityTests.proof
+    def test_full_legal_contact_footer_and_same_host_email(self):
+        p=self.proof('<title>Starina</title><main>Our business</main><footer>Contact Starina AS office@example.no</footer>')
+        self.assertIsNotNone(p);self.assertEqual(p['same_host_contact_email'],'office@example.no')
+    def test_foreign_email_agency_partial_name_and_parent_brand_do_not_bind(self):
+        for html in ['<title>Starina</title><footer>Contact Starina AS office@other.no</footer>',
+                     '<title>Starina</title><footer>Website by Contact Starina AS office@example.no</footer>',
+                     '<title>Starina</title><footer>Contact Starina office@example.no</footer>',
+                     '<title>Parent Group</title><footer>Contact Starina AS office@example.no</footer>',
+                     '<title>Starina</title><p>Org.nr 913 884 213</p><footer>Contact Starina AS office@example.no</footer>']:
+            with self.subTest(html=html):self.assertIsNone(self.proof(html))
+
+
+class ContactFooterDescription(unittest.TestCase):
+    def test_visible_company_intro_is_selected_instead_of_homepage_news(self):
+        from legal_name_identity import contact_footer_business_description
+        text='Starina, established in 1986, is a catering business serving Norwegian customers.'
+        page=Page('<meta property="og:description" content="'+text+' The president announced a report."><blockquote>'+text+'</blockquote><p>The president announced a report.</p>','https://example.no/')
+        self.assertEqual(contact_footer_business_description({'navn':'Starina AS'},page),text)
+    def test_metadata_alone_and_another_company_or_news_are_withheld(self):
+        from legal_name_identity import contact_footer_business_description as describe
+        text='Starina is a catering business serving Norwegian customers across the country.'
+        for body,meta in [('<p>Unrelated news story.</p>',text),('<p>'+text+'</p>','Other Company is a different business serving customers across the country.'),('<p>Starina announced a new factory yesterday.</p>','Starina announced a new factory yesterday with a launch party.')]:
+            page=Page('<meta property="og:description" content="'+meta+'">'+body,'https://example.no/')
+            self.assertIsNone(describe({'navn':'Starina AS'},page))
