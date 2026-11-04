@@ -169,3 +169,55 @@ def role_key(item):
     from attribution import normal
     title = re.sub(r'\b(executive|developer|engineer|designer)s\b', r'\1', normal(item.get('title','')))
     return (urlsplit(item.get('url','')).netloc.casefold().removeprefix('www.'), title)
+
+
+def visit_observed_role_pages(pages,data,fetcher,page_type):
+    """Use spare late budget for two observed own career/team links only.
+
+    Does not widen identity or vacancy acceptance and cannot displace earlier
+    source visits. Team pages are candidates only when a checked own page
+    already states current vacancies. No source is inherited across hosts or
+    from a group-scoped company page to its whole domain.
+    """
+    from agent import website_identity,site_operator_identity
+    if not pages:return [],[]
+    # Require an existing literal full legal owner, not just a domain lead.
+    org=str(data.get('organisasjonsnummer',''));exact=[]
+    for pg,rsp in pages:
+        if (rsp.get('identity_verified') and not rsp.get('delegated_from_verified_careers')
+                and rsp.get('status')=='available' and rsp.get('status_code')==200
+                and website_identity(org,pg,data)=='exact'):
+            exact.append((pg,rsp))
+    if not exact:return [],[]
+    seen={canonical(pg.url) for pg,_ in pages};leads=[]
+    openings=any(re.search(r'utlyste stillinger|ledige stillinger|current vacancies|current openings',
+                          ' '.join(pg.body_parts),re.I) for pg,_ in pages)
+    for pg,rsp in pages:
+        if not rsp.get('identity_verified') or rsp.get('delegated_from_verified_careers'):continue
+        for link in pg.links:
+            if link.get('third_party_context'):continue
+            try:
+                u=canonical(link.get('url',''));p=urlsplit(u);port=p.port
+            except (ValueError,TypeError):continue
+            if (p.scheme not in {'http','https'} or p.hostname!=urlsplit(pg.url).hostname
+                    or p.username or p.password or port not in (None,80,443) or p.query):continue
+            if u in seen or u in leads:continue
+            # Only actually published links; general employee biographies and
+            # application/login endpoints cannot nominate a page.
+            career=bool(re.search(r'(?:^|/)(?:karriere|careers?|ledige-stillinger|jobb-hos-oss)(?:/|$)',p.path,re.I))
+            team=bool(openings and re.fullmatch(r'/team(?:-[\w-]+)?/?',p.path,re.I))
+            if career or team:leads.append(u)
+    out=[];checks=[]
+    for u in leads[:2]:
+        # Stay within the existing20/24 shared cap; reserve enough for the
+        # site's already checked robots and one page. Never extend time limits.
+        if fetcher.requests>=fetcher.limit:break
+        rsp=fetcher.get(u,site=True,raw=True);pg=page_type(rsp.get('text',''),rsp['url'])
+        accepted=(rsp.get('status')=='available' and rsp.get('status_code')==200
+            and urlsplit(rsp['url']).hostname==urlsplit(u).hostname
+            and website_identity(org,pg,data)!='conflict'
+            and site_operator_identity(org,pg,data)['state'] not in {'different','unresolved'})
+        checks.append({'url':u,'status':rsp.get('status'),'compatible_own_page':accepted,
+                       'role_acceptance':'separate strict literal-role and linked-legal-owner checks'})
+        if accepted:out.append((pg,{**rsp,'identity_verified':True}))
+    return out,checks

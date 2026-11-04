@@ -1324,6 +1324,10 @@ def research(row, fetcher, previous=None, search=None):
             candidates=fetcher.public_search.discover(data,fetcher)
             for index,candidate in enumerate(candidates):
                 yield candidate['url'],'anonymous_search',len(candidates)-index-1,candidate['hints']
+        from registry_discovery import unresolved_name_host_aliases
+        for alias in unresolved_name_host_aliases(attempts):
+            if fetcher.requests<=fetcher.limit-2:
+                yield alias,'late_name_www_alias',0,[]
     for url,origin,remaining_leads,hints in candidates():
         # Redirect aliases and a final unverified site must not consume the
         # reserve left for a current exact-employer public posting. No prior
@@ -1722,7 +1726,10 @@ def research(row, fetcher, previous=None, search=None):
     # Augment only after every existing network/discovery path. These literal
     # own-site role blocks cannot alter the crawl order or late request budget.
     if verified_content_pages:
-        from inline_recruiting import candidates as inline_candidates,role_key
+        from inline_recruiting import candidates as inline_candidates,role_key,visit_observed_role_pages
+        extra_pages,own_checks=visit_observed_role_pages(verified_content_pages,data,fetcher,Page)
+        verified_content_pages+=extra_pages
+        if own_checks:output['late_own_recruitment_pages']=own_checks
         inline=inline_candidates(verified_content_pages,data)
         existing=(current_hiring.get('value') or []) if current_hiring and current_hiring.get('availability')=='available' else []
         known_titles={role_key(item)[1] for item in existing}

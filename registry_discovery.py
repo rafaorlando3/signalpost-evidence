@@ -167,3 +167,27 @@ def alternate_norwegian_domain_candidates(data):
     if root in name_domain_candidates(data):return []
     parsed=urlsplit(root)
     return [root,urlunsplit((parsed.scheme,'www.'+parsed.netloc,parsed.path,'',''))]
+
+
+def unresolved_name_host_aliases(attempts):
+    """At most two ordinary www leads after failed full-name host attempts.
+
+    No shortening, new TLD, HTTP downgrade or protection workaround. A robots
+    prohibition or explicit challenge is not a reason to try another host.
+    Each lead retains independent robots, TLS and legal-identity checks.
+    """
+    seen={a.get('url') for a in attempts};out=[]
+    for attempt in attempts:
+        if attempt.get('origin') not in {'name_domain_heuristic','late_name_com_heuristic'}:continue
+        if attempt.get('fetch_state')=='available':continue
+        if (attempt.get('protection') or {}).get('javascript_challenge'):continue
+        if attempt.get('fetch_error')=='robots disallow':continue
+        # No alias fallback for an accessible robots policy that denied access.
+        if any(o.get('policy_state')=='rules' and attempt.get('fetch_error') and
+               'robots' in attempt['fetch_error'] for o in attempt.get('robots',[])):continue
+        p=urlsplit(web_url(attempt.get('url')) or '')
+        if p.scheme!='https' or not p.hostname or p.hostname.startswith('www.') or p.port:continue
+        candidate=urlunsplit((p.scheme,'www.'+p.netloc,p.path,p.query,''))
+        if candidate not in seen and candidate not in out:out.append(candidate)
+        if len(out)==2:break
+    return out

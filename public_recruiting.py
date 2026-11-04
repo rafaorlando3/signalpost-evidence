@@ -53,11 +53,21 @@ def _binding(number,name,data,units):
     actual=legal_stem(name);expected=legal_stem(data.get('navn',''))
     unit=next((u for u in units if u.get('overordnetEnhet')==target and u.get('organisasjonsnummer')==number),None)
     if number!=target and unit is None:return None
-    if actual!=expected and (unit is None or normalized(name)!=normalized(unit.get('navn',''))):return None
+    # A current workplace can publish its registered trade name while the ad
+    # prints its parent's own corporate number. Both literal identifiers still
+    # resolve to the target legal employer, never to another franchise/group.
+    named_unit=next((u for u in units if u.get('overordnetEnhet')==target
+                    and valid_org(str(u.get('organisasjonsnummer','')))
+                    and normalized(name)==normalized(u.get('navn',''))),None)
+    parent_trade=(number==target and named_unit is not None and actual!=expected)
+    if actual!=expected and not parent_trade and (unit is None or normalized(name)!=normalized(unit.get('navn',''))):return None
     return {'method':'published_corporate_number' if number==target else 'published_registered_child_number',
             'published_organisation_number':number,'target_organisation_number':target,
             'employer_as_published':name,'registered_parent_name':data.get('navn'),
-            **({'registered_child_name':unit.get('navn')} if unit else {})}
+            **({'registered_child_name':unit.get('navn')} if unit else {}),
+            **({'registered_trade_name':named_unit['navn'],
+                'registered_trade_unit_number':named_unit['organisasjonsnummer'],
+                'name_basis':'exact current registered workplace name; published corporate number is the target legal parent'} if parent_trade else {})}
 
 
 def _homepage(value):
