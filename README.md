@@ -92,13 +92,13 @@ Python standard library only; no credentials, paid APIs or bundled source cache 
 python3 -B cli.py --org-list orgs.txt --output runs/result.jsonl --cache cache/new-run --timeout-seconds 2400 --search none
 ```
 
-Use new output/report directories. Registry contact claims remain disabled; website contacts remain separate. Exact-entity website checks, bounded crawling, TLS/public-IP/robots controls, terminal envelopes, previous evidence and refresh behavior remain intact. The legacy format/version label is retained; the commit and source manifest identify this candidate.
+Use new output/report directories. `--workers` accepts 1..40 (default 4) and changes concurrency only. `--public-jobs` defaults to `auto` (anonymous FINN/NAV leads inside the request budget) and `--public-search` defaults to `off`; [CLI.md](CLI.md) lists every option. Registry contact claims remain disabled; website contacts remain separate. Exact-entity website checks, bounded crawling, TLS/public-IP/robots controls, terminal envelopes, previous evidence and refresh behavior remain intact. The legacy format/version label is retained; the commit and source manifest identify this candidate.
 
 Verified locally in CPython 3.12.14 and in the clean pinned Docker image with CPython 3.12.15. All 297 tests pass in that image. The Docker build context now includes every declared runtime module and the pinned `organization_types.json` data. No third-party Python dependencies. On macOS, run tests with `TMPDIR` set to a canonical non-symlink directory, because the report writer refuses symlink ancestors.
 
 The 1 November live test uses 100 newly selected companies (50 with a published registry website and 50 without, excluding 6,617 previously used/mentioned orgs). Its input was frozen before the changes. With a declared registry snapshot and an empty external-web cache, the container returns 100/100 envelopes, 14 verified sites, 72 normalized contact channels, 12 company-declared social URLs, three dated posts and no established current vacancy. This is an execution/coverage diagnostic, not a representative population estimate or an official score. Registry snapshot responses came from this session's public registry capture; one upstream account response was unavailable. Nothing was sent or pushed.
 
-The 20-request company cap includes registry calls when no snapshot is provided. A supplied registry snapshot leaves the cap for public-web requests. Results from those two modes must not be presented as a pure code improvement. The local snapshot adapter is not a claim of compatibility with an unpublished organizer interface.
+The 20-request base company cap includes registry calls when no snapshot is provided. A bounded late phase may add at most four requests per company (hard ceiling 24, recorded in `portal_expansion`); see [CLI.md](CLI.md). A supplied registry snapshot leaves the cap for public-web requests. Results from those two modes must not be presented as a pure code improvement. The local snapshot adapter is not a claim of compatibility with an unpublished organizer interface.
 
 ## Recovery rules
 

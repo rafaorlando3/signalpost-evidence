@@ -18,11 +18,13 @@ Options:
 | `--summary PATH` | New summary JSON; defaults to OUTPUT with suffix `.summary.json` |
 | `--cache PATH` | Required retained response cache and immutable snapshots |
 | `--timeout-seconds N` | Finite collection deadline, default 2400, maximum 2600 |
-| `--workers N` | 1..8; default 4 |
+| `--workers N` | Concurrent companies, 1..40; default 4. More workers do not raise any per-company request budget, deadline or per-host pacing |
 | `--replay` | Cache-only, no HTTP; cache must already exist |
 | `--fresh` | Explicit LIVE default; mutually exclusive with replay |
 | `--previous PATH` | Previous v0.7 envelopes for the unchanged refresh comparison |
 | `--registry-snapshot PATH` | Documented local frozen-registry JSONL interchange |
+| `--public-jobs auto\|off` | Default `auto`: bounded anonymous public FINN/NAV job-board discovery inside the per-company request budget; URLs are leads only. `off` disables it and the late uncovered-employer pass |
+| `--public-search auto\|off` | Default `off`. `auto` enables bounded anonymous Mwmbl website-candidate discovery (after declared/email leads and before domain guesses when the registry has no website); no key, account or paid fallback; results are URL leads only |
 | `--search none` | Default: no provider calls or keys |
 | `--search tavily-free` | Optional fixed-basic discovery after account/free-balance verification |
 | `--search-credit-limit N` | Maximum reserved search attempts for the run, 1..1000 |
@@ -40,7 +42,7 @@ Every accepted input entry receives one envelope, including duplicates and inval
 
 Distinct valid numbers are collected once per invocation. Duplicate entries reuse that observation and its evidence; `_cli.observation_reused` and `observation_input_index` identify this. Each repeated envelope's `operations` describes the shared observation: **do not sum those operations across duplicate output lines**. The summary counts requests once per distinct valid number and explicitly distinguishes observed counts from upper bounds. Invalid entries use zero requests.
 
-The existing Fetcher limits each distinct company observation to 20 HTTP requests, including redirects, retries and robots checks. It checks a 90-second local time budget before requests, but DNS/lock waits can overrun it; the subprocess supervisor supplies the effective collection deadline. The collection supervisor has a finite overall wait and kills its process group on POSIX. The CLI adds no HTTP client or retry. It validates output order, shape and the request ceiling before publishing facts.
+The Fetcher gives each distinct company observation a base budget of 20 HTTP requests, including registry calls without a snapshot, redirects, retries and robots checks. After the established website, contact, news, social and public job-board paths, one bounded late phase (a previously uncovered employer, or details from an already verified recruiting portal) may add at most 4 requests, so a company never exceeds 24. Each envelope that uses the late phase records `portal_expansion` (`base_request_cap` 20, `additional_request_allowance` 0..4, `shared_request_cap`, `initial_requests`, `late_requests`); the validator accepts more than 20 requests only when that record is internally consistent (or, up to 24, for a failed row whose counts are declared upper bounds). The summary reports `base_request_budget_per_unique_company` 20, `late_verified_portal_request_allowance` 4 and `request_budget_per_unique_company` 24 as the ceiling, not as an expected count. It checks a 90-second local time budget before requests, but DNS/lock waits can overrun it; the subprocess supervisor supplies the effective collection deadline. The collection supervisor has a finite overall wait and kills its process group on POSIX. The CLI adds no HTTP client or retry. It validates output order, shape and the request ceiling before publishing facts.
 
 Outputs and summaries use exclusive creation and are never overwritten. Parent directories are created. Both final paths are reserved before collecting; a force-killed CLI or storage failure can leave an incomplete artifact, so only a completed summary and its `output_sha256` identify a completed CLI publication. Final-path symlinks are refused; operator-chosen parent directory symlinks follow normal filesystem behavior. The CLI is not a directory-confinement mechanism.
 
