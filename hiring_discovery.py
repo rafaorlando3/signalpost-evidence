@@ -300,11 +300,61 @@ def external_career_leads(page):
     return list(dict.fromkeys(out))
 
 
+
+def recruiting_index_links(page):
+    """Observed same-host vacancy indexes/feeds, never guessed tenant routes.
+
+    A portal home is not its jobs list. Prefer explicit lists over editorial,
+    department, login and application links. Job records still prove employer.
+    """
+    links=[]
+    for link in page.links:
+        u=link.get('url','')
+        if link.get('third_party_context'):continue
+        try:p=urlsplit(u);port=p.port
+        except ValueError:continue
+        if (p.scheme not in {'http','https'} or not p.hostname or p.username or p.password
+                or port not in (None,80,443) or p.hostname!=urlsplit(page.url).hostname):continue
+        # Exact list route optionally prefixed with a language, not /tag/jobs.
+        if re.fullmatch(r'/(?:[a-z]{2}/)?(?:jobs|positions|vacancies|ledige-stillinger|stillinger)/?',p.path,re.I):
+            u=urlunsplit((*p[:4],''))
+            if u not in links:links.append(u)
+    for u in page.feeds:
+        try:p=urlsplit(u);port=p.port
+        except ValueError:continue
+        if (p.scheme in {'http','https'} and p.hostname==urlsplit(page.url).hostname
+                and not p.username and not p.password and port in (None,80,443)
+                and re.search(r'(?:jobs|positions|vacancies|stillinger)',p.path,re.I)
+                and u not in links):links.append(u)
+    return links[:3]
+
+
+def recruiting_feed_details(page):
+    """RSS/Atom supplies same-host detail leads only; titles/dates aren't claims."""
+    import xml.etree.ElementTree as ET
+    if not page.raw_html.lstrip().startswith('<'):return []
+    try:root=ET.fromstring(page.raw_html)
+    except ET.ParseError:return []
+    out=[]
+    for el in root.iter():
+        if el.tag.rsplit('}',1)[-1]!='link':continue
+        from urllib.parse import urljoin
+        value=el.get('href') or (el.text or '').strip()
+        u=urljoin(page.url,value)
+        try:p=urlsplit(u);port=p.port
+        except ValueError:continue
+        if (p.scheme in {'http','https'} and p.hostname==urlsplit(page.url).hostname
+                and not p.username and not p.password and port in (None,80,443)
+                and re.search(r'/(?:jobs?|positions?|vacancies|stillinger)/[^/?]+',p.path,re.I)
+                and not re.search(r'login|apply|application|profile',p.path,re.I)
+                and u not in out):out.append(u)
+    return out[:3]
+
 def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, units=()):
     seeds=[];seen={rsp['url'] for _,rsp in content_pages};out=[]
     nuu_contexts={};vilect_contexts={}
     for page,rsp in content_pages:
-        career_urls=set(external_career_leads(page))
+        career_urls=set(external_career_leads(page)) if rsp.get('identity_verified') else set()
         application_urls=set(application_links(page))
         for link in page.links:
             u=link.get('url','');text=link.get('text','')
@@ -321,7 +371,7 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
             u=urlunsplit((p.scheme,p.netloc,p.path,p.query,''))
             if not any(x[0]==u for x in seeds):seeds.append((u,rsp['url']))
     # Existing three-page path is preserved; extra detail visits run last.
-    while seeds and len(out)<3 and fetcher.requests<fetcher.limit:
+    while seeds and len(out)<4 and fetcher.requests<fetcher.limit:
         u,parent=seeds.pop(0)
         if u in seen:continue
         seen.add(u);rsp=fetcher.get(u,site=True,raw=True)
@@ -394,7 +444,12 @@ def delegated_hiring_pages(content_pages, fetcher, page_type, *, data=None, unit
                 for target,_ in details:
                     if position_key(target):vilect_contexts[target]={'parent_page':owner[0],'index_page':pg,'identity_page':exact[0],
                         'support':[owner[1],rsp,exact[1]]}
-        # Specific roles precede duplicate portal indexes or unrelated footer
-        # links already queued from another first-party page.
-        seeds=details+seeds
+        for target in recruiting_feed_details(pg):
+            if target not in seen and not any(target==entry[0] for entry in details):
+                details.append((target,rsp['url']))
+        # A live portal may expose its list only as a navigation link. Keep
+        # discovery on this observed host and preserve the legal-employer gate.
+        indexes=[(target,rsp['url']) for target in recruiting_index_links(pg)
+                 if target not in seen and not any(target==entry[0] for entry in details)]
+        seeds=details+indexes+seeds
     return out

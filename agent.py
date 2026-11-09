@@ -766,7 +766,7 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         # An observed external careers portal needs a robots check, index and
         # job detail. Do not spend every slot on internal auxiliary pages first.
         if (verified and any(u not in seen
-                for pg,_,_ in pages for u in external_career_leads(pg))):return 4
+                for pg,_,_ in pages for u in external_career_leads(pg))):return 6
         return 0 if verified else reserve_requests
     while attempted_pages<18 and fetcher.requests<fetcher.limit-crawl_reserve():
         # An already fetched news index provides stronger discovery leads than
@@ -824,6 +824,12 @@ def crawl_company(org, data, response, fetcher, *, registry_redirect_host=None, 
         if proof:
             pg,rsp=next((pg,rsp) for pg,rsp,_ in pages if rsp['url']==proof['source_url'])
             verified.append((pg,{**rsp,'legal_name_identity_support':proof}))
+        if not verified:
+            from contact_map_identity import contact_map_identity
+            proof=contact_map_identity(data,[(pg,rsp) for pg,rsp,_ in pages],compatible)
+            if proof:
+                pg,rsp=next((pg,rsp) for pg,rsp,_ in pages if rsp['url']==proof['source_url'])
+                verified.append((pg,{**rsp,'contact_map_identity_support':proof}))
     return ([] if operator_blocked else verified),pages
 
 
@@ -1261,11 +1267,25 @@ def research(row, fetcher, previous=None, search=None):
         return public_jobs_result
     webstate={'url':'','status':'not_available','retrieved_at':now()}
     attempts=[];operator_limits=[];inspected_observations=set();unverified_pages=[]
+    def anonymous_candidates():
+        if getattr(fetcher,'public_search',None):
+            candidates=fetcher.public_search.discover(data,fetcher)
+            for index,candidate in enumerate(candidates):
+                yield candidate['url'],'anonymous_search',len(candidates)-index-1,candidate['hints']
+
     def candidates():
+        from registry_discovery import renamed_email_domain_candidates
         for index,lead in enumerate(leads):
             lead_url=lead['url'];parsed=urlsplit(lead_url)
             remaining=len(leads)-index-1+bool(search)+2
             yield lead_url,lead['origin'],remaining,[]
+            # Keep every already successful declared/email path first. Only
+            # after its failure, replace a former-name email suffix using the
+            # exact registered name change, before long-name guesses/aliases.
+            if lead['origin']=='email_domain':
+                renamed=renamed_email_domain_candidates(data)
+                for index,url in enumerate(renamed):
+                    yield url,'historical_email_name_variant',len(renamed)-index,[]
             # A registry portal may link the entity's own branded child domain.
             # Follow only observed links matching generic legal-name domain leads;
             # the child still needs independent legal identity verification.
@@ -1291,6 +1311,11 @@ def research(row, fetcher, previous=None, search=None):
                 root=parsed.hostname[4:]+(':'+str(parsed.port) if parsed.port else '')
                 alternate=urlunsplit((parsed.scheme,root,parsed.path,parsed.query,''))
                 yield alternate,'canonical_host_candidate',remaining,[]
+        # Missing registry website: one optional anonymous discovery attempt
+        # after declared/email leads, before guesses. Broad/private search stays
+        # after the sufficient public-employer-ad path, preserving that gain.
+        if not data.get('hjemmeside'):
+            yield from anonymous_candidates()
         from registry_discovery import name_domain_candidates,industry_city_candidates
         existing={host_key(lead['url']) for lead in leads}
         derived=[u for u in name_domain_candidates(data) if host_key(u) not in existing]
@@ -1342,10 +1367,8 @@ def research(row, fetcher, previous=None, search=None):
             else:
                 urls=search.discover(org,data['navn'],fetcher)
                 for i,url in enumerate(urls):yield url,'search',len(urls)-i-1,[]
-        if getattr(fetcher,'public_search',None):
-            candidates=fetcher.public_search.discover(data,fetcher)
-            for index,candidate in enumerate(candidates):
-                yield candidate['url'],'anonymous_search',len(candidates)-index-1,candidate['hints']
+        if data.get('hjemmeside'):
+            yield from anonymous_candidates()
         from registry_discovery import unresolved_name_host_aliases
         for alias in unresolved_name_host_aliases(attempts):
             if fetcher.requests<=fetcher.limit-2:
@@ -1435,6 +1458,7 @@ def research(row, fetcher, previous=None, search=None):
                 method=('explicit_site_operator' if anchor_response.get('site_operator',{}).get('state')=='target' else
                         'linked_business_self_description_and_registered_address' if anchor_response.get('business_identity_support') else
                         'linked_first_party_legal_name' if anchor_response.get('legal_name_identity_support') else
+                        'registered_domain_exact_legal_contact_map' if anchor_response.get('contact_map_identity_support') else
                         'explicit_org_number' if website_identity(org,anchor,data)=='exact' else
                         'exact_legal_footer_and_registered_address' if legal_footer_identity(data,anchor) else 'registry_domain_name_and_postal_address')
                 add('website.verified_url',response['url'],anchor_response,pointer=method,
@@ -1457,6 +1481,14 @@ def research(row, fetcher, previous=None, search=None):
                             claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                     extra=claim('identity_anchor',org,entity,evidence)
                     claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
+                elif method=='registered_domain_exact_legal_contact_map':
+                    proof=anchor_response['contact_map_identity_support'];claims[-1]['identity_support']=proof;claims[-1]['evidence_excerpt']=None
+                    extra=claim('identity_anchor',org,entity,evidence)
+                    claims[-1]['evidence_ids']+=extra['evidence_ids']
+                    root_rsp=next((rsp for pg,rsp,_ in inspected if rsp['url']==proof['entry_url']),None)
+                    if root_rsp:
+                        extra=claim('identity_bundle',None,root_rsp,evidence)
+                        claims[-1]['evidence_ids']=list(dict.fromkeys(claims[-1]['evidence_ids']+extra['evidence_ids']))
                 elif method=='explicit_site_operator':
                     claims[-1]['identity_support']=anchor_response['site_operator']
                     claims[-1]['evidence_excerpt']=None
@@ -1844,7 +1876,7 @@ def main():
     p.add_argument('--cache',default='cache'); p.add_argument('--previous')
     mode=p.add_mutually_exclusive_group();mode.add_argument('--replay',action='store_true');mode.add_argument('--fresh',action='store_true')
     p.add_argument('--workers',type=int,default=4)
-    p.add_argument('--public-search',choices=['auto','off'],default='off',help='late anonymous Mwmbl URL discovery, no key or paid fallback')
+    p.add_argument('--public-search',choices=['auto','off'],default='off',help='bounded anonymous Mwmbl URL discovery, earlier for missing registry website; no key or paid fallback')
     p.add_argument('--public-jobs',choices=['auto','off'],default='auto',help='bounded anonymous FINN/NAV discovery; same shared request cap')
     p.add_argument('--search',choices=['none','tavily','tavily-free'],default='none')
     p.add_argument('--search-free-credit-limit',type=int,help='root-confirmed remaining free basic credits; requires account/PayGo verification')

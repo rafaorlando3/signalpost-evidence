@@ -32,6 +32,16 @@ def literal_name(text, value):
     return {'start':start,'end':end,'text':text[start:end]}
 
 
+
+def privacy_self_identification(page,block,full):
+    """A named collector/controller of this literal host, never its vendor."""
+    host=(urlsplit(page.url).hostname or '').removeprefix('www.')
+    if not host or not re.search(r'(?<![\w.@-])(?:www\.)?'+re.escape(host)+r'(?![\w-]|\.[\w-])',page.text,re.I):return False
+    normal=fold(block)
+    explicit=re.match(r'^'+re.escape(full)+r' (?:er|is) (?:behandlingsansvarlig|the data controller)\b',normal)
+    collection=re.match(r'^denne personvernerklaeringen (?:forteller|forklarer) (?:om )?hvordan '+re.escape(full)+r' samler inn og bruker personopplysninger\b',normal)
+    return bool(explicit or collection)
+
 def legal_name_identity(data,pages,compatible):
     if not pages or not compatible:return None
     home=pages[0][0];entry=canonical(home.url)
@@ -56,13 +66,16 @@ def legal_name_identity(data,pages,compatible):
         if key not in paths:continue
         path=urlsplit(key).path
         contact=bool(re.search(r'/(?:kontakt[^/]*|contact[^/]*|connect|imprint|impressum|legal)(?:/|$)',path,re.I))
-        if path and not contact and not re.search(r'/(?:om[-_]?oss|about(?:-us)?)(?:/|$)',path,re.I):continue
+        privacy=bool(re.search(r'/(?:personvern[^/]*|privacy(?:[-_]?policy)?)(?:/|$)',path,re.I))
+        if path and not contact and not privacy and not re.search(r'/(?:om[-_]?oss|about(?:-us)?)(?:/|$)',path,re.I):continue
         for block in sorted(self_description_blocks(pg),key=len):
             normal=fold(block)
             # Full legal name remains required in the visible self-identification.
             role=re.match(r'^(?:(?:vi(?: i)?|we(?: at)?) )?'+re.escape(full)+r' '+verbs,normal)
             contact_owner=contact and (normal==full or normal.startswith(full+' ')) and len(block)<=650 and bool(re.search(r'@|\b(?:telefon|phone|tlf|adresse|address)\b|\b\d{4}\b',block,re.I))
-            if not role and not contact_owner:continue
+            privacy_owner=privacy and privacy_self_identification(pg,block,full)
+            if privacy and not privacy_owner:continue
+            if not role and not contact_owner and not privacy_owner:continue
             span=literal_name(pg.text,data['navn'])
             # The literal span must belong to this scoped block, not a customer list.
             local=literal_name(block,data['navn'])

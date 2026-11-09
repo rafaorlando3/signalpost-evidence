@@ -221,3 +221,38 @@ def short_legal_name_candidates(data):
     if not match:return []
     stem = match[1]
     return ['https://'+stem+suffix+'/' for suffix in ('.no','.com')]
+
+
+def renamed_email_domain_candidates(data):
+    """Bounded leads from a corporate-email domain matching a former legal name.
+
+    Preserve its observed abbreviation, replacing only an exact changed final
+    name component. Historical names are registry input, never ownership proof.
+    Free mail, shared suffixes, missing history and multiword changes abstain.
+    """
+    import re
+    from legal_name_identity import fold
+    if data.get('hjemmeside'):return []
+    email=data.get('epostadresse')
+    if not isinstance(email,str) or '@' not in email:return []
+    host=email.rsplit('@',1)[1].strip().casefold()
+    if host in FREE_EMAIL or not re.fullmatch(r'[a-z0-9][a-z0-9-]{2,61}\.(?:no|com)',host):return []
+    stem,tld=host.rsplit('.',1)
+    current=re.sub(r' (?:as|asa|sa|nuf|da|ans|sti)$','',fold(data.get('navn',''))).split()
+    if not 2<=len(current)<=5:return []
+    out=[]
+    for old in (data.get('historiskeNavn') or [])[:20]:
+        if not isinstance(old,dict):continue
+        previous=re.sub(r' (?:as|asa|sa|nuf|da|ans|sti)$','',fold(old.get('navn',''))).split()
+        if len(previous)!=len(current) or previous[:-1]!=current[:-1] or previous[-1]==current[-1]:continue
+        # The old final word must be the whole literal suffix, not a substring.
+        if not stem.endswith('-'+previous[-1]):continue
+        prefix=stem[:-(len(previous[-1])+1)]
+        if not re.fullmatch(r'[a-z][a-z0-9]{1,7}',prefix) or prefix[0]!=current[0][0]:continue
+        candidate=prefix+'-'+current[-1]+'.'+tld
+        if not 4<=len(candidate)<=63:continue
+        for alias in (candidate,'www.'+candidate):
+            url='https://'+alias+'/'
+            if url not in out:out.append(url)
+        break
+    return out[:2]
