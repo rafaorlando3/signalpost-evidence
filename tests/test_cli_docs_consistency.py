@@ -11,6 +11,41 @@ ROOT = Path(__file__).resolve().parents[1]
 CLI = (ROOT / 'cli.py').read_text(encoding='utf-8')
 DOC = (ROOT / 'CLI.md').read_text(encoding='utf-8')
 README = (ROOT / 'README.md').read_text(encoding='utf-8')
+DOCKERFILE = (ROOT / 'Dockerfile').read_text(encoding='utf-8')
+
+
+def dockerfile_copied_files(dockerfile_text=DOCKERFILE):
+    copied = []
+    for raw_line in dockerfile_text.splitlines():
+        line = raw_line.strip()
+        if line.startswith('COPY '):
+            copied.extend(line.split()[1:-1])
+    return copied
+
+
+def missing_dockerfile_local_imports(copied_files):
+    copied_set = set(copied_files)
+    local_modules = {path.stem for path in ROOT.glob('*.py')}
+    missing = {}
+    for filename in sorted(copied_set):
+        if not filename.endswith('.py'):
+            continue
+        tree = ast.parse((ROOT / filename).read_text(encoding='utf-8'), filename=filename)
+        needed = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    root_mod = alias.name.split('.')[0]
+                    if root_mod in local_modules:
+                        needed.add(f'{root_mod}.py')
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                root_mod = node.module.split('.')[0]
+                if root_mod in local_modules:
+                    needed.add(f'{root_mod}.py')
+        absent = sorted(needed - copied_set)
+        if absent:
+            missing[filename] = absent
+    return missing
 
 
 def options():
@@ -54,6 +89,53 @@ class CliDocumentation(unittest.TestCase):
         self.assertIn('may add at most 4 requests, so a company never exceeds 24', DOC)
         self.assertNotIn('limits each distinct company observation to 20 HTTP requests', DOC)
         self.assertIn('hard ceiling 24', README)
+
+    def test_dockerfile_copy_closes_over_all_top_level_and_lazy_local_imports(self):
+        copied = dockerfile_copied_files()
+        self.assertIn('contact_map_identity.py', copied)
+        for required in ('cli.py', 'evaluator.py', 'agent.py', 'audit.py', 'organization_types.json'):
+            self.assertIn(required, copied)
+        for filename in copied:
+            self.assertTrue((ROOT / filename).is_file(), filename)
+        self.assertEqual(missing_dockerfile_local_imports(copied), {})
+        without_contact_map = [name for name in copied if name != 'contact_map_identity.py']
+        self.assertEqual(
+            missing_dockerfile_local_imports(without_contact_map),
+            {'agent.py': ['contact_map_identity.py'], 'audit.py': ['contact_map_identity.py']},
+        )
+
+    def test_copied_modules_do_not_hide_local_imports_behind_import_error_handlers(self):
+        local_modules = {path.stem for path in ROOT.glob('*.py')}
+        guarded_names = {'ImportError', 'ModuleNotFoundError', 'Exception', 'BaseException'}
+        hidden_local_imports = []
+        for filename in sorted(dockerfile_copied_files()):
+            if not filename.endswith('.py'):
+                continue
+            tree = ast.parse((ROOT / filename).read_text(encoding='utf-8'), filename=filename)
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Try):
+                    continue
+                catches_import_error = any(
+                    handler.type is None or any(
+                        isinstance(sub, ast.Name) and sub.id in guarded_names
+                        for sub in ast.walk(handler.type)
+                    )
+                    for handler in node.handlers
+                )
+                if not catches_import_error:
+                    continue
+                for stmt in node.body:
+                    for inner in ast.walk(stmt):
+                        if isinstance(inner, ast.Import):
+                            for alias in inner.names:
+                                root_mod = alias.name.split('.')[0]
+                                if root_mod in local_modules:
+                                    hidden_local_imports.append((filename, inner.lineno, root_mod))
+                        elif isinstance(inner, ast.ImportFrom) and inner.level == 0 and inner.module:
+                            root_mod = inner.module.split('.')[0]
+                            if root_mod in local_modules:
+                                hidden_local_imports.append((filename, inner.lineno, root_mod))
+        self.assertEqual(hidden_local_imports, [])
 
 
 if __name__ == '__main__':
