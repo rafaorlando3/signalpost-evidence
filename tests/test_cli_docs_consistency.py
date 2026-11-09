@@ -12,6 +12,31 @@ CLI = (ROOT / 'cli.py').read_text(encoding='utf-8')
 DOC = (ROOT / 'CLI.md').read_text(encoding='utf-8')
 README = (ROOT / 'README.md').read_text(encoding='utf-8')
 DOCKERFILE = (ROOT / 'Dockerfile').read_text(encoding='utf-8')
+DOCKERIGNORE = (ROOT / '.dockerignore').read_text(encoding='utf-8')
+LITERAL_DOCKERIGNORE_ALLOW_RE = re.compile(r'^!([A-Za-z0-9_.-]+)$')
+
+
+def dockerignore_literal_allowlist(dockerignore_text=DOCKERIGNORE):
+    rules = [
+        raw.strip()
+        for raw in dockerignore_text.splitlines()
+        if raw.strip() and not raw.strip().startswith('#')
+    ]
+    if not rules or rules[0] != '*':
+        raise ValueError('.dockerignore must start with a literal "*" deny-all rule')
+    allowed = set()
+    for rule in rules[1:]:
+        match = LITERAL_DOCKERIGNORE_ALLOW_RE.match(rule)
+        if not match:
+            raise ValueError(f'Unsupported non-literal .dockerignore rule: {rule!r}')
+        allowed.add(match.group(1))
+    return allowed
+
+
+def missing_dockerignore_allowlist_entries(copied_files, allowed_files=None):
+    if allowed_files is None:
+        allowed_files = dockerignore_literal_allowlist()
+    return sorted(set(copied_files) - set(allowed_files))
 
 
 def dockerfile_copied_files(dockerfile_text=DOCKERFILE):
@@ -136,6 +161,24 @@ class CliDocumentation(unittest.TestCase):
                             if root_mod in local_modules:
                                 hidden_local_imports.append((filename, inner.lineno, root_mod))
         self.assertEqual(hidden_local_imports, [])
+
+    def test_dockerignore_allowlist_permits_every_dockerfile_copy_source(self):
+        copied = dockerfile_copied_files()
+        allowed = dockerignore_literal_allowlist()
+        self.assertIn('Dockerfile', allowed)
+        self.assertIn('contact_map_identity.py', allowed)
+        self.assertEqual(missing_dockerignore_allowlist_entries(copied, allowed), [])
+        without_contact_map = allowed - {'contact_map_identity.py'}
+        self.assertEqual(
+            missing_dockerignore_allowlist_entries(copied, without_contact_map),
+            ['contact_map_identity.py'],
+        )
+        with self.assertRaises(ValueError):
+            dockerignore_literal_allowlist('!Dockerfile\n')
+        with self.assertRaises(ValueError):
+            dockerignore_literal_allowlist('*\n!*.py\n')
+        with self.assertRaises(ValueError):
+            dockerignore_literal_allowlist('*\n!agent.py\nagent.py\n')
 
 
 if __name__ == '__main__':
