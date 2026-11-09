@@ -62,6 +62,20 @@ def audit(rows, cache):
                     if not registry_identity or legal_name_identity(registry_identity,bundles,compatible)!=support:
                         errors.append([row['organisation_number'],'first-party legal name proof not reproduced'])
                     else:counts['first_party_legal_name_proofs_checked']+=1
+                elif pointer=='registered_domain_exact_legal_contact_map':
+                    from contact_map_identity import contact_map_identity
+                    from business_identity import canonical
+                    from agent import site_operator_identity
+                    claim_registry=next((s.get('json') for eid,s in sources.items() if eid in c['evidence_ids'] and isinstance(s.get('json'),dict) and s['json'].get('organisasjonsnummer')==row['organisation_number']),None)
+                    entry_url=support.get('entry_url') if isinstance(support,dict) else None
+                    source_url=support.get('source_url') if isinstance(support,dict) else None
+                    bundles=[(Page(s.get('text',''),s['url']),s) for s in web]
+                    bundles.sort(key=lambda pair:(pair[0].url!=entry_url,canonical(pair[0].url)!=canonical(entry_url or ''),pair[0].url!=source_url,canonical(pair[0].url),pair[0].url))
+                    compatible=lambda pg:website_identity(row['organisation_number'],pg,claim_registry)!='conflict' and site_operator_identity(row['organisation_number'],pg,claim_registry)['state'] not in {'different','unresolved'}
+                    reconstructed=contact_map_identity(claim_registry,bundles,compatible) if isinstance(support,dict) and claim_registry else None
+                    if not isinstance(support,dict) or not claim_registry or reconstructed!=support or canonical(c.get('value',''))!=canonical(reconstructed.get('entry_url','')):
+                        errors.append([row['organisation_number'],'contact-map legal identity proof not reproduced from retained first-party pages and registry'])
+                    else:counts['contact_map_identity_proofs_checked']+=1
                 elif support and pointer=='explicit_site_operator':
                     from agent import site_operator_identity
                     name=next((x.get('value') for x in row['claims'] if x.get('field')=='legal_name'),None)
