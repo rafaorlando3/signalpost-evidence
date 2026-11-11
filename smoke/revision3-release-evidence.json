@@ -1,0 +1,18 @@
+{
+  "schema": "signalpost.revision3.release_evidence.v1",
+  "product_commit": "1a50b433f98dcb3bf89e5f7b8356ba4729c905ab",
+  "product_tree": "a4cfb6aed70fe4a2c1d382e66a7f266add1ebcdb",
+  "CI_run_id": 42932202413,
+  "CI_conclusion": "success",
+  "CI_workflow_commit": "3511cb679eb064a7bdda128e2c5fdfaca27d9988",
+  "source_reviews": {
+    "Argon": "Actual Gemini4ArgonMedium author/source reviews retained, exact product packaging report14a22806 and CI manifest4743ff84",
+    "Claude": "Earlier genuine Opus5.5High exact-product packaging delta source review881f14fd; runtime explicitly pending at that time, now separately tested on CI",
+    "Codex": "Exact-source and runtime report review, separate from actual Claude/Argon"
+  },
+  "test_report_SHA256": "ba1e0fc6c1dc0e5fc27825b04935dc02e0e2348ca3e57ee550422b2b0245f44f",
+  "tests_passed": 604,
+  "cold100_completed": 100,
+  "official_score": null,
+  "activation_confirmed": false
+}
