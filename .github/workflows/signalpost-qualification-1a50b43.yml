@@ -1,0 +1,320 @@
+name: Signalpost Qualification 1a50b43
+
+on:
+  push:
+    branches:
+      - "candidate/qualification-1a50b43-20261110"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signalpost-qualification-1a50b43-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  qualify-1a50b43:
+    name: Qualify Immutable Product 1a50b43 (Unit + Node5 + Package + Cold100)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      PRODUCT_COMMIT_SHA1: "1a50b433f98dcb3bf89e5f7b8356ba4729c905ab"
+      PRODUCT_TREE_SHA1: "a4cfb6aed70fe4a2c1d382e66a7f266add1ebcdb"
+      PRODUCT_FILE_COUNT: "945"
+      PYTHON_BASE_IMAGE: "python:3.12.15-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704"
+      NODE_VERSION: "v24.22.2"
+      NODE_TARBALL: "node-v24.22.2-linux-x64.tar.gz"
+      NODE_TARBALL_URL: "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-x64.tar.gz"
+      NODE_TARBALL_SHA256: "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9"
+      NOVAS100_SHA256: "4a348a856c5f23c199e6ddb650c327a5e2cb6b292f4fe331423069919bc4f19c"
+      AMOSTRA100_SHA256: "98756f5c07b42f737a0e1cda92d95727c5b74d438864c1e4e93a55d16935da6b"
+      MANIFEST945_SHA256: "97371e3450c9140cd9533d9141f1e4b864027784fd6d4006f8088c52e73eff8a"
+      ORCH_DIR: "/tmp/signalpost-ci-orchestration"
+      PRODUCT_DIR: "/tmp/signalpost-product-1a50b43"
+      NODE_BUILD_DIR: "/tmp/signalpost-node24-validation-build"
+      RESULTS_DIR: "/tmp/signalpost-ci-results"
+      COLD100_DIR: "/tmp/signalpost-cold100-run"
+      CONTAINER_PREFIX: "sp1a50-${{ github.run_id }}-${{ github.run_attempt }}"
+    steps:
+      - name: Checkout candidate orchestration commit (read-only, no credentials)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Step 1 - Separate orchestration scripts from clean 1a50b43 product tree and verify all 945 files
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          WORKFLOW_COMMIT_SHA1="$(git rev-parse HEAD)"
+          echo "WORKFLOW_COMMIT_SHA1=${WORKFLOW_COMMIT_SHA1}" | tee -a "${GITHUB_ENV}"
+          if [ "${WORKFLOW_COMMIT_SHA1}" = "${PRODUCT_COMMIT_SHA1}" ]; then
+            echo "ERROR: workflow commit SHA must be distinct from immutable product commit SHA" >&2
+            exit 1
+          fi
+          ACTUAL_PARENT_COMMIT="$(git rev-parse "${PRODUCT_COMMIT_SHA1}^{commit}")"
+          ACTUAL_PRODUCT_TREE="$(git rev-parse "${PRODUCT_COMMIT_SHA1}^{tree}")"
+          if [ "${ACTUAL_PARENT_COMMIT}" != "${PRODUCT_COMMIT_SHA1}" ] || [ "${ACTUAL_PRODUCT_TREE}" != "${PRODUCT_TREE_SHA1}" ]; then
+            echo "ERROR: immutable product commit/tree mismatch: commit=${ACTUAL_PARENT_COMMIT} tree=${ACTUAL_PRODUCT_TREE}" >&2
+            exit 1
+          fi
+          rm -rf "${ORCH_DIR}" "${PRODUCT_DIR}" "${NODE_BUILD_DIR}" "${RESULTS_DIR}" "${COLD100_DIR}"
+          mkdir -p "${ORCH_DIR}" "${PRODUCT_DIR}" "${NODE_BUILD_DIR}" "${RESULTS_DIR}" "${COLD100_DIR}"
+          chmod 0777 "${RESULTS_DIR}" "${COLD100_DIR}"
+          cp -R ci_orchestration/. "${ORCH_DIR}/"
+          chmod 0755 "${ORCH_DIR}/run_bounded_docker.sh" \
+                     "${ORCH_DIR}/verify_product_1a50b43_tree.py" \
+                     "${ORCH_DIR}/ci_run_unit_and_regressions.py" \
+                     "${ORCH_DIR}/ci_verify_cold100_and_emit_report.py"
+          git archive --format=tar "${PRODUCT_COMMIT_SHA1}" | tar -x -C "${PRODUCT_DIR}"
+          python3 -B "${ORCH_DIR}/verify_product_1a50b43_tree.py" \
+            --product-dir "${PRODUCT_DIR}" \
+            --manifest "${ORCH_DIR}/TARGET-1a50b43-MANIFEST-945.json" \
+            --novas100 "${ORCH_DIR}/NOVAS100-20261109.txt" \
+            --amostra100 "${ORCH_DIR}/AMOSTRA-NOVA100-PREDEFINIDA-20261109.json" \
+            --expected-commit "${PRODUCT_COMMIT_SHA1}" \
+            --expected-tree "${PRODUCT_TREE_SHA1}" \
+            --workflow-commit "${WORKFLOW_COMMIT_SHA1}" \
+            --out-json "${RESULTS_DIR}/step1_tree_verification.json"
+
+      - name: Step 2 - Build unmodified product Docker image and run offline CLI/package/import smoke
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          docker pull "${PYTHON_BASE_IMAGE}"
+          docker build --pull=false -t signalpost-product:1a50b43 "${PRODUCT_DIR}"
+          PRODUCT_IMAGE_ID="$(docker image inspect --format '{{.Id}}' signalpost-product:1a50b43)"
+          echo "PRODUCT_IMAGE_ID=${PRODUCT_IMAGE_ID}" | tee -a "${GITHUB_ENV}"
+          "${ORCH_DIR}/run_bounded_docker.sh" \
+            --name "${CONTAINER_PREFIX}-cli-help" \
+            --timeout-seconds 60 \
+            --state-json "${RESULTS_DIR}/step2_cli_help_container.json" \
+            --stdout-file "${RESULTS_DIR}/cli_help.txt" \
+            --stderr-file "${RESULTS_DIR}/cli_help.stderr.txt" \
+            -- \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 64 \
+            --memory 512m \
+            --memory-swap 512m \
+            --cpus 2 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777 \
+            -e TMPDIR=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            signalpost-product:1a50b43 \
+            --help
+          "${ORCH_DIR}/run_bounded_docker.sh" \
+            --name "${CONTAINER_PREFIX}-pkg-smoke" \
+            --timeout-seconds 60 \
+            --state-json "${RESULTS_DIR}/step2_pkg_smoke_container.json" \
+            --stdout-file "${RESULTS_DIR}/step2_pkg_smoke.stdout.txt" \
+            --stderr-file "${RESULTS_DIR}/step2_pkg_smoke.stderr.txt" \
+            -- \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 64 \
+            --memory 512m \
+            --memory-swap 512m \
+            --cpus 2 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777 \
+            -e TMPDIR=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint python \
+            -v "${ORCH_DIR}:/orch:ro" \
+            -v "${RESULTS_DIR}:/results:rw" \
+            signalpost-product:1a50b43 \
+            -B /orch/ci_run_unit_and_regressions.py \
+            --mode package-smoke \
+            --product-root /app \
+            --cli-help-file /results/cli_help.txt \
+            --out-json /results/step2_package_smoke.json
+
+      - name: Step 3 - Run Core Python 3.12.15 unit discovery AND Supplemental Test-Only Node v24.22.2 validation profile
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          # 3A: Unmodified core Python 3.12.15-slim container (records core unit pass + expected 5 Node skips honestly)
+          "${ORCH_DIR}/run_bounded_docker.sh" \
+            --name "${CONTAINER_PREFIX}-core-unit" \
+            --timeout-seconds 240 \
+            --state-json "${RESULTS_DIR}/step3a_core_unit_container.json" \
+            --stdout-file "${RESULTS_DIR}/step3a_core_unit.stdout.txt" \
+            --stderr-file "${RESULTS_DIR}/step3a_core_unit.stderr.txt" \
+            -- \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 128 \
+            --memory 1024m \
+            --memory-swap 1024m \
+            --cpus 2 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777 \
+            -e TMPDIR=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -u "$(id -u):$(id -g)" \
+            -w /work \
+            -v "${PRODUCT_DIR}:/work:ro" \
+            -v "${ORCH_DIR}:/orch:ro" \
+            -v "${RESULTS_DIR}:/results:rw" \
+            "${PYTHON_BASE_IMAGE}" \
+            python -B /orch/ci_run_unit_and_regressions.py \
+            --mode core-unit-without-node \
+            --product-root /work \
+            --out-json /results/step3a_core_unit_without_node.json
+
+          # 3B: Build explicit test-only validation image (pinned Python 3.12.15-slim + Debian libstdc++6 + pinned official Node v24.22.2 verified via ldd)
+          curl --fail --silent --show-error --location --max-time 120 \
+            "${NODE_TARBALL_URL}" -o "${NODE_BUILD_DIR}/${NODE_TARBALL}"
+          echo "${NODE_TARBALL_SHA256}  ${NODE_BUILD_DIR}/${NODE_TARBALL}" | sha256sum -c -
+          tar -xzf "${NODE_BUILD_DIR}/${NODE_TARBALL}" -C "${NODE_BUILD_DIR}"
+          cp "${NODE_BUILD_DIR}/node-${NODE_VERSION}-linux-x64/bin/node" "${NODE_BUILD_DIR}/node"
+          chmod 0755 "${NODE_BUILD_DIR}/node"
+          cat > "${NODE_BUILD_DIR}/Dockerfile.node24-validation" <<EOF
+          FROM ${PYTHON_BASE_IMAGE}
+          RUN apt-get update \
+              && apt-get install -y --no-install-recommends libstdc++6 \
+              && rm -rf /var/lib/apt/lists/*
+          COPY node /usr/local/bin/node
+          RUN ldd /usr/local/bin/node && ! ldd /usr/local/bin/node | grep -F "not found" \
+              && /usr/local/bin/node --version
+          EOF
+          docker build --pull=false -f "${NODE_BUILD_DIR}/Dockerfile.node24-validation" \
+            -t signalpost-test-node24:1a50b43 "${NODE_BUILD_DIR}"
+          VALIDATION_IMAGE_ID="$(docker image inspect --format '{{.Id}}' signalpost-test-node24:1a50b43)"
+          echo "VALIDATION_IMAGE_ID=${VALIDATION_IMAGE_ID}" | tee -a "${GITHUB_ENV}"
+
+          # Run full unit suite + Node5 + targeted regressions inside offline test-only validation container (0 skips allowed)
+          "${ORCH_DIR}/run_bounded_docker.sh" \
+            --name "${CONTAINER_PREFIX}-node5-unit" \
+            --timeout-seconds 300 \
+            --state-json "${RESULTS_DIR}/step3b_node5_unit_container.json" \
+            --stdout-file "${RESULTS_DIR}/step3b_node5_unit.stdout.txt" \
+            --stderr-file "${RESULTS_DIR}/step3b_node5_unit.stderr.txt" \
+            -- \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 128 \
+            --memory 1024m \
+            --memory-swap 1024m \
+            --cpus 2 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777 \
+            -e TMPDIR=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -u "$(id -u):$(id -g)" \
+            -w /work \
+            -v "${PRODUCT_DIR}:/work:ro" \
+            -v "${ORCH_DIR}:/orch:ro" \
+            -v "${RESULTS_DIR}:/results:rw" \
+            signalpost-test-node24:1a50b43 \
+            python -B /orch/ci_run_unit_and_regressions.py \
+            --mode full-unit-with-node \
+            --product-root /work \
+            --expected-node-version "${NODE_VERSION}" \
+            --node-tarball-sha256 "${NODE_TARBALL_SHA256}" \
+            --core-unit-json /results/step3a_core_unit_without_node.json \
+            --out-json /results/step3_unit_and_node5.json
+
+      - name: Step 4 - Run fresh Cold-100 diagnostic batch (--search none, empty cache, public GET only, verified container closure)
+        timeout-minutes: 28
+        run: |
+          set -euo pipefail
+          rm -rf "${COLD100_DIR}"
+          mkdir -p "${COLD100_DIR}/cache"
+          chmod -R 0777 "${COLD100_DIR}"
+          "${ORCH_DIR}/run_bounded_docker.sh" \
+            --name "${CONTAINER_PREFIX}-cold100" \
+            --timeout-seconds 1500 \
+            --allow-exit-codes "0,2" \
+            --state-json "${RESULTS_DIR}/step4_cold100_exec.json" \
+            --stdout-file "${COLD100_DIR}/cli_stdout.log" \
+            --stderr-file "${COLD100_DIR}/cli_stderr.log" \
+            -- \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 256 \
+            --memory 2048m \
+            --memory-swap 2048m \
+            --cpus 2 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=512m,mode=1777 \
+            -e TMPDIR=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -v "${ORCH_DIR}/NOVAS100-20261109.txt:/input/orgs.txt:ro" \
+            -v "${COLD100_DIR}:/run_io:rw" \
+            signalpost-product:1a50b43 \
+            --org-list /input/orgs.txt \
+            --output /run_io/result.jsonl \
+            --summary /run_io/result.summary.json \
+            --cache /run_io/cache \
+            --report-dir /run_io/result.review \
+            --timeout-seconds 1380 \
+            --search none
+
+      - name: Step 5 - Validate Cold-100 output, run audit.py, and emit compact public qualification report
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          "${ORCH_DIR}/run_bounded_docker.sh" \
+            --name "${CONTAINER_PREFIX}-verify-cold100" \
+            --timeout-seconds 120 \
+            --state-json "${RESULTS_DIR}/step5_verify_cold100_container.json" \
+            --stdout-file "${RESULTS_DIR}/step5_verify_cold100.stdout.txt" \
+            --stderr-file "${RESULTS_DIR}/step5_verify_cold100.stderr.txt" \
+            -- \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 64 \
+            --memory 1024m \
+            --memory-swap 1024m \
+            --cpus 2 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777 \
+            -e TMPDIR=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint python \
+            -v "${ORCH_DIR}:/orch:ro" \
+            -v "${COLD100_DIR}:/run_io:ro" \
+            -v "${RESULTS_DIR}:/results:rw" \
+            signalpost-product:1a50b43 \
+            -B /orch/ci_verify_cold100_and_emit_report.py \
+            --product-root /app \
+            --novas100 /orch/NOVAS100-20261109.txt \
+            --amostra100 /orch/AMOSTRA-NOVA100-PREDEFINIDA-20261109.json \
+            --step1-json /results/step1_tree_verification.json \
+            --step2-json /results/step2_package_smoke.json \
+            --step3-json /results/step3_unit_and_node5.json \
+            --step4-json /results/step4_cold100_exec.json \
+            --result-jsonl /run_io/result.jsonl \
+            --summary-json /run_io/result.summary.json \
+            --cache-dir /run_io/cache \
+            --review-dir /run_io/result.review \
+            --product-image-id "${PRODUCT_IMAGE_ID}" \
+            --validation-image-id "${VALIDATION_IMAGE_ID}" \
+            --out-report-json /results/CI-QUALIFICATION-REPORT-1a50b43.json \
+            --out-report-md /results/CI-QUALIFICATION-REPORT-1a50b43.md
+          cat "${RESULTS_DIR}/CI-QUALIFICATION-REPORT-1a50b43.md" >> "${GITHUB_STEP_SUMMARY}"
+          echo "=== BEGIN COMPACT PUBLIC QUALIFICATION REPORT JSON ==="
+          cat "${RESULTS_DIR}/CI-QUALIFICATION-REPORT-1a50b43.json"
+          echo "=== END COMPACT PUBLIC QUALIFICATION REPORT JSON ==="
+
+      - name: Step 6 - Always ensure job-owned containers are stopped and removed
+        if: always()
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          for suffix in cli-help pkg-smoke core-unit node5-unit cold100 verify-cold100; do
+            cname="${CONTAINER_PREFIX}-${suffix}"
+            if docker container inspect "${cname}" >/dev/null 2>&1; then
+              docker stop -t 5 "${cname}" >/dev/null 2>&1 || true
+              docker kill "${cname}" >/dev/null 2>&1 || true
+              docker rm -f "${cname}" >/dev/null 2>&1 || true
+            fi
+          done

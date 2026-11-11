@@ -1,0 +1,15 @@
+{
+  "at_utc": "2026-11-09T06:46:22.568605+00:00",
+  "sample_input_sha256": "4a348a856c5f23c199e6ddb650c327a5e2cb6b292f4fe331423069919bc4f19c",
+  "status": "DIAGNOSTIC_ONLY_NOT_REPRESENTATIVE_OR_SCORED",
+  "pagination_error_confirmed": "Primary API HTTP400 explicitly says size*(page+1) <=10_000; diagnostic pages corrected to29,57,91 without source protection bypass.",
+  "observed_selection_bias": "AS pages selected under default name sorting concentrate on names beginning A; ASA10 percent is also an oversample. This is a deliberate diagnostic cohort, not sufficient for a population score estimate.",
+  "sample_count": 100,
+  "with_registry_website_hint": 44,
+  "without_registry_website_hint": 56,
+  "exclude_limit": "Excluded frozen1000/input100 plus prior12 diagnostic IDs only; not attested new against every historical artifact",
+  "original_metadata_and_input_unchanged": true,
+  "collector_executed": false,
+  "independent20_accuracy_claim": false,
+  "action": "Use for discovery/identity regression challenge. Prepare a separate prospectively stratified population cohort before extrapolating any score; preserve this sample as recorded."
+}
